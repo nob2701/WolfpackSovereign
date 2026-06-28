@@ -1,0 +1,37 @@
+mutation SeedDatabase @transaction {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      email: "user1@example.com",
+      createdAt: "2023-01-01T00:00:00Z",
+      displayName: "Demo User 1"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440002",
+      email: "user2@example.com",
+      createdAt: "2023-01-02T00:00:00Z",
+      displayName: "Demo User 2"
+    }
+  ])
+  area_insertMany(data: [
+    {
+      name: "Work",
+      colorCode: "#FF0000",
+      userId: "550e8400-e29b-41d4-a716-446655440001"
+    },
+    {
+      name: "Personal",
+      colorCode: "#00FF00",
+      userId: "550e8400-e29b-41d4-a716-446655440002"
+    }
+  ])
+  task_insertMany(data: [
+    {
+      title: "Finish FDC project",
+      status: "TODO",
+      createdAt: "2023-01-03T10:00:00Z",
+      userId: "550e8400-e29b-41d4-a716-446655440001",
+      areaId: "550e8400-e29b-41d4-a716-446655440001"
+    }
+  ])
+}

@@ -1,0 +1,37 @@
+type User @table {
+  email: String!
+  createdAt: Timestamp!
+  displayName: String
+  focusStreak: Int
+}
+
+type Area @table {
+  name: String!
+  colorCode: String!
+  description: String
+  user: User!
+}
+
+type Task @table {
+  title: String!
+  status: String!
+  createdAt: Timestamp!
+  description: String
+  dueDate: Timestamp
+  area: Area
+  user: User!
+}
+
+type Log @table {
+  completedAt: Timestamp!
+  durationMinutes: Int
+  task: Task!
+  user: User!
+}
+
+type Preference @table {
+  theme: String!
+  notifyEnabled: Boolean!
+  dailyGoalCount: Int
+  user: User!
+}

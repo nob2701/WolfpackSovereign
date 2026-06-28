@@ -1,0 +1,37 @@
+mutation CreateTask($title: String!, $status: String!, $userId: UUID!) @auth(level: USER) {
+  task_insert(data: {
+    title: $title,
+    status: $status,
+    userId: $userId,
+    createdAt_expr: "request.time"
+  })
+}
+
+mutation CreateLog($duration: Int, $taskId: UUID!, $userId: UUID!) @auth(level: USER) {
+  log_insert(data: {
+    durationMinutes: $duration,
+    taskId: $taskId,
+    userId: $userId,
+    completedAt_expr: "request.time"
+  })
+}
+
+query GetUserTasks($userId: UUID!) @auth(level: USER) {
+  tasks(where: {userId: {eq: $userId}}, orderBy: [{createdAt: DESC}]) {
+    id
+    title
+    status
+    createdAt
+  }
+}
+
+query GetAreaLogs($areaId: UUID!) @auth(level: USER) {
+  logs(where: {task: {areaId: {eq: $areaId}}}) {
+    id
+    durationMinutes
+    completedAt
+    task {
+      title
+    }
+  }
+}

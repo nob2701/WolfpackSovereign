@@ -17,7 +17,21 @@ document.addEventListener("DOMContentLoaded", () => {
     initLobby();
     setupTabNavigation();
     setupThemeAndFontListeners();
+    dismissSplashScreen();
 });
+
+// Gỡ bỏ màn hình chờ (Chống treo)
+function dismissSplashScreen() {
+    const splash = document.getElementById("splash-screen");
+    if (splash) {
+        const dismiss = () => {
+            splash.classList.add("hidden");
+        };
+        splash.addEventListener("click", dismiss);
+        // Tự động gỡ sau 2 giây đề phòng người dùng không click
+        setTimeout(dismiss, 2000);
+    }
+}
 
 // ==========================================
 // 1. KHỞI TẠO VÀ ĐIỀU PHỐI SẢNH CHỜ (LOBBY)
@@ -39,7 +53,8 @@ function initLobby() {
     // Tự động khôi phục thông tin từ LocalStorage nếu có
     const savedName = localStorage.getItem("online_player_name");
     if (savedName) {
-        document.getElementById("player-name-input").value = savedName;
+        const nameInput = document.getElementById("player-name-input");
+        if (nameInput) nameInput.value = savedName;
         Net.playerName = savedName;
     }
 }
@@ -68,12 +83,9 @@ function setupTabNavigation() {
         const el = document.getElementById(tabId);
         if (el) {
             el.addEventListener("click", () => {
-                document.body.setAttribute("data-mobile-tab", idx + 1);
-                tabs.forEach(t => {
-                    const btn = document.getElementById(t);
-                    if (btn) btn.classList.remove("active");
-                });
-                el.classList.add("active");
+                if (window.UI_Module && typeof window.UI_Module.switchTab === "function") {
+                    window.UI_Module.switchTab(idx + 1);
+                }
             });
         }
     });
@@ -99,7 +111,6 @@ function setupThemeAndFontListeners() {
     }
     if (langSel) {
         langSel.addEventListener("change", (e) => {
-            // Chức năng đổi ngôn ngữ sẽ được liên kết thông qua game-logic
             if (window.UI_Module && typeof window.UI_Module.changeLang === "function") {
                 window.UI_Module.changeLang(e.target.value);
             }
@@ -110,6 +121,7 @@ function setupThemeAndFontListeners() {
 // Thu thập tên người chơi hợp lệ
 function validatePlayerName() {
     const input = document.getElementById("player-name-input");
+    if (!input) return null;
     const name = input.value.trim();
     if (!name) {
         alert("Vui lòng nhập tên hiển thị trước khi tiếp tục!");
@@ -189,6 +201,7 @@ function joinRoomFromInput() {
     if (!name) return;
 
     const roomInput = document.getElementById("room-id-input");
+    if (!roomInput) return;
     const roomId = roomInput.value.trim().toUpperCase();
     if (!roomId || roomId.length !== 6) {
         alert("Mã phòng không hợp lệ! Vui lòng nhập đúng 6 ký tự.");
@@ -248,11 +261,11 @@ function enterLobbyMode() {
     const waitingMsg = document.getElementById("lobby-waiting-msg");
 
     if (Net.isHost) {
-        hostControls.classList.remove("hidden");
-        waitingMsg.classList.add("hidden");
+        if (hostControls) hostControls.classList.remove("hidden");
+        if (waitingMsg) waitingMsg.classList.add("hidden");
     } else {
-        hostControls.classList.add("hidden");
-        waitingMsg.classList.remove("hidden");
+        if (hostControls) hostControls.classList.add("hidden");
+        if (waitingMsg) waitingMsg.classList.remove("hidden");
     }
 
     // Đăng ký sự kiện rớt mạng tự động xóa người chơi
@@ -266,7 +279,6 @@ function setupPresenceSystem() {
 
     onValue(myPresenceRef, (snap) => {
         if (snap.val() === true) {
-            // Khi mất kết nối mạng, Firebase Realtime Database tự động chuyển trạng thái offline
             onDisconnect(playerOnlineRef).set(false);
             set(playerOnlineRef, true);
         }
@@ -358,9 +370,9 @@ function transitionToGameScreen(roomData) {
     // Phân quyền hiển thị cột cấu hình vai trò
     const colRoles = document.getElementById("col-roles");
     if (Net.isHost) {
-        colRoles.classList.remove("hidden");
+        if (colRoles) colRoles.classList.remove("hidden");
     } else {
-        colRoles.classList.add("hidden");
+        if (colRoles) colRoles.classList.add("hidden");
         // Ẩn tab Role trên thiết bị di động của người chơi thường
         const navTab2 = document.getElementById("nav-tab2");
         if (navTab2) navTab2.style.display = "none";
@@ -377,12 +389,8 @@ function transitionToGameScreen(roomData) {
 
 // Đồng bộ trạng thái từ Firebase về mô hình dữ liệu G của Game Logic
 function syncGameStateWithEngine(roomData) {
-    // Nếu tệp game-logic.js chưa được tải kịp, bỏ qua vòng quét này
     if (!window.G) return;
 
-    const oldPhase = window.G.phase;
-    
-    // Áp dụng dữ liệu máy chủ lên cấu trúc dữ liệu cục bộ G
     window.G.day = roomData.meta.day || 0;
     window.G.phase = roomData.meta.phase || "setup";
     
@@ -434,12 +442,14 @@ function updateBoardStatusUI(roomData) {
             scriptText.innerText = "Hãy cấu hình số lượng vai trò phù hợp, sau đó ấn [Trộn & Phát Role]!";
             controlsContainer.innerHTML = `<button id="btn-net-start-game" class="btn-success w-100" style="padding:15px; font-size:18px;">🚀 BẮT ĐẦU TRẬN ĐẤU</button>`;
             
-            // Lắng nghe nút khởi chạy game trực tuyến
-            document.getElementById("btn-net-start-game").addEventListener("click", () => {
-                if (window.Engine_Module && typeof window.Engine_Module.startGame === "function") {
-                    window.Engine_Module.startGame();
-                }
-            });
+            const startBtn = document.getElementById("btn-net-start-game");
+            if (startBtn) {
+                startBtn.addEventListener("click", () => {
+                    if (window.Engine_Module && typeof window.Engine_Module.startGame === "function") {
+                        window.Engine_Module.startGame();
+                    }
+                });
+            }
         } else {
             scriptText.innerText = "Vui lòng chờ Quản trò thiết lập vai trò và bắt đầu trò chơi...";
             controlsContainer.innerHTML = `<div class="waiting-msg">Đang chờ quản trò...</div>`;
@@ -470,22 +480,68 @@ function renderHostBoardControls(meta, roomData) {
     const scriptText = document.getElementById("script-text");
     const controlsContainer = document.getElementById("controls");
 
+    if (!scriptText || !controlsContainer) return;
+
     scriptText.innerText = "Quản trò trực tuyến: Theo dõi và tiến hành chuyển pha sau khi người chơi hoàn thành lượt.";
     
-    // Giao diện GM bao gồm các nút tiến trình của trận đấu
-    controls.innerHTML = `
+    controlsContainer.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
-            <button id="btn-net-next-phase" class="btn-success">Chuyển Sang Ban Đêm 🌙</button>
+            <button id="btn-net-next-phase" class="btn-success">Chuyển Sang ${meta.phase === 'night' ? 'Ban Ngày ☀️' : 'Ban Đêm 🌙'}</button>
             <button id="btn-net-resolve-vote" class="btn-danger">⚖️ Chốt Phiếu Xử Tử</button>
         </div>
     `;
 
-    document.getElementById("btn-host-start-setup")?.classList.add("hidden");
+    // Khởi tạo các sự kiện điều khiển của Host trực tuyến
+    document.getElementById("btn-net-next-phase")?.addEventListener("click", async () => {
+        const nextPhase = meta.phase === "night" ? "day" : "night";
+        const nextDay = nextPhase === "night" ? meta.day + 1 : meta.day;
+        try {
+            await update(ref(db, `rooms/${Net.roomId}/meta`), {
+                phase: nextPhase,
+                day: nextDay
+            });
+            if (window.Engine_Module && typeof window.Engine_Module.logMsg === "function") {
+                window.Engine_Module.logMsg(`Quản trò đã chuyển sang pha: ${nextPhase === 'night' ? 'Ban Đêm' : 'Ban Ngày'} - Ngày ${nextDay}`, "info");
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    });
+
+    document.getElementById("btn-net-resolve-vote")?.addEventListener("click", () => {
+        alert("Đã gửi tín hiệu chốt kết quả biểu quyết treo cổ!");
+    });
+
+    const hostSetupBtn = document.getElementById("btn-host-start-setup");
+    if (hostSetupBtn) hostSetupBtn.classList.add("hidden");
 }
 
 // Bảng điều khiển dành riêng cho người chơi trực tuyến (Player View)
-function renderPlayerPerspective(roomData) {
-    // Logic của người chơi sẽ được tự động cập nhật từ kịch bản gửi về
+function renderPlayerBoardControls(meta, mySelf, roomData) {
+    const scriptText = document.getElementById("script-text");
+    const controlsContainer = document.getElementById("controls");
+
+    if (!scriptText || !controlsContainer) return;
+
+    scriptText.innerText = `Vai trò bảo mật của bạn: ${mySelf ? mySelf.role.toUpperCase() : 'Chưa có'}. Vui lòng phối hợp thực hiện nhiệm vụ phe phái.`;
+
+    if (meta.phase === "night") {
+        controlsContainer.innerHTML = `
+            <div class="waiting-msg">🌙 Đêm đang diễn ra. Hãy sử dụng kỹ năng thông qua ứng dụng di động...</div>
+            <button id="btn-use-skill" class="btn-accent w-100">🎯 Sử Dụng Kỹ Năng Đêm</button>
+        `;
+        document.getElementById("btn-use-skill")?.addEventListener("click", () => {
+            alert("Đã mở trình chọn kỹ năng đêm trực tuyến!");
+        });
+    } else {
+        controlsContainer.innerHTML = `
+            <div class="waiting-msg">☀️ Ban ngày đang diễn ra. Thảo luận và biểu quyết...</div>
+            <button id="btn-use-vote" class="btn-danger w-100">⚖️ Biểu Quyết Làng</button>
+        `;
+        document.getElementById("btn-use-vote")?.addEventListener("click", () => {
+            alert("Đã mở hòm phiếu biểu quyết treo cổ!");
+        });
+    }
 }
 
 // ==========================================

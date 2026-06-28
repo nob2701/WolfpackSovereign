@@ -23,6 +23,11 @@ window.G = {
     playerStats: {}
 };
 
+// Đăng ký sự kiện điều khiển cấu hình Role cho Chủ Phòng khi DOM load xong
+document.addEventListener("DOMContentLoaded", () => {
+    initRoleSetupListeners();
+});
+
 // ==========================================
 // 2. TỪ ĐIỂN ĐA NGÔN NGỮ (I18N DICTIONARY)
 // ==========================================
@@ -154,7 +159,6 @@ export const FACTION_ICONS = { villager: '🌾', wolf: '🐺', third: '🧛' };
 // 4. BỘ LỘ HOẠT ĐỘNG GM (ENGINE_MODULE)
 // ==========================================
 export const Engine_Module = {
-    // 1. Phân phối vai trò trực tuyến
     distributeRoles: async () => {
         if (!Net.isHost) return;
         
@@ -164,7 +168,6 @@ export const Engine_Module = {
             return;
         }
 
-        // Tạo danh sách bể vai trò dựa trên cấu hình host chọn
         let rolePool = [];
         for (let key in ROLE_DB) {
             let count = window.G.roleCounts[key] || 0;
@@ -173,18 +176,15 @@ export const Engine_Module = {
             }
         }
 
-        // Tự động lấp đầy bể bằng Dân Làng nếu thiếu cấu hình
         while (rolePool.length < activePlayers.length) {
             rolePool.push('villager');
         }
 
-        // Trộn ngẫu nhiên vai trò
         for (let i = rolePool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [rolePool[i], rolePool[j]] = [rolePool[j], rolePool[i]];
         }
 
-        // Lưu thông tin phân phối vai trò trực tuyến lên Firebase
         const updates = {};
         activePlayers.forEach((p, idx) => {
             const assignedRole = rolePool[idx];
@@ -200,7 +200,6 @@ export const Engine_Module = {
         }
     },
 
-    // 2. Kích hoạt trò chơi
     startGame: async () => {
         if (!Net.isHost) return;
 
@@ -218,7 +217,6 @@ export const Engine_Module = {
         }
     },
 
-    // 3. Ghi chép lịch sử sự kiện đồng bộ lên Server
     logMsg: async (msg, type = "sys") => {
         if (!Net.roomId) return;
         const logRef = ref(db, `rooms/${Net.roomId}/logs`);
@@ -241,7 +239,22 @@ export const Engine_Module = {
 // 5. HIỂN THỊ GIAO DIỆN PHÍA KHÁCH (UI_MODULE)
 // ==========================================
 export const UI_Module = {
-    // Thay đổi ngôn ngữ cục bộ
+    // Xử lý chuyển tab hiển thị
+    switchTab: (idx) => {
+        document.body.setAttribute("data-mobile-tab", idx);
+        const tabs = ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"];
+        tabs.forEach((tabId, i) => {
+            const el = document.getElementById(tabId);
+            if (el) {
+                if (i + 1 === idx) {
+                    el.classList.add("active");
+                } else {
+                    el.classList.remove("active");
+                }
+            }
+        });
+    },
+
     changeLang: (lang) => {
         window.G.lang = lang;
         document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -251,13 +264,16 @@ export const UI_Module = {
         UI_Module.renderRoleConfigPage();
     },
 
-    // Cập nhật cấu hình bảng chọn số lượng Role
     renderRoleConfigPage: () => {
         const container = document.getElementById('role-config-list');
         if (!container) return;
         container.innerHTML = '';
 
-        let allKeys = Object.keys(ROLE_DB);
+        // Lọc theo từ khóa tìm kiếm
+        let allKeys = Object.keys(ROLE_DB).filter(key => 
+            getRoleName(key).toLowerCase().includes(window.G.roleSearchKeyword.toLowerCase())
+        );
+
         let start = window.G.currentRolePage * window.G.rolesPerPage;
         let pageKeys = allKeys.slice(start, start + window.G.rolesPerPage);
 
@@ -281,8 +297,7 @@ export const UI_Module = {
             </div>`;
         });
 
-        // Thiết lập trang
-        const totalPages = Math.ceil(allKeys.length / window.G.rolesPerPage);
+        const totalPages = Math.max(1, Math.ceil(allKeys.length / window.G.rolesPerPage));
         const indicator = document.getElementById('role-page-indicator');
         if (indicator) indicator.innerText = `${window.G.currentRolePage + 1}/${totalPages}`;
     },
@@ -292,13 +307,11 @@ export const UI_Module = {
         const currentQty = window.G.roleCounts[key] || 0;
         const newQty = Math.max(0, currentQty + delta);
         
-        // Cập nhật trực tiếp lên Firebase để đồng bộ tức thì
         update(ref(db, `rooms/${Net.roomId}/roleCounts`), {
             [key]: newQty
         });
     },
 
-    // Cập nhật bảng người chơi đồng bộ từ Firebase
     renderPlayers: () => {
         const list = document.getElementById('players-list');
         if (!list) return;
@@ -310,7 +323,7 @@ export const UI_Module = {
             
             let actionBtn = '';
             if (p.alive && Net.isHost && window.G.phase !== "setup") {
-                actionBtn = `<button class="btn-danger btn-small" onclick="UI_Module.executeDeath('${p.id}')">Xử tử</button>`;
+                actionBtn = `<button class="btn-danger btn-small" onclick="UI_Module.executeDeath('${p.id}')">Xử từ</button>`;
             }
 
             html += `
@@ -325,7 +338,6 @@ export const UI_Module = {
         list.innerHTML = html;
     },
 
-    // Thực thi xử tử thủ công từ GM Host
     executeDeath: async (playerId) => {
         if (!confirm("Bạn có chắc chắn muốn xử tử thủ công người chơi này?")) return;
         const playerRef = ref(db, `rooms/${Net.roomId}/players/${playerId}`);
@@ -337,7 +349,6 @@ export const UI_Module = {
         }
     },
 
-    // Cập nhật tổng quan phòng
     updateStats: () => {
         const pCountDisp = document.getElementById('player-count-display');
         const pCount = document.getElementById('player-count');
@@ -358,14 +369,94 @@ export const UI_Module = {
     },
 
     updateBalanceUI: () => {
-        // Cán cân trận đấu tương tự bản gốc v46
+        let villagePower = 0;
+        let wolfPower = 0;
+        let thirdPower = 0;
+
+        for (let key in ROLE_DB) {
+            const count = window.G.roleCounts[key] || 0;
+            if (count > 0) {
+                if (ROLE_DB[key].faction === 'villager') villagePower += count;
+                else if (ROLE_DB[key].faction === 'wolf') wolfPower += count;
+                else if (ROLE_DB[key].faction === 'third') thirdPower += count;
+            }
+        }
+
+        const total = villagePower + wolfPower + thirdPower || 1;
+        const wPct = (wolfPower / total) * 100;
+        const tPct = (thirdPower / total) * 100;
+        const vPct = (villagePower / total) * 100;
+
+        const wBar = document.getElementById('balance-bar-wolf');
+        const tBar = document.getElementById('balance-bar-third');
+        const vBar = document.getElementById('balance-bar-village');
+        const bText = document.getElementById('balance-text');
+
+        if (wBar) wBar.style.width = `${wPct}%`;
+        if (tBar) tBar.style.width = `${tPct}%`;
+        if (vBar) vBar.style.width = `${vPct}%`;
+
+        if (bText) {
+            if (wolfPower > villagePower) bText.innerText = t('balance_wolf');
+            else if (villagePower > wolfPower + thirdPower) bText.innerText = t('balance_village');
+            else if (thirdPower > villagePower) bText.innerText = t('balance_third');
+            else bText.innerText = t('balance_neutral');
+        }
     },
 
     showRoleInfo: (key) => {
-        alert(t('r_' + key) + ": " + (DICT[window.G.lang]['r_' + key] || key));
+        alert(getRoleName(key) + ": " + (DICT[window.G.lang]['r_' + key] || key));
     }
 };
 
-// Liên kết các hàm toàn cục để UI tương tác trực tiếp
+// Khởi tạo các sự kiện giao diện thiết lập vai trò
+function initRoleSetupListeners() {
+    document.getElementById("btn-role-prev")?.addEventListener("click", () => {
+        if (window.G.currentRolePage > 0) {
+            window.G.currentRolePage--;
+            UI_Module.renderRoleConfigPage();
+        }
+    });
+
+    document.getElementById("btn-role-next")?.addEventListener("click", () => {
+        let allKeys = Object.keys(ROLE_DB).filter(key => 
+            getRoleName(key).toLowerCase().includes(window.G.roleSearchKeyword.toLowerCase())
+        );
+        const totalPages = Math.ceil(allKeys.length / window.G.rolesPerPage);
+        if (window.G.currentRolePage < totalPages - 1) {
+            window.G.currentRolePage++;
+            UI_Module.renderRoleConfigPage();
+        }
+    });
+
+    document.getElementById("role-search")?.addEventListener("input", (e) => {
+        window.G.roleSearchKeyword = e.target.value;
+        window.G.currentRolePage = 0;
+        UI_Module.renderRoleConfigPage();
+    });
+
+    document.getElementById("preset-classic")?.addEventListener("click", () => {
+        applyPreset({ villager: 4, seer: 1, guard: 1, wolf: 2, witch: 1 });
+    });
+
+    document.getElementById("preset-lonewolf")?.addEventListener("click", () => {
+        applyPreset({ villager: 3, seer: 1, loneWolf: 1, wolf: 1, serialKiller: 1 });
+    });
+
+    document.getElementById("btn-distribute")?.addEventListener("click", () => {
+        Engine_Module.distributeRoles();
+    });
+}
+
+function applyPreset(preset) {
+    if (!Net.isHost) return;
+    const updates = {};
+    for (let key in ROLE_DB) {
+        updates[`rooms/${Net.roomId}/roleCounts/${key}`] = preset[key] || 0;
+    }
+    update(ref(db), updates);
+}
+
+// Liên kết các hàm toàn cục để UI tương tác trực tiếp từ HTML
 window.UI_Module = UI_Module;
 window.Engine_Module = Engine_Module;
