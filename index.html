@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ma Sói Online - Esport Edition</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+    <!-- CSS liên kết ngoài -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDKs thông qua CDN Module -->
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+                "firebase/database": "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js",
+                "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js"
+            }
+        }
+    </script>
+</head>
+<body data-theme="light" data-font="comfortaa" data-view="lobby">
+
+    <!-- MÀN HÌNH CHỜ CHỐNG TREO -->
+    <div id="splash-screen">
+        <img src="assets/images/logo.png" alt="Logo Game" id="splash-logo" onerror="this.style.display='none'"> 
+        <div class="typewriter-text">Ma Sói Online</div>
+        <div class="splash-hint">Đang chuẩn bị kết nối... Chạm để tiếp tục!</div>
+    </div>
+
+    <!-- HỆ THỐNG PHÁT ĐỒNG BỘ ÂM THANH -->
+    <audio id="bgm-player" loop><source src="assets/audio/bgm.mp3" type="audio/mpeg"></audio> 
+    <audio id="sfx-player"><source src="assets/audio/sfx.mp3" type="audio/mpeg"></audio> 
+    <audio id="sfx-spin-win-1"><source src="assets/audio/sfx.mp3" type="audio/mpeg"></audio> 
+
+    <!-- NÚT THIẾT LẬP NHANH (MÁY TÍNH) -->
+    <div class="desktop-overlay" id="desktop-overlay"></div>
+    <button class="desktop-btn-settings" id="btn-desktop-settings" title="Cài đặt">⚙️</button>
+
+    <!-- ==========================================
+         MÀN HÌNH 1: SẢNH CHỜ (LOBBY - ĐĂNG NHẬP / PHÒNG)
+         ========================================== -->
+    <div id="lobby-screen" class="app-screen">
+        <div class="lobby-container">
+            <h1 class="game-logo-title">🐺 MA SÓI ONLINE</h1>
+            <p class="game-subtitle">Esport Edition v46.0 (Cloud Sync)</p>
+            
+            <!-- Form thông tin cá nhân -->
+            <div class="lobby-form-group">
+                <label for="player-name-input" data-i18n="t_enter_name">Nhập tên của bạn:</label>
+                <input type="text" id="player-name-input" maxlength="15" placeholder="Tên hiển thị...">
+            </div>
+
+            <!-- Khu vực tương tác tạo/join phòng -->
+            <div class="lobby-actions">
+                <div class="join-room-box">
+                    <input type="text" id="room-id-input" placeholder="Nhập mã phòng (Room ID)...">
+                    <button id="btn-join-room" class="btn-success">Tham Gia Phòng</button>
+                </div>
+                <div class="divider-text">hoặc</div>
+                <button id="btn-create-room" class="btn-accent">Tạo Phòng Mới</button>
+            </div>
+
+            <!-- Danh sách phòng gợi ý hoặc lịch sử nếu có -->
+            <div class="room-info-card hidden" id="lobby-room-status">
+                <h3>ĐANG Ở TRONG PHÒNG: <span id="current-room-display" style="color:var(--accent)">-</span></h3>
+                <div class="lobby-players-list-wrapper">
+                    <h4>Người chơi đã kết nối (<span id="lobby-connected-count">0</span>):</h4>
+                    <div id="lobby-players-list"></div>
+                </div>
+                <div class="host-controls hidden" id="lobby-host-controls">
+                    <button id="btn-host-start-setup" class="btn-danger w-100">Vào Cấu Hình Trận Đấu</button>
+                </div>
+                <p class="waiting-msg" id="lobby-waiting-msg">Chờ chủ phòng thiết lập...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MÀN HÌNH 2: TRONG GAME (GAME SCREEN)
+         ========================================== -->
+    <div id="game-screen" class="app-screen hidden">
+        
+        <!-- Cột danh sách người chơi (Đồng bộ thời gian thực) -->
+        <div id="col-players" class="panel col-players">
+            <h2><span data-i18n="t_players">👥 NGƯỜI CHƠI</span> (<span id="player-count-display">0</span>)</h2>
+            <div id="players-list" style="margin-bottom: 10px; overflow-y: auto; flex:1;"></div>
+            <button id="btn-flashcard" class="btn-accent" style="display:none; width:100%; margin-bottom:10px;" data-i18n="ui_flashcard_btn">Xem Lá Bài Của Bạn</button>
+        </div>
+
+        <!-- Cột thiết lập vai trò (Chỉ chủ phòng thấy) -->
+        <div id="col-roles" class="panel col-roles hidden">
+            <h3><span data-i18n="t_role_config">⚙️ CẤU HÌNH ROLE</span> (<span id="role-count" style="color:var(--accent)">0</span>/<span id="player-count">0</span>)</h3>
+            <div class="balance-wrapper">
+                <div class="balance-title" data-i18n="t_balance_meter">CÁN CÂN TRẬN ĐẤU:</div>
+                <div class="balance-bar-container">
+                    <div id="balance-bar-wolf" class="balance-bar-wolf" style="width: 33.3%;"></div>
+                    <div id="balance-bar-third" class="balance-bar-third" style="width: 33.4%;"></div>
+                    <div id="balance-bar-village" class="balance-bar-village" style="width: 33.3%;"></div>
+                </div>
+                <div id="balance-text" class="balance-text">Cân Bằng</div>
+            </div>
+            <div class="game-presets">
+                <button class="btn-suggest" id="preset-classic">Classic Mode</button>
+                <button class="btn-suggest" id="preset-lonewolf">A Waltz Among Wolves</button>
+            </div>
+            <input type="text" id="role-search" data-i18n-ph="t_search_role" placeholder="Tìm kiếm role...">
+            <div id="role-config-list" style="background: var(--bg-main); padding: 5px; border-radius: 6px; margin-bottom: 5px; min-height: 180px;"></div>
+            <div class="pagination-row">
+                <button id="btn-role-prev" class="btn-suggest">&lt; Prev</button>
+                <span id="role-page-indicator">1/1</span>
+                <button id="btn-role-next" class="btn-suggest">Next &gt;</button>
+            </div>
+            <button id="btn-distribute" class="btn-success w-100" data-i18n="t_btn_dist">🎲 Trộn & Phát Role</button>
+        </div>
+
+        <!-- Bàn điều khiển chính (Board) -->
+        <div id="col-board" class="panel col-board">
+            <!-- Nút gọi giả dành cho GM -->
+            <button class="btn-fake-wake hidden" id="btn-fake-wake">🎭 Gọi Giả</button>
+            
+            <h2 data-i18n="t_board">🎮 BÀN ĐIỀU KHIỂN</h2>
+            
+            <!-- Giao diện hiển thị trạng thái phòng cho người chơi -->
+            <div id="board">
+                <h3 id="phase-title" data-i18n="t_setup_phase">ĐANG KHỞI TẠO TRẬN ĐẤU</h3>
+                <p style="color: var(--text-main); opacity: 0.8;"><span>Trưởng Làng:</span> <b id="mayor-name" style="color:var(--accent)" data-i18n="t_no_mayor">Chưa có</b></p>
+                <div id="sovereign-status" style="display:none; color: var(--success); font-weight:bold; font-size:14px; margin-bottom: 10px;"></div>
+                
+                <!-- Văn bản hướng dẫn cập nhật từ Server -->
+                <div id="script-text" data-i18n="t_setup_guide">Đang đợi chủ phòng phân phối vai trò chơi...</div>
+                
+                <!-- Khu vực điều khiển hành động động -->
+                <div id="controls"></div>
+            </div>
+        </div>
+
+        <!-- Cột lịch sử sự kiện (Sync) -->
+        <div id="col-history" class="panel col-history">
+            <div id="log-section">
+                <h2 data-i18n="t_log">📜 LỊCH SỬ & SỰ KIỆN</h2>
+                <div class="log-box" id="log"></div>
+            </div>
+            <div id="secret-section">
+                <h2 data-i18n="t_secrets">🕵️ BÍ MẬT PHÒNG</h2>
+                <div id="secret-panel">
+                    <div class="faction-grid">
+                        <div class="faction-col"><span class="f-dan" data-i18n="t_villagers">🌾 DÂN LÀNG</span><div id="list-dan"></div></div>
+                        <div class="faction-col"><span class="f-soi" data-i18n="t_wolves">🐺 MA SÓI</span><div id="list-soi"></div></div>
+                        <div class="faction-col"><span class="f-thu3" data-i18n="t_thirds">🧛 PHE THỨ 3</span><div id="list-thu3"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         PANEL CÀI ĐẶT & THÔNG TIN HỆ THỐNG
+         ========================================== -->
+    <div class="panel" id="panel-settings-donate">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+            <h2 data-i18n="t_settings">⚙️ CÀI ĐẶT HỆ THỐNG</h2>
+            <button id="btn-close-settings" class="btn-suggest btn-small">Đóng</button>
+        </div>
+        <hr style="border-color: var(--border-color); width: 100%; margin-bottom: 15px;">
+        
+        <div class="setting-item">
+            <h3 data-i18n="t_bgm_control">🎵 NHẠC NỀN (BGM)</h3>
+            <div class="setting-controls">
+                <button id="btn-mute-bgm" class="btn-danger btn-small">Tắt BGM</button>
+                <input type="range" id="bgm-volume" min="0" max="1" step="0.1" value="0.5">
+            </div>
+        </div>
+
+        <div class="setting-item">
+            <h3 data-i18n="t_sfx_control">🔊 HIỆU ỨNG (SFX)</h3>
+            <div class="setting-controls">
+                <button id="btn-mute-sfx" class="btn-danger btn-small">Tắt SFX</button>
+                <input type="range" id="sfx-volume" min="0" max="1" step="0.1" value="0.5">
+            </div>
+        </div>
+
+        <div class="setting-item">
+            <h3 data-i18n="t_waiting_music">🎶 NHẠC SẢNH CHỜ</h3>
+            <select id="bgm-selector">
+                <option value="waiting_1" data-i18n="t_track_1">Nhạc chờ 1 (Mặc định)</option>
+                <option value="waiting_2" data-i18n="t_track_2">Nhạc chờ 2</option>
+                <option value="waiting_3" data-i18n="t_track_3">Nhạc chờ 3</option>
+            </select>
+        </div>
+
+        <div class="setting-item">
+            <h3 data-i18n="t_lang">🌐 NGÔN NGỮ</h3>
+            <select id="lang-selector">
+                <option value="vi">Tiếng Việt</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+
+        <div class="setting-item">
+            <h3 data-i18n="t_theme">🎨 THEME GIAO DIỆN</h3>
+            <select id="theme-selector">
+                <option value="light">Theme Sáng</option>
+                <option value="dark">Theme Tối</option>
+                <option value="hacker">Theme Hacker</option>
+            </select>
+        </div>
+
+        <div class="donate-box">
+            <h3 data-i18n="t_support">✨ Ủng Hộ Phát Triển ✨</h3>
+            <img src="assets/images/logo.png" alt="QR Donate" style="width: 120px; height: 120px; background: white; padding: 5px; border-radius: 8px;">
+            <div style="font-weight: bold; margin-top: 5px;">BIDV - Thai Thanh Nguyen</div>
+            <div class="copy-box">
+                <span>1208856666</span>
+                <button id="btn-copy-stk" class="btn-small">Copy</button>
+            </div>
+        </div>
+        <div class="watermark">Thiết kế bởi Nguyen Thai</div>
+    </div>
+
+    <!-- THANH ĐIỀU HƯỚNG TRÊN THIẾT BỊ DI ĐỘNG -->
+    <div class="mobile-nav">
+        <button id="nav-tab1">👥<br><span data-i18n="tab1">Players</span></button>
+        <button id="nav-tab2" class="hidden-player">⚙️<br><span data-i18n="tab2">Roles</span></button>
+        <button id="nav-tab3" class="active">🎮<br><span data-i18n="tab3">Board</span></button>
+        <button id="nav-tab4">📜<br><span data-i18n="tab4">Log</span></button>
+        <button id="nav-tab5">⚙️<br><span data-i18n="tab5">Setting</span></button>
+    </div>
+
+    <!-- ==========================================
+         HỆ THỐNG MODALS & POPUPS
+         ========================================== -->
+         
+    <!-- Modal Thông báo Chung -->
+    <div class="custom-modal-overlay" id="alert-modal">
+        <div class="custom-modal">
+            <h3 id="alert-title">Thông báo</h3>
+            <p id="alert-message">Nội dung thông báo</p>
+            <button id="alert-btn" class="btn-success w-100">Đã Hiểu</button>
+        </div>
+    </div>
+
+    <!-- Modal Hành động Khẩn cấp -->
+    <div class="custom-modal-overlay" id="action-alert-modal">
+        <div class="custom-modal">
+            <h3 id="action-alert-title">Hành Động</h3>
+            <p id="action-alert-message">Vui lòng xác nhận thực hiện hành động...</p>
+            <button id="action-alert-btn" class="btn-success w-100">Xác Nhận</button>
+        </div>
+    </div>
+
+    <!-- Modal Lật Lá Bài / Xem Vai Trò Bảo Mật -->
+    <div class="custom-modal-overlay" id="flashcard-modal">
+        <div class="custom-modal-card-wrapper">
+            <div class="fc-container">
+                <div class="fc-card" id="fc-card">
+                    <div class="fc-face fc-front">
+                        <h2 id="fc-player-name">Tên của bạn</h2>
+                        <p data-i18n="ui_tap_to_flip">👆 Chạm để xem vai trò</p>
+                    </div>
+                    <div class="fc-face fc-back">
+                        <h2 id="fc-role-name">Tên Vai Trò</h2>
+                        <p id="fc-role-desc">Mô tả kỹ năng vai trò...</p>
+                        <p data-i18n="ui_tap_to_next">👆 Chạm để đóng lại</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Biểu Quyết Ngày (Vote) -->
+    <div class="custom-modal-overlay" id="vote-modal">
+        <div class="custom-modal" id="vote-modal-content">
+            <h3 id="vote-modal-title">BẢNG BỎ PHIẾU LÀNG</h3>
+            <p id="vote-modal-guide">Vui lòng chọn người bạn muốn biểu quyết treo cổ hôm nay.</p>
+            <div class="vote-grid" id="vote-grid-container"></div>
+            <div class="vote-action-footer">
+                <button id="vote-modal-redo" class="btn-suggest">Bỏ Phiếu Lại</button>
+                <button id="vote-modal-submit" class="btn-danger">🔥 CHỐT KẾT QUẢ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Chọn Mục Tiêu (Kỹ Năng Đêm) -->
+    <div class="custom-modal-overlay" id="target-modal">
+        <div class="custom-modal" id="target-modal-content">
+            <h3 id="target-modal-title">CHỌN MỤC TIÊU</h3>
+            <div class="target-grid" id="target-grid-container"></div>
+            <div class="target-action-footer">
+                <button id="target-modal-close" class="btn-suggest">Hủy</button>
+                <button id="target-modal-submit" class="btn-danger">🎯 XÁC NHẬN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minigame Cuộc Đi Săn Cuối Cùng (The Last Hunt) -->
+    <div class="custom-modal-overlay" id="last-hunt-modal">
+        <div class="custom-modal last-hunt-box">
+            <h3 id="last-hunt-title">CUỘC ĐI SĂN CUỐI CÙNG</h3>
+            <p id="last-hunt-desc">Vũ khí bí mật đang ẩn giấu trong các lá bài này. Hãy rút bài để thay đổi cục diện!</p>
+            <div id="last-hunt-current-turn">Đến lượt: -</div>
+            <div class="tarot-container" id="last-hunt-cards-container"></div>
+        </div>
+    </div>
+
+    <!-- Bệnh Án Người Chơi (Bottom Sheet hiển thị nhanh thông tin trạng thái) -->
+    <div class="bottom-sheet-overlay" id="player-sheet-overlay">
+        <div class="bottom-sheet" id="player-sheet-modal">
+            <!-- Dữ liệu trạng thái người chơi tiêm tự động bằng JS -->
+        </div>
+    </div>
+
+    <!-- Scripts liên kết ngoài để xử lý kết nối trực tuyến -->
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/game-logic.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

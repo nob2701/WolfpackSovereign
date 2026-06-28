@@ -1,0 +1,37 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyANIopuQprhN_dHI2W7WYwwPU2U4_Q8cWQ",
+  authDomain: "wolfsovereignonline.firebaseapp.com",
+  databaseURL: "https://wolfsovereignonline-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "wolfsovereignonline",
+  storageBucket: "wolfsovereignonline.firebasestorage.app",
+  messagingSenderId: "325072915230",
+  appId: "1:325072915230:web:890a43e396cd847046170f",
+  measurementId: "G-0T9D3HPPQL"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+
+masoi-online/
+├── index.html                  # Giao diện chính và các màn hình (Lobby, GM, Player)
+├── style.css                   # Định dạng giao diện, các theme màu và hiệu ứng động
+├── js/
+│   ├── firebase-config.js      # Chứa thông số cấu hình kết nối tới Firebase
+│   ├── app.js                  # Xử lý kết nối phòng, đồng bộ dữ liệu trực tuyến
+│   └── game-logic.js           # Chứa luật chơi, kỹ năng các vai trò (được tách từ file cũ)
+└── assets/                     # Thư mục chứa âm thanh, hình ảnh (thay thế cho chuỗi Base64)
+    ├── images/
+    │   └── logo.png
+    └── audio/
+        ├── bgm.mp3
+        └── sfx.mp3
