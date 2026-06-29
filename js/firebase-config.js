@@ -41,7 +41,7 @@ try {
 // Khởi tạo thực thể Realtime Database để đồng bộ trò chơi
 const db = getDatabase(app);
 
-// Xuất các thực thể và hàm ra ngoài để hệ thống app.js sử dụng
+// Xuất các thực thể và hàm ra ngoài để hệ thống app.js và game-logic.js sử dụng
 export {
     app,
     db,

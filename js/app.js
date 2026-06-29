@@ -1,8 +1,13 @@
 import { 
     db, ref, set, get, onValue, update, push, remove, child, onDisconnect, runTransaction 
 } from "./firebase-config.js";
+import { StateMachine } from "./state-machine.js";
+import { 
+    openTargetSelection, ModalManager, initMobileTabSync, showPlayerBottomSheet, setupSoundSettings 
+} from "./ui-manager.js";
+import { ROLE_DB, ROLE_ICONS, FACTION_ICONS } from "./game-logic.js";
 
-// Trạng thái mạng và đồng bộ cục bộ
+// Trạng thái mạng và đồng bộ cục bộ của Client
 export const Net = {
     roomId: null,
     playerId: null,
@@ -18,10 +23,11 @@ export const Net = {
 document.addEventListener("DOMContentLoaded", () => {
     initLobbyEngine();
     setupCodeInputNavigation();
-    setupTabNavigation();
-    setupThemeAndFontListeners();
+    initMobileTabSync();
+    setupSoundSettings();
     setupChatEngine();
     setupSpectatorWinPoll();
+    setupMailboxCategoryFilters();
     dismissSplashScreen();
 });
 
@@ -33,7 +39,7 @@ function dismissSplashScreen() {
             splash.classList.add("hidden");
         };
         splash.addEventListener("click", dismiss);
-        setTimeout(dismiss, 2000);
+        setTimeout(dismiss, 1500);
     }
 }
 
@@ -50,7 +56,7 @@ function initLobbyEngine() {
     const btnToggleReady = document.getElementById("btn-player-toggle-ready");
     const btnHostStartSetup = document.getElementById("btn-host-start-setup");
 
-    // Khôi phục tên cũ nếu có
+    // Khôi phục tên cũ nếu đã lưu
     const savedName = localStorage.getItem("online_player_name");
     if (savedName && nameInput) {
         nameInput.value = savedName;
@@ -101,7 +107,7 @@ function initLobbyEngine() {
 function setupCodeInputNavigation() {
     const inputs = document.querySelectorAll(".code-input");
     inputs.forEach((input, index) => {
-        input.addEventListener("input", (e) => {
+        input.addEventListener("input", () => {
             input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
             if (input.value && index < inputs.length - 1) {
                 inputs[index + 1].focus();
@@ -281,7 +287,7 @@ async function toggleReadyState() {
 }
 
 // ==========================================
-// 3. ĐỒNG BỘ TRẬN ĐẤU & KỊCH BẢN BỐ CỤC 3 CỘT (SYNC ENGINE)
+// 3. ĐỒNG BỘ TRẬN ĐẤU & THIẾT LẬP BẢN ĐỒ VAI TRÒ CHƠI
 // ==========================================
 function listenToRoom() {
     const roomRef = ref(db, `rooms/${Net.roomId}`);
@@ -353,13 +359,12 @@ function updateLobbyPlayersUI() {
     if (connectedCount) connectedCount.innerText = count;
 }
 
-// Bố cục 3 Cột và cơ chế hiển thị dựa trên vai trò
 function transitionToGameScreen(roomData) {
     document.body.setAttribute("data-view", "game");
     document.getElementById("lobby-screen").classList.add("hidden");
     document.getElementById("game-screen").classList.remove("hidden");
 
-    // Phân tab cho cấu hình vai trò của GM
+    // Phân tab cấu hình vai trò của GM
     const tabConfigBtn = document.getElementById("tab-btn-roles-config");
     if (Net.isHost) {
         tabConfigBtn.classList.remove("hidden");
@@ -370,12 +375,17 @@ function transitionToGameScreen(roomData) {
         document.getElementById("gm-timeline-container").classList.add("hidden");
         document.getElementById("player-mailbox-container").classList.remove("hidden");
     }
+
+    // Bắt đầu kích hoạt lắng nghe Hòm thư mật nếu là người chơi thường
+    if (!Net.isHost) {
+        listenToMailbox();
+    }
 }
 
 function syncLayoutBasedOnRoleAndStatus(roomData) {
     const mySelf = Net.players[Net.playerId];
     
-    // Xử lý chế độ Nghĩa địa / Linh hồn (Spectator & Graveyard Mode)
+    // Xử lý chế độ Linh hồn (Spectator & Graveyard Mode)
     if (mySelf && !mySelf.alive) {
         document.body.classList.add("ghostly-mist-active");
         document.getElementById("chan-graveyard")?.classList.remove("hidden");
@@ -388,7 +398,7 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
         renderNormalPlayerGrid();
     }
 
-    // Đánh thức / Ẩn kênh chat đêm tương thích với Faction
+    // Đồng bộ kênh chat đêm tương thích với Faction
     if (mySelf && mySelf.alive) {
         if (mySelf.role === "wolf" || mySelf.realFaction === "wolf") {
             document.getElementById("chan-wolf")?.classList.remove("hidden");
@@ -402,6 +412,66 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             document.getElementById("chan-couple")?.classList.add("hidden");
         }
     }
+
+    // Đồng bộ bảng điều khiển động dưới cùng cho người chơi sử dụng kỹ năng đêm
+    renderDynamicActionControls(roomData, mySelf);
+}
+
+// Khởi tạo bảng nút điều khiển kỹ năng đêm hoặc bỏ phiếu ngày của người chơi
+function renderDynamicActionControls(roomData, mySelf) {
+    const controlPanel = document.getElementById("controls");
+    if (!controlPanel || !mySelf) return;
+
+    const phase = roomData.meta?.phase || "setup";
+
+    if (phase === "night") {
+        if (!mySelf.alive) {
+            controlPanel.innerHTML = `<p style="color:var(--log-text); font-style:italic;">Bạn đã chết. Đang theo dõi với tư cách linh hồn...</p>`;
+            return;
+        }
+
+        if (mySelf.targetSelection) {
+            controlPanel.innerHTML = `<p style="color:var(--success); font-weight:bold;">Đã ghi nhận hành động đêm của bạn! Đang chờ làng...</p>`;
+            return;
+        }
+
+        // Định dạng nút dựa vào Role cụ thể
+        let buttonHTML = "";
+        if (ROLE_DB[mySelf.role]) {
+            const rIcon = ROLE_ICONS[mySelf.role] || "🔮";
+            buttonHTML = `<button id="btn-use-skill" class="btn-accent w-100">${rIcon} SỬ DỤNG CHỨC NĂNG ĐÊM</button>`;
+        } else {
+            buttonHTML = `<p style="color:var(--log-text);">Bạn là dân làng bình thường. Đang ngủ say...</p>`;
+        }
+
+        controlPanel.innerHTML = buttonHTML;
+
+        document.getElementById("btn-use-skill")?.addEventListener("click", () => {
+            // Mở bảng chọn mục tiêu động
+            openTargetSelection(Object.values(Net.players), mySelf.role, (targetPlayerId) => {
+                // Đẩy mục tiêu chọn lên Firebase
+                set(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/targetSelection`), {
+                    actionType: mySelf.role + "_scan", // Gán mã hành động
+                    targetId: targetPlayerId,
+                    timestamp: Date.now()
+                });
+            });
+        });
+    } else if (phase === "day") {
+        // Pha thảo luận ban ngày: Hiển thị nút biểu quyết treo cổ tự do
+        controlPanel.innerHTML = `
+            <div style="display:flex; gap:10px; width:100%;">
+                <button id="btn-nominate-vote" class="btn-danger w-100">⚖️ ĐỀ CỬ TREO CỔ</button>
+            </div>
+        `;
+
+        document.getElementById("btn-nominate-vote")?.addEventListener("click", () => {
+            openTargetSelection(Object.values(Net.players), "nominate", (targetId) => {
+                // Tố giác người chơi lên đài biện hộ
+                window.Engine_Module.accusePlayer(targetId);
+            });
+        });
+    }
 }
 
 // ==========================================
@@ -410,7 +480,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
 function syncTrialPhases(roomData) {
     const trial = roomData.trial || { stage: "none", accusedId: null };
     const stageContainer = document.getElementById("trial-stage-container");
-    const scriptText = document.getElementById("script-text");
 
     // Xóa kích hoạt tất cả chỉ số bước
     const steps = ["step-ind-1", "step-ind-2", "step-ind-3", "step-ind-4"];
@@ -418,6 +487,7 @@ function syncTrialPhases(roomData) {
 
     if (trial.stage === "none") {
         stageContainer.classList.add("hidden");
+        document.getElementById("vote-modal").style.display = "none";
         return;
     }
 
@@ -426,7 +496,6 @@ function syncTrialPhases(roomData) {
     // BƯỚC 1: TỐ GIÁC
     if (trial.stage === "nomination") {
         document.getElementById("step-ind-1").classList.add("active");
-        scriptText.innerText = "Pha thảo luận tự do: Hãy chạm vào đối tượng nghi ngờ để tiến hành Tố Giác!";
     }
 
     // BƯỚC 2: BIỆN HỘ
@@ -435,10 +504,8 @@ function syncTrialPhases(roomData) {
         const accusedName = Net.players[trial.accusedId]?.name || "Bị cáo";
         
         if (Net.playerId === trial.accusedId) {
-            scriptText.innerHTML = `<span style="color:var(--danger)">VÒNG BIỆN HỘ CỦA BẠN!</span> Hãy nhập lời giải trình...`;
             renderDefenseTypingPanel(true);
         } else {
-            scriptText.innerHTML = `Bị cáo <b style="color:var(--accent)">${accusedName}</b> đang trên đài biện hộ...`;
             renderDefenseTypingPanel(false, accusedName);
         }
     }
@@ -446,19 +513,16 @@ function syncTrialPhases(roomData) {
     // BƯỚC 3: PHÁN QUYẾT
     if (trial.stage === "vote") {
         document.getElementById("step-ind-3").classList.add("active");
-        scriptText.innerText = "Thời khắc quyết định: Bỏ phiếu Tha bổng hoặc Xử tử bị cáo!";
         openSplitScreenVoteModal(trial.accusedId);
     }
 
     // BƯỚC 4: DI NGÔN / PHÁN QUYẾT CHUNG CUỘC
     if (trial.stage === "verdict") {
         document.getElementById("step-ind-4").classList.add("active");
-        const accusedName = Net.players[trial.accusedId]?.name || "Bị cáo";
-        scriptText.innerHTML = `Di ngôn cuối cùng của <b style="color:var(--danger)">${accusedName}</b> trước giờ hành hình...`;
+        document.getElementById("vote-modal").style.display = "none";
     }
 }
 
-// Nhập ký tự biện hộ đồng bộ thời gian thực dưới 100ms
 function renderDefenseTypingPanel(isAccused, accusedName = "") {
     const controlPanel = document.getElementById("controls");
     if (!controlPanel) return;
@@ -466,7 +530,7 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
     if (isAccused) {
         controlPanel.innerHTML = `
             <div style="background:var(--bg-item); padding:15px; border-radius:10px; border:2px solid var(--accent)">
-                <textarea id="defense-typing-area" placeholder="Nhập lời biện hộ trực quan của bạn..." style="width:100%; height:80px; background:var(--bg-main); color:white; border-radius:6px; padding:8px;"></textarea>
+                <textarea id="defense-typing-area" placeholder="Nhập lời biện hộ của bạn tại đây..." style="width:100%; height:80px; background:var(--bg-main); color:white; border-radius:6px; padding:8px; border:1px solid var(--border-color);"></textarea>
                 <button id="btn-submit-defense-speech" class="btn-success w-100" style="margin-top:10px;">Gửi Lời Biện Hộ</button>
             </div>
         `;
@@ -484,10 +548,9 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
             });
         });
     } else {
-        // Người khác xem văn bản biện hộ đang gõ thời gian thực
         controlPanel.innerHTML = `
             <div style="background:var(--bg-item); padding:15px; border-radius:10px; text-align:left; min-height:80px; border-left:4px solid gold;">
-                <p id="defense-realtime-display" style="font-style:italic; margin:0; color:gold;">Đang nghe lời bào chữa...</p>
+                <p id="defense-realtime-display" style="font-style:italic; margin:0; color:gold;">Bị cáo đang soạn thảo lời bào chữa...</p>
             </div>
         `;
         
@@ -499,7 +562,6 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
     }
 }
 
-// Bảng chia đôi màn hình phán quyết
 function openSplitScreenVoteModal(accusedId) {
     const modal = document.getElementById("vote-modal");
     if (!modal) return;
@@ -508,13 +570,11 @@ function openSplitScreenVoteModal(accusedId) {
     const title = document.getElementById("vote-modal-title");
     title.innerText = `PHÁN QUYẾT SỐ PHẬN: ${Net.players[accusedId]?.name?.toUpperCase()}`;
 
-    // Reset danh sách hiển thị cột
     const listAcquit = document.getElementById("list-voters-acquit");
     const listExecute = document.getElementById("list-voters-execute");
     listAcquit.innerHTML = "";
     listExecute.innerHTML = "";
 
-    // Lắng nghe phiếu bầu thời gian thực để thực hiện hoạt ảnh bay
     onValue(ref(db, `rooms/${Net.roomId}/votes`), (snap) => {
         const votes = snap.val() || {};
         listAcquit.innerHTML = "";
@@ -554,7 +614,6 @@ function openSplitScreenVoteModal(accusedId) {
 // Hoạt ảnh búa tòa án đập (Gavel Strike Animation)
 export function runGavelStrikeAnimation(decisionText, callback) {
     const overlay = document.getElementById("gavel-animation-overlay");
-    const hammer = document.getElementById("gavel-hammer-element");
     const flash = document.getElementById("gavel-flash-element");
     const announcement = document.getElementById("gavel-verdict-announcement");
 
@@ -562,9 +621,6 @@ export function runGavelStrikeAnimation(decisionText, callback) {
 
     announcement.innerText = decisionText;
     overlay.classList.remove("hidden");
-
-    // Tạo âm thanh búa đập
-    playAudioSFX("assets/audio/gavel.mp3");
 
     // Kích hoạt chớp sáng va chạm
     setTimeout(() => {
@@ -580,7 +636,7 @@ export function runGavelStrikeAnimation(decisionText, callback) {
 }
 
 // ==========================================
-// 5. HỆ THỐNG HÒM THƯ MAILBOX & LÁ BÀI DA (MAILBOX SYSTEM)
+// 5. HỆ THỐNG HÒM THƯ MAILBOX & LÁ BÀI DA
 // ==========================================
 export function listenToMailbox() {
     const mailboxRef = ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/mailbox`);
@@ -657,26 +713,42 @@ function openParchmentMail(mail) {
     });
 }
 
-// Mark all as read
-document.getElementById("btn-mail-read-all")?.addEventListener("click", async () => {
-    const mailboxRef = ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/mailbox`);
-    try {
-        const snap = await get(mailboxRef);
-        if (snap.exists()) {
-            const mails = snap.val();
-            const updates = {};
-            Object.keys(mails).forEach(id => {
-                updates[`rooms/${Net.roomId}/players/${Net.playerId}/mailbox/${id}/isRead`] = true;
+function setupMailboxCategoryFilters() {
+    const tabs = document.querySelectorAll(".mail-tab");
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            tabs.forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            Net.mailCategory = tab.getAttribute("data-category");
+            
+            // Re-fetch và render lại
+            get(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/mailbox`)).then((snap) => {
+                renderMailbox(snap.val() || {});
             });
-            await update(ref(db), updates);
+        });
+    });
+
+    // Sự kiện Đọc tất cả thư nhanh
+    document.getElementById("btn-mail-read-all")?.addEventListener("click", async () => {
+        const mailboxRef = ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/mailbox`);
+        try {
+            const snap = await get(mailboxRef);
+            if (snap.exists()) {
+                const mails = snap.val();
+                const updates = {};
+                Object.keys(mails).forEach(id => {
+                    updates[`rooms/${Net.roomId}/players/${Net.playerId}/mailbox/${id}/isRead`] = true;
+                });
+                await update(ref(db), updates);
+            }
+        } catch (err) {
+            console.error(err);
         }
-    } catch (err) {
-        console.error(err);
-    }
-});
+    });
+}
 
 // ==========================================
-// 6. KHÁN GIẢ & KÊNH CHAT BẢO MẬT ĐÊM (SPECTATOR & CHATS)
+// 6. KHÁN GIẢ & CHAT BẢO MẬT ĐÊM
 // ==========================================
 function setupChatEngine() {
     const btnSend = document.getElementById("btn-chat-send");
@@ -743,7 +815,6 @@ function listenToChatChannel(channelName) {
     });
 }
 
-// Bảng dự đoán tỉ lệ thắng dành cho Khán giả / Người chết
 function setupSpectatorWinPoll() {
     const buttons = [
         { id: "pred-bar-village", faction: "village" },
@@ -758,12 +829,10 @@ function setupSpectatorWinPoll() {
                 alert("Bạn còn sống, không thể tham gia dự đoán linh hồn!");
                 return;
             }
-            // Ghi nhận phiếu dự đoán
             await set(ref(db, `rooms/${Net.roomId}/prediction_poll/${Net.playerId}`), btn.faction);
         });
     });
 
-    // Lắng nghe tỉ lệ dự đoán thời gian thực
     onValue(ref(db, `rooms/${Net.roomId}/prediction_poll`), (snap) => {
         const polls = snap.val() || {};
         const total = Object.keys(polls).length || 1;
@@ -787,7 +856,7 @@ function setupSpectatorWinPoll() {
 }
 
 // ==========================================
-// 7. BẢN ĐỒ UNMASKED DÀNH CHO LINH HỒN & LẬT BÀI CHIẾN THẮNG
+// 7. HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (PLAYER GRID RENDERERS)
 // ==========================================
 function renderUnmaskedSpectatorGrid() {
     const grid = document.getElementById("game-players-grid");
@@ -812,6 +881,12 @@ function renderUnmaskedSpectatorGrid() {
         card.appendChild(dot);
         card.appendChild(name);
         card.appendChild(roleUnmasked);
+
+        // Cho phép bấm thẻ người chơi để xem lý lịch chi tiết bottom-sheet
+        card.addEventListener("click", () => {
+            showPlayerBottomSheet(p, Net.isHost);
+        });
+
         grid.appendChild(card);
     });
 }
@@ -834,6 +909,11 @@ function renderNormalPlayerGrid() {
 
         card.appendChild(dot);
         card.appendChild(name);
+
+        card.addEventListener("click", () => {
+            showPlayerBottomSheet(p, Net.isHost);
+        });
+
         grid.appendChild(card);
     });
 }
@@ -859,20 +939,20 @@ function copyRoomId() {
 
 function switchRightSubPanel(target) {
     const chatPanel = document.getElementById("chat-subpanel");
-    const rolesPanel = document.getElementById("roles-config-subpanel");
+    const rolesPanel = document.getElementById("roles-config-subpanel") || document.getElementById("roles-config-panel-wrapper");
     const tabChat = document.getElementById("tab-btn-chat");
     const tabConfig = document.getElementById("tab-btn-roles-config");
 
     if (target === "chat") {
-        chatPanel.classList.remove("hidden");
-        rolesPanel.classList.add("hidden");
-        tabChat.classList.add("active");
-        tabConfig.classList.remove("active");
+        chatPanel?.classList.remove("hidden");
+        rolesPanel?.classList.add("hidden");
+        tabChat?.classList.add("active");
+        tabConfig?.classList.remove("active");
     } else {
-        chatPanel.classList.add("hidden");
-        rolesPanel.classList.remove("hidden");
-        tabChat.classList.remove("active");
-        tabConfig.classList.add("active");
+        chatPanel?.classList.add("hidden");
+        rolesPanel?.classList.remove("hidden");
+        tabChat?.classList.remove("active");
+        tabConfig?.classList.add("active");
     }
 }
 
@@ -889,52 +969,28 @@ function handleRoomTerminated() {
     location.reload();
 }
 
-function playAudioSFX(src) {
-    const sfx = document.getElementById("sfx-player");
-    if (sfx) {
-        sfx.src = src;
-        sfx.play().catch(e => console.log("SFX autoplay blocked"));
-    }
-}
-
-function setupThemeAndFontListeners() {
-    const themeSel = document.getElementById("theme-selector");
-    const fontSel = document.getElementById("font-selector");
-
-    if (themeSel) {
-        themeSel.addEventListener("change", (e) => {
-            document.body.setAttribute("data-theme", e.target.value);
-            localStorage.setItem("gm_theme", e.target.value);
-        });
-    }
-}
-
-function setupTabNavigation() {
-    const tabs = ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"];
-    tabs.forEach((tabId, idx) => {
-        const el = document.getElementById(tabId);
-        if (el) {
-            el.addEventListener("click", () => {
-                document.body.setAttribute("data-mobile-tab", idx + 1);
-                tabs.forEach((t, i) => {
-                    const tabEl = document.getElementById(t);
-                    if (tabEl) {
-                        if (i === idx) tabEl.classList.add("active");
-                        else tabEl.classList.remove("active");
-                    }
-                });
-            });
-        }
-    });
-}
-
 function syncGameStateWithEngine(roomData) {
     if (!window.G) return;
     window.G.day = roomData.meta.day || 0;
     window.G.phase = roomData.meta.phase || "setup";
     window.G.players = Object.values(roomData.players || {});
+    window.G.roleCounts = roomData.roleCounts || {}; // <--- ĐỒNG BỘ THÊM DÒNG NÀY
+
+    // Nếu là Quản trò, cập nhật giao diện cấu hình trực quan khi có thay đổi dữ liệu
+    if (Net.isHost) {
+        window.UI_Module.renderRoleConfigPage();
+        window.UI_Module.updateBalanceUI();
+        window.UI_Module.updateActiveRolesSummary();
+        
+        // Cập nhật số người chơi kết nối vào hiển thị tổng
+        const totalRoleAllocated = Object.values(window.G.roleCounts).reduce((a, b) => a + b, 0);
+        const roleCountEl = document.getElementById("role-count");
+        const totalEl = document.getElementById("role-player-total");
+        if (roleCountEl) roleCountEl.innerText = totalRoleAllocated;
+        if (totalEl) totalEl.innerText = window.G.players.length;
+    }
     
-    // Khởi tạo Mailbox Listener ngay khi bắt đầu chơi
+    // Kích hoạt Mailbox Listener ngay khi bắt đầu chơi
     if (!Net.isHost && window.G.phase !== "setup") {
         listenToMailbox();
     }

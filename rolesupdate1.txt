@@ -1,0 +1,375 @@
+KHỐI I: PHE DÂN LÀNG (🌾 VILLAGERS)
+1. Tiên Tri (Seer) 🔮
+Thao tác: Chọn người chơi trên Grid -> Chọn chế độ [Thấu Thị] hoặc [Khai Nhãn] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình của Tiên Tri: Thẻ mục tiêu bừng sáng viền LED màu tím dạ quang, có biểu tượng con mắt mở ra ở góc thẻ (sau đêm này sẽ biến mất để bảo mật).
+Trên màn hình đối tượng: Không có bất kỳ thay đổi nào.
+Thông báo tức thì (Popup) cho Tiên Tri:
+Thấu Thị: "Phép thuật hoàn tất! Quả cầu pha lê hiển thị linh hồn của [Tên đối tượng] thuộc về: [PHE MA SÓI 🐺 / PHE DÂN LÀNG 🌾]."
+Khai Nhãn: "Hào quang Khai Nhãn đã xuyên qua mọi lớp ngụy trang! Vai trò thực sự của [Tên đối tượng] là: [TÊN ROLE THẬT] (Phe [Tên phe])."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Tiên Tri:
+Tiêu đề: [🔮] KẾT QUẢ THẤU THỊ - ĐÊM [N]
+Nội dung: "Linh hồn của [Tên đối tượng] đã được soi sáng. Đối tượng thuộc về phe: [Phe]. Hãy sử dụng thông tin này một cách khôn ngoan để bảo vệ ngôi làng vào ban ngày."
+2. Bảo Vệ (Guard) 🛡️
+Thao tác: Nhấp chọn người chơi trên Grid -> Nhấn [BẢO VỆ] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình của Bảo Vệ: Xuất hiện biểu tượng một chiếc khiên thép nhỏ ánh kim góc thẻ mục tiêu. Thẻ này sẽ tự động chuyển sang trạng thái xám mờ ở đêm tiếp theo kèm dòng chữ khóa "Không thể chọn liên tiếp".
+Trên màn hình đối tượng: Hoàn toàn bình thường để tránh lộ danh tính Bảo Vệ.
+Thông báo tức thì (Popup) cho Bảo Vệ:
+"Lá chắn thép đã được dựng lên thành công xung quanh [Tên đối tượng]. Kẻ này sẽ miễn nhiễm với mọi đòn sát thương vật lý đêm nay."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Bảo Vệ:
+Tiêu đề: [🛡️] NHẬT KÝ TUẦN TRA ĐÊM [N]
+Nội dung: "Bạn đã tuần tra xung quanh nhà của [Tên đối tượng] và thiết lập lá chắn bảo hộ an toàn."
+Thư gửi cho đối tượng (Chỉ gửi vào sáng hôm sau nếu họ thực sự bị Sói/Sát nhân cắn):
+Tiêu đề: [🛡️] THƯ CỨU NẠN BÓNG ĐÊM
+Nội dung: "Đêm qua, một thế lực hắc ám đã cào nát cửa nhà bạn, nhưng lá chắn của Người Bảo Vệ đã che chở cho bạn an toàn!"
+3. Phù Thủy (Witch) 🧪
+Thao tác: Nhìn danh sách nạn nhân -> Chọn mục tiêu trên Grid -> Chọn [Cứu] hoặc [Độc] -> Nhấn [XÁC NHẬN PHÁN QUYẾT].
+Thay đổi với đối tượng:
+Đối tượng được Cứu: Thẻ mục tiêu đang nhấp nháy đỏ (hấp hối) lập tức phục hồi trạng thái xanh lá bình thường.
+Đối tượng bị Độc: Thẻ mục tiêu xuất hiện làn khói độc màu tím bao phủ từ đáy thẻ lên.
+Thông báo tức thì (Popup) cho Phù Thủy:
+Khi dùng Bình Cứu: "Hồi sinh thành công! Linh hồn của [Tên đối tượng] đã được kéo ngược từ cửa tử thần."
+Khi dùng Bình Độc: "Độc dược đã được ném! [Tên đối tượng] sẽ không thể nhìn thấy ánh mặt trời ngày mai."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Phù Thủy:
+Tiêu đề: [🧪] BÁO CÁO ĐỘC DƯỢC - ĐÊM [N]
+Nội dung: "Bình thuốc [Cứu/Độc] đã được sử dụng lên mục tiêu [Tên đối tượng]. Số lượng bình thuốc còn lại: Bình Cứu: [0/1] | Bình Độc: [0/1]."
+Thư gửi cho đối tượng bị Độc (Sáng hôm sau):
+Tiêu đề: [☠️] BẢN ÁN TỬ ĐÊM [N]
+Nội dung: "Một cơn đau thắt tim đột ngột hành hạ thể xác bạn trong đêm đen. Chất độc cực mạnh của Phù Thủy đã tước đi sinh mệnh của bạn!"
+4. Thợ Săn (Hunter) 🏹
+Thao tác: Nhấp chọn người chơi trên Grid -> Nhấn [GHIM] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình Thợ Săn: Xuất hiện biểu tượng hồng tâm laser màu đỏ đè lên thẻ mục tiêu.
+Đối tượng và người chơi khác: Không thấy thay đổi.
+Thông báo tức thì (Popup) cho Thợ Săn:
+"Hồng tâm đã khóa chặt vào đầu của [Tên đối tượng]. Nếu bạn bị hạ sát, phát súng cuối cùng sẽ tự động kích nổ tiêu diệt kẻ này."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Thợ Săn:
+Tiêu đề: [🏹] KHÓA BÁN KÍNH SĂN BẮN
+Nội dung: "Hệ thống đã ghi nhận mục tiêu ghim súng đêm nay: [Tên đối tượng]."
+Thư gửi cho đối tượng bị kéo chết theo (Sáng hôm sau nếu Thợ Săn chết):
+Tiêu đề: [🏹] PHÁT BẮN CUỐI CÙNG
+Nội dung: "Thợ Săn [Tên Thợ Săn] đã ngã xuống, nhưng trước khi chết, hắn đã kịp bóp cò. Viên đạn bạc găm thẳng vào lồng ngực kéo bạn chết theo!"
+5. Cupid 💘
+Thao tác (Chỉ Đêm 1): Chọn 2 người chơi trên Grid -> Nhấn [GẮN KẾT] -> Nhấn [XÁC NHẬN DUYÊN SỐ].
+Thay đổi với đối tượng:
+Trên màn hình Cupid và 2 đối tượng: Thẻ của 2 mục tiêu xuất hiện viền LED màu hồng cánh sen nhạt và có một sợi tơ hồng đứt nét nối liền 2 thẻ bài này với nhau.
+Thông báo tức thì (Popup) cho Cupid:
+"Sợi tơ hồng định mệnh đã được thắt chặt giữa [Tên A] và [Tên B]. Tình yêu của họ sẽ định đoạt ván cờ này!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Cupid:
+Tiêu đề: [💘] THẮT NÚT TƠ HỒNG
+Nội dung: "Bạn đã hoàn thành nhiệm vụ se duyên cho cặp đôi: [Tên A] & [Tên B]."
+Thư gửi cho cặp đôi (Tên A nhận thư nói về B, và ngược lại):
+Tiêu đề: [💘] MŨI TÊN ÁI TÌNH ĐÃ GHIM
+Nội dung: "Mũi tên vàng của Cupid đã bắn trúng tim bạn! Bạn đã bị ràng buộc sinh mệnh vĩnh viễn với [Tên đối phương]. Nếu một người chết, người kia sẽ tự sát vì tình ngay lập tức!"
+6. Thiên Sứ (Angel) 👼
+Thao tác: Chọn người chơi trên Grid -> Nhấn [THANH TẨY] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình đối tượng: Các hiệu ứng tiêu cực như biểu tượng xích sắt (Câm lặng), biểu tượng ngọn lửa (Tẩm xăng) trên thẻ biến mất, thay vào đó là một vầng sáng dịu nhẹ màu vàng bao quanh thẻ trong 3 giây.
+Thông báo tức thì (Popup) cho Thiên Sứ:
+"Ánh sáng thánh khiết đã gột rửa toàn bộ tà khí, bùa chú bất lợi khỏi linh hồn của [Tên đối tượng]."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Thiên Sứ:
+Tiêu đề: [👼] SỨ MỆNH KHAI SÁNG
+Nội dung: "Bạn đã giải trừ thành công bùa chú, câm lặng và các trạng thái nguy hiểm cho [Tên đối tượng] đêm nay."
+Thư gửi cho đối tượng được thanh tẩy (Sáng hôm sau):
+Tiêu đề: [👼] ÁNH SÁNG TỊNH HÓA
+Nội dung: "Một vầng hào quang ấm áp từ trên trời rọi xuống thể xác bạn. Toàn bộ bùa chú câm lặng, phong ấn hay xăng dầu bám trên người bạn đã bị Thiên Sứ gột rửa sạch sẽ!"
+7. Vẹt (Parrot) 🦜
+Thao tác: Nhập câu nói vào ô text -> Chọn mục tiêu trên Grid -> Nhấn [NÓI NHÁI] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình đối tượng (Sáng hôm sau): Ô nhập liệu chat của họ bị khóa cứng tạm thời, xuất hiện một gợi ý chữ màu xanh mòng két chứa đúng câu nói của Vẹt đã soạn. Họ buộc phải nhấn gửi câu nói đó mới có thể tiếp tục thao tác khác.
+Thông báo tức thì (Popup) cho Vẹt:
+"Đã gửi lời nguyền nhại giọng thành công lên [Tên đối tượng]. Sáng mai họ sẽ phải phát ngôn câu nói này!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Vẹt:
+Tiêu đề: [🦜] LỜI NGUYỀN SAO CHÉP
+Nội dung: "Bạn đã ép buộc [Tên đối tượng] phải lặp lại câu thoại: '[Nội dung câu nói]' vào sáng ngày mai."
+Thư gửi cho đối tượng bị nguyền (Đầu giờ sáng):
+Tiêu đề: [🦜] LỜI NGUYỀN GHI ÂM
+Nội dung: "Cổ họng bạn đột ngột bị thắt chặt và điều khiển bởi bùa chú của Vẹt! Bạn bắt buộc phải hét lớn câu nói này trước làng: '[Nội dung câu nói]' mới có thể mở lại giọng nói!"
+8. Kẻ Khắc Tên (The Carver) 🔪
+Thao tác: Chọn người chơi trên Grid -> Nhấn [KHẮC TÊN] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình Kẻ Khắc Tên: Thẻ mục tiêu bị rạch nát nhẹ và xuất hiện biểu tượng dấu thập màu đỏ máu đại diện cho "Danh sách đen".
+Thông báo tức thì (Popup) cho Kẻ Khắc Tên:
+"Đã ghi danh [Tên đối tượng] vào Sổ Sinh Tử. Lời nguyền phản sát rình rập quanh kẻ này."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Kẻ Khắc Tên:
+Tiêu đề: [🔪] DANH SÁCH KHẮC BIA MỘ
+Nội dung: "Mục tiêu tuần này được khắc ghi: [Tên đối tượng]. Nếu kẻ này chết do Sói cắn, bầy Sói sẽ câm lặng. Nếu bị treo cổ ngày mai, 1 dân làng sẽ câm lặng."
+9. Người Bảo Lãnh (The Guarantor) 🤝
+Thao tác: Chọn người chơi trên Grid -> Nhấn [BẢO LÃNH] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Thẻ mục tiêu xuất hiện một nút thắt ruy băng niêm phong màu vàng rực rỡ ở góc thẻ. Trạng thái người này trên server được cập nhật isGuaranteed: true.
+Thông báo tức thì (Popup) cho Người Bảo Lãnh:
+"Đã thiết lập quyền Bảo Lãnh tuyệt đối cho [Tên đối tượng]. Kẻ này sẽ không thể bị treo cổ vào ngày mai."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Người Bảo Lãnh:
+Tiêu đề: [🤝] KHẾ ƯỚC BẢO LÃNH
+Nội dung: "Bạn đã đứng ra thế chấp danh dự bảo lãnh cho [Tên đối tượng]. Sáng mai hệ thống sẽ thông báo quyền miễn treo cho họ."
+Thư gửi cho đối tượng được bảo lãnh (Đầu giờ sáng):
+Tiêu đề: [🤝] CHỨNG THƯ MIỄN TREO
+Nội dung: "Hôm nay bạn đã được Người Bảo Lãnh ẩn danh dùng quyền lực đứng ra bảo vệ. Làng không thể bỏ phiếu treo cổ bạn trong ngày hôm nay!"
+10. Kẻ Phản Chiếu (The Reflector) 🪞
+Thao tác: Chọn người chơi trên Grid -> Nhấn [ĐẶT GƯƠNG] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình Kẻ Phản Chiếu: Thẻ mục tiêu được bao bọc bởi một khung gương bạc óng ánh có viền phát sáng phản quang.
+Thông báo tức thì (Popup) cho Kẻ Phản Chiếu:
+"Tấm gương phản chiếu năng lượng đã được dựng trước cửa nhà [Tên đối tượng]. Kẻ nào dùng phép xấu lên họ sẽ bị gánh chịu hậu quả tương tự."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Kẻ Phản Chiếu:
+Tiêu đề: [🪞] KÍNH PHẢN QUANG ĐÃ DỰNG
+Nội dung: "Thiết lập bảo vệ phản đòn cho [Tên đối tượng] thành công."
+11. Kẻ Báo Thù (The Avenger) ⚔️
+Thao tác: Nhấp chọn mục tiêu -> Chọn 1 trong 3 kỹ năng: [Ám Ảnh] (Khóa Sói), [Gây Mê] (Khóa lượt 1 người) hoặc [Phán Quyết] (Giết) -> Nhấn [KÍCH HOẠT].
+Thay đổi với đối tượng:
+Nếu bị Gây Mê: Thẻ mục tiêu xuất hiện icon vòng xoáy ngủ mơ màu xanh lam mờ.
+Nếu bị Phán Quyết: Thẻ mục tiêu rớm máu đỏ sẫm.
+Thông báo tức thì (Popup) cho Kẻ Báo Thù:
+Ám Ảnh: "Đã rải tà khí Ám Ảnh quanh bầy sói thông qua mục tiêu [Tên]."
+Gây Mê: "Đã tiêm thuốc mê vào mục tiêu [Tên đối tượng]. Đêm mai họ sẽ ngủ say mất lượt!"
+Phán Quyết: "Lưỡi gươm phán quyết đã hạ xuống đầu [Tên đối tượng]."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Kẻ Báo Thù:
+Tiêu đề: [⚔️] BÁO CÁO PHÁN QUYẾT BÁO THÙ
+Nội dung: "Kỹ năng [Tên kỹ năng] đã được thi triển lên [Tên đối tượng]. Số lượng kỹ năng còn lại: [Chi tiết số chiêu chưa dùng]."
+Thư gửi cho đối tượng bị Gây mê (Đêm tiếp theo):
+Tiêu đề: [💤] TRẠNG THÁI GÂY MÊ
+Nội dung: "Bạn bị dính thuốc mê của Kẻ Báo Thù! Toàn bộ kỹ năng đêm nay của bạn bị vô hiệu hóa hoàn toàn, hãy bấm Bỏ qua để đi ngủ."
+KHỐI II: PHE MA SÓI (🐺 WOLVES)
+1. Ma Sói (Werewolf) 🐺 / Đàn Sói (Wolf Pack)
+Thao tác: Mở Tab Chat Sói -> Bầu chọn cắn người trên Grid -> Người được giao quyền nhấn [CHỐT CẮN].
+Thay đổi với đối tượng:
+Trên Grid của phe Sói: Thẻ mục tiêu xuất hiện các vết vuốt sắc nhọn chém chéo rách rưới màu đỏ và hiển thị số lượng sói đồng thuận (Ví dụ: 🐺 x3).
+Thông báo tức thì (Popup) cho Sói chốt hạ:
+"Đã thống nhất ý chí! Đàn sói sẽ xé xác [Tên đối tượng] khi đêm đen lên đỉnh điểm."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho toàn bộ phe Sói:
+Tiêu đề: [🐺] CON MỒI ĐÊM [N]
+Nội dung: "Con mồi được lựa chọn đêm nay: [Tên đối tượng]. Nanh vuốt của bầy sói đã cào nát sinh mạng kẻ này."
+Thư gửi cho nạn nhân bị cắn chết (Sáng hôm sau):
+Tiêu đề: [🐺] BẦY SÓI SĂN MỒI
+Nội dung: "Đêm qua, bầy sói đói khát đã phá tung cửa nhà bạn. Bạn bị nanh vuốt của chúng xé xác dã man!"
+2. Sói Tuyết (Snow Wolf) ❄️
+Thao tác (Chỉ Đêm 1): Chọn 1 mục tiêu bất kỳ trên Grid -> Nhấn [KẾT ĐÔI TUYẾT] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình Sói Tuyết: Thẻ mục tiêu đóng băng nhẹ và xuất hiện biểu tượng bông tuyết màu xanh băng ở góc thẻ.
+Thông báo tức thì (Popup) cho Sói Tuyết:
+"Liên kết băng giá hoàn tất. Sinh mệnh của bạn đã được trói buộc chặt chẽ với người đồng hành [Tên đối tượng]."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Sói Tuyết:
+Tiêu đề: [❄️] ĐỒNG HÀNH BĂNG GIÁ
+Nội dung: "Mục tiêu liên kết đồng hành: [Tên đối tượng]. Nếu người này chết, bạn sẽ tự động đóng băng tự sát theo."
+3. Pháp Sư Sói (Wolf Mage) 👁️‍🗨️
+Thao tác: Chọn người chơi trên Grid -> Nhấn [SOI PHÁP SƯ] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình Pháp Sư Sói: Thẻ mục tiêu xuất hiện một biểu tượng vòng tròn ma pháp mắt quỷ màu tím xoay tròn.
+Thông báo tức thì (Popup) cho Pháp Sư Sói:
+"Kết quả dò tìm Tiên Tri: Đối tượng [Tên] [LÀ VAI TRÒ TIÊN TRI 🔮 / KHÔNG PHẢI TIÊN TRI ❌]."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Pháp Sư Sói:
+Tiêu đề: [👁️‍🗨️] MA PHÁP DÒ ĐƯỜNG
+Nội dung: "Đối tượng [Tên mục tiêu] đã bị pháp thuật của bạn giải mã. Kết quả: [Là Tiên tri/Không phải Tiên tri]. Hãy cung cấp thông tin này cho bầy sói để xử tử họ sớm."
+4. Sói Ảo Ảnh (Phantom Wolf) 🐺
+Thao tác: Chọn đúng 1 Sói (viền đỏ) và 1 Dân (viền xanh) trên Grid -> Bấm [ĐÁNH TRÁO NHÂN DẠNG] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình Sói Ảo Ảnh: Hai thẻ mục tiêu có làn khói tím bao phủ và xuất hiện biểu tượng mặt nạ quỷ hoán đổi nhỏ ở góc thẻ.
+Bảng chức năng & Nút hành động:
+Hệ thống khóa, bắt buộc phải chọn đủ và đúng 1 đồng bọn Sói và 1 Dân mới cho bấm Xác nhận.
+Thông báo tức thì (Popup) cho Sói Ảo Ảnh:
+"Đã hoán đổi nhân dạng tâm linh thành công giữa Sói [Tên Sói] và Dân Làng [Tên Dân]. Tiên tri soi họ đêm nay sẽ nhận kết quả ngược!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Sói Ảo Ảnh:
+Tiêu đề: [🐺] TRÁO ĐỔI NHÂN DẠNG
+Nội dung: "Đã hoàn thành ảo thuật hoán đổi tâm linh giữa: [Tên Sói] và [Tên Dân]. Lời nguyền bảo an có hiệu lực đến hết đêm nay."
+5. Sói Câm Lặng (Silencer Wolf) 🤫
+Thao tác: Chọn người chơi trên Grid -> Nhấn [CÂM LẶNG] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình của Sói Câm Lặng: Thẻ mục tiêu bị khóa bằng biểu tượng ổ khóa xám và dán băng keo đỏ chéo qua miệng.
+Trạng thái mục tiêu trên server được cập nhật silencedNextDayAndNight: true.
+Thông báo tức thì (Popup) cho Sói Câm Lặng:
+"Đã phong ấn giọng nói của [Tên đối tượng]. Sáng mai họ sẽ hoàn toàn câm lặng mất lượt hành động!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Sói Câm Lặng:
+Tiêu đề: [🤫] VUỐT TĨNH LẶNG
+Nội dung: "Bạn đã khóa miệng thành công đối tượng: [Tên đối tượng] cho ngày và đêm tiếp theo."
+Thư gửi cho nạn nhân bị câm lặng (Sáng hôm sau):
+Tiêu đề: [🤫] KHÓA MÕM BĂNG KHÍ
+Nội dung: "Cổ họng bạn bị đông cứng bởi luồng vuốt băng khí của Sói Câm Lặng! Hôm nay bạn không thể biểu quyết, không thể chat thảo luận và đêm mai mất hoàn toàn lượt dùng kỹ năng!"
+6. Sói Tarot (Solitaire Wolf) 🃏
+Thao tác: Chọn người chơi không phải Sói -> Bấm [NGUYỀN RỦA TAROT] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên Grid của Sói Tarot: Thẻ mục tiêu xuất hiện lá bài Tarot úp lơ lửng bốc khói đen.
+Thông báo tức thì (Popup) cho Sói Tarot:
+"Đã đặt lời nguyền lá bài số phận lên [Tên đối tượng]. Khi đến lượt của họ, hệ thống sẽ ép họ rút bài sinh tử."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Sói Tarot:
+Tiêu đề: [🃏] THI THUẬT LỜI NGUYỀN SỐ PHẬN
+Nội dung: "Bạn đã nguyền rủa thành công mục tiêu: [Tên đối tượng] bằng Vòng Quay Tarot."
+7. Sói Hỗn Mang (Chaos Wolf) 🌪️
+Thao tác (Đêm lẻ): Chọn 1 trong 3 quy tắc đảo lộn -> Nhấn [KÍCH HOẠT HỒN MANG].
+Thay đổi với đối tượng:
+Hiệu ứng giật rung chấn động bão táp màu tím bao phủ toàn bộ màn hình điều khiển của Sói Hỗn Mang.
+Thông báo tức thì (Popup) cho Sói Hỗn Mang:
+"Hỗn mang bộc phát! Lời nguyền Quỷ Ngữ đã bẻ cong quy tắc: [Tên quy tắc bị đảo lộn] thành công đêm nay!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Sói Hỗn Mang:
+Tiêu đề: [🌪️] THIÊN TAI HỒN MANG
+Nội dung: "Quy tắc thế giới đã bị bẻ cong đêm nay: Đã đảo ngược hoàn toàn chức năng của [Tiên Tri / Bảo Vệ / Thợ Săn]."
+KHỐI III: PHE THỨ BA (🧛 3RD PARTY / NEUTRAL)
+1. Thám Tử Ác Ma (Demon Detective) 🦇
+Thao tác: Chọn 2 mục tiêu bất kỳ trên Grid -> Nhấn [XÁC NHẬN PHÁN QUYẾT KÉP].
+Thay đổi với đối tượng:
+Thẻ 2 mục tiêu rực sáng ánh lửa quỷ màu đỏ rực.
+Thông báo tức thì (Popup) cho Thám Tử Ác Ma:
+Trường hợp cùng phe: "Kết quả đối chiếu tâm linh: [Tên A] và [Tên B] CÙNG PHE cánh! Thần lực ác ma không thể can thiệp sát hại."
+Trường hợp khác phe: "Phát hiện dị giáo! [Tên A] và [Tên B] KHÁC PHE cánh! Lưỡi hái ác ma sẽ ngẫu nhiên lấy mạng 1 trong 2 kẻ này đêm nay."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Thám Tử Ác Ma:
+Tiêu đề: [🦇] BÁO CÁO PHÁN QUYẾT KÉP
+Nội dung: "Bạn đã đối chiếu: [Tên A] và [Tên B]. Kết quả: [Cùng phe / Khác phe]. [Nội dung hành động tử vong tương ứng]."
+Thư gửi cho nạn nhân bị ác ma giết chết (Sáng hôm sau):
+Tiêu đề: [🦇] THANH TRỪNG ÁC MA
+Nội dung: "Vì đứng gần kẻ khác phe liên minh tâm linh, bạn đã bị Thám Tử Ác Ma phán quyết tước đoạt linh hồn trong đêm đen!"
+2. Nhà Truyền Giáo (Missionary) 🕍
+Thao tác: Chọn người chơi chưa bị thu phục -> Nhấn [TRUYỀN GIÁO] -> Nhấn [XÁC NHẬN THU PHỤC].
+Thay đổi với đối tượng:
+Trên màn hình Nhà Truyền Giáo: Thẻ mục tiêu xuất hiện một biểu tượng cây thánh giá vàng 🕍 nhỏ kế bên tên.
+Trạng thái mục tiêu trên server được cập nhật isConverted: true.
+Thông báo tức thì (Popup) cho Nhà Truyền Giáo:
+"Thu phục thành công! Linh hồn của [Tên đối tượng] đã chính thức thuộc về giáo hội của bạn."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Nhà Truyền Giáo:
+Tiêu đề: [🕍] TÍN ĐỒ MỚI ĐẦU QUÂN
+Nội dung: "Đối tượng [Tên đối tượng] đã bị tẩy não và gia nhập giáo hội. Tiến trình thu phục toàn làng: [Số lượng]/[Tổng số người sống]."
+Thư gửi cho tín đồ mới bị thu phục (Ngay lập tức trong đêm):
+Tiêu đề: [🕍] LỜI KÊU GỌI TỪ THÁNH ĐƯỜNG
+Nội dung: "Tâm trí bạn đột ngột bị khai sáng bởi đức tin tối cao của Nhà Truyền Giáo! Bạn đã bị thu phục vào giáo phái. Mục tiêu sống sót của bạn giờ đây là giúp Nhà Truyền Giáo thu phục toàn bộ ngôi làng!"
+3. Ma Cà Rồng (Vampire) 🧛
+Thao tác: Chọn người chơi chưa bị cắn -> Nhấn [HÚT MÁU] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Trên màn hình Ma Cà Rồng: Thẻ mục tiêu xuất hiện biểu tượng giọt máu 🩸 nhấp nháy đỏ mờ.
+Trạng thái mục tiêu trên server được cập nhật isVampireVictim: true.
+Thông báo tức thì (Popup) cho Ma Cà Rồng:
+"Nụ hôn bóng đêm hoàn tất! Bạn đã ghim nanh vuốt hút máu [Tên đối tượng] thành công."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Ma Cà Rồng:
+Tiêu đề: [🧛] NẠN NHÂN MỚI DÍNH HUYẾT LỆNH
+Nội dung: "Đã ghi nhận vết cắn của bạn trên mục tiêu: [Tên đối tượng]. Tiến trình hút máu toàn làng: [Số lượng nạn nhân]/[Số lượng yêu cầu chiến thắng]."
+Thư gửi cho nạn nhân bị cắn (Sáng hôm sau):
+Tiêu đề: [🩸] VẾT CẮN BÓNG ĐÊM
+Nội dung: "Bạn thức dậy với hai vết thương rớm máu râm ran đau nhức nơi cổ. Đêm qua, một Ma Cà Rồng đã ghé thăm phòng ngủ của bạn và để lại vết cắn nguyền rủa!"
+4. Kẻ Phóng Hỏa (Arsonist) 🔥
+Thao tác: Chọn chế độ [Tẩm xăng] (Chọn tối đa 2 người) hoặc [Châm lửa] -> Nhấn [KÍCH HOẠT].
+Thay đổi với đối tượng:
+Nếu Tẩm xăng: Thẻ mục tiêu xuất hiện can xăng 🛢️ bốc hơi mờ ở góc thẻ (chỉ Kẻ Phóng Hỏa nhìn thấy).
+Nếu Châm lửa: Toàn bộ các thẻ đã dính xăng bùng cháy dữ dội và vỡ tan thành tro bụi đen xám.
+Thông báo tức thì (Popup) cho Kẻ Phóng Hỏa:
+Tẩm xăng: "Đã tưới xăng âm thầm lên nhà của [Tên các mục tiêu]. Chúng đã sẵn sàng để bốc cháy!"
+Châm lửa: "BÙM! Ngọn lửa cuồng nộ đã thiêu rụi toàn bộ các mục tiêu dính xăng đêm nay!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Kẻ Phóng Hỏa:
+Tiêu đề: [🔥] NHẬT KÝ PHÓNG HỎA
+Nội dung: "Hành động đêm nay: [Đã tẩm xăng mục tiêu / Đã châm lửa thiêu cháy]. Số lượng mục tiêu đang dính xăng sẵn sàng nổ: [Danh sách mục tiêu]."
+Thư gửi cho các nạn nhân bị thiêu chết (Sáng hôm sau):
+Tiêu đề: [🔥] BIỂN LỬA THIÊU XÁC
+Nội dung: "Một ngọn lửa kinh hoàng bất ngờ bùng lên thiêu rụi căn nhà của bạn trong tích tắc! Bạn bị thiêu chết đau đớn bởi mưu đồ của Kẻ Phóng Hỏa!"
+5. Kẻ Thanh Trừng (Eradicator) ⚔️
+Thao tác: Chọn đúng 2 người chơi khác -> Bấm [ĐẶT BẪY GIÁM SÁT] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Thẻ 2 mục tiêu xuất hiện hình ảnh bẫy sắt thép gai kẹp chặt chân dung (chỉ Kẻ Thanh Trừng thấy).
+Thông báo tức thì (Popup) cho Kẻ Thanh Trừng:
+"Đã kích hoạt bẫy kẹp sắt quanh [Tên A] và [Tên B]. Nếu chúng dám dùng kỹ năng lên bạn đêm nay, bẫy sắt sẽ kẹp nát đầu chúng!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Kẻ Thanh Trừng:
+Tiêu đề: [⚔️] THIẾT LẬP PHÒNG THỦ THANH TRỪNG
+Nội dung: "Hệ thống đã ghi nhận 2 mục tiêu giám sát phòng vệ đêm nay: [Tên A] & [Tên B]."
+Thư gửi cho kẻ dám tấn công Kẻ Thanh Trừng (Sáng hôm sau):
+Tiêu đề: [⚔️] BẪY SẮT KẸP ĐẦU
+Nội dung: "Bạn đã dại dột thi triển kỹ năng lên Kẻ Thanh Trừng! Bẫy phòng vệ sắt gai tự động sập xuống kẹp nát sinh mạng của bạn ngay lập tức!"
+6. Kẻ Thao Túng (The Manipulator) 🪄
+Thao tác: Chọn Người A -> Chọn Người B trên Grid -> Nhấn [THAO TÚNG] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Một luồng ánh sáng xoáy ốc nối kết từ thẻ Người A chạy uốn lượn uốn khúc sang thẻ Người B (chỉ Kẻ Thao Túng nhìn thấy).
+Thông báo tức thì (Popup) cho Kẻ Thao Túng:
+"Thôi miên thành công! Kỹ năng kích hoạt đêm nay của [Tên A] đã bị bẻ hướng dội thẳng vào người [Tên B]!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Kẻ Thao Túng:
+Tiêu đề: [🪄] THAO TÚNG BIÊN DỊCH
+Nội dung: "Đã hoàn thành bẻ hướng phép thuật: [Tên A] ──► [Tên B] thành công."
+7. Kẻ Mạo Danh (The Impostor) 🥸
+Thao tác: Chọn 1 người chơi để giết -> Chọn nút dùng kỹ năng mạo danh -> Nhấn [XÁC NHẬN ÁM SÁT].
+Thay đổi với đối tượng:
+Thẻ mục tiêu bị ám sát rỉ máu đỏ thẫm rách rưới.
+Thông báo tức thì (Popup) cho Kẻ Mạo Danh:
+"Lưỡi dao ám sát đã cắm sâu vào cổ họng [Tên đối tượng]. Đồng thời kỹ năng mạo danh [Tên kỹ năng] đã được gửi đi thành công!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Kẻ Mạo Danh:
+Tiêu đề: [🥸] HOẠT ĐỘNG ÁM SÁT & MẠO DANH
+Nội dung: "Đã giết thành công mục tiêu: [Tên đối tượng]. Kỹ năng mạo danh đã thi triển. Số lượt mạo danh còn lại: [Số lượng]/3."
+8. Thần Chết Tập Sự (Apprentice Reaper) 🪦
+Thao tác: Chọn người chơi dự đoán sẽ chết -> Nhấn [DỰ ĐOÁN] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Xuất hiện biểu tượng một bóng ma cầm lưỡi hái màu xanh rêu mờ ảo lơ lửng đè lên mục tiêu (chỉ Thần Chết Tập Sự nhìn thấy).
+Thông báo tức thì (Popup) cho Thần Chết Tập Sự:
+"Lời nguyền dự đoán đã được đặt lên linh hồn của [Tên đối tượng]. Hãy chờ xem họ có gục ngã đêm nay."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Thần Chết Tập Sự:
+Tiêu đề: [🪦] GHI DANH DỰ ĐOÁN LINH HỒN
+Nội dung: "Mục tiêu dự đoán tử vong đêm nay: [Tên đối tượng]. Tiến trình thu thập linh hồn hiện tại: [Số lượng]/3."
+9. Sát Nhân (Serial Killer) 🔪
+Thao tác: Chọn người chơi -> Nhấn [SÁT HẠI] -> Nhấn [XÁC NHẬN TIÊU DIỆT].
+Thay đổi với đối tượng:
+Thẻ mục tiêu xuất hiện biểu tượng vết đâm sâu rỉ máu loang lổ.
+Thông báo tức thì (Popup) cho Sát Nhân:
+"Cơn cuồng sát hoàn tất! Bạn đã ra tay tàn sát dã man hạ sát mục tiêu [Tên đối tượng] thành công."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Sát Nhân:
+Tiêu đề: [🔪] CON MỒI ĐẪM MÁU
+Nội dung: "Đã kết liễu dã man mục tiêu: [Tên đối tượng] thành công."
+Thư gửi cho nạn nhân bị sát hại (Sáng hôm sau):
+Tiêu đề: [🔪] KẺ SÁT NHÂN CUỒNG LOẠN
+Nội dung: "Đêm qua, một kẻ máu lạnh khát máu đã đột nhập phòng ngủ của bạn. Bạn bị hắn đâm nhiều nhát dao chí mạng gục chết ngay lập tức!"
+10. Chủ Thần (The Prime) 👑
+Thao tác (Đêm 1): Chọn 2 mục tiêu làm Thân Cận -> Nhấn [XÁC NHẬN LẬP KHẾ ƯỚC].
+Thay đổi với đối tượng:
+Trên Grid của Chủ Thần và 2 Thân Cận: Thẻ xuất hiện dấu ấn hắc tinh 🌌 lấp lánh ở góc.
+Thông báo tức thì (Popup) cho Chủ Thần:
+"Khế ước linh hồn hoàn tất! [Tên A] và [Tên B] đã chính thức trở thành Thân Cận chịu sự chi phối của ngài."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Thân Cận (Ngay trong đêm đầu):
+Tiêu đề: [🌌] KHẾ ƯỚC TỐI CAO
+Nội dung: "Bạn đã được chọn làm Thân Cận của Chủ Thần tối cao! Bạn được ngài che chở bảo vệ khỏi đòn cắn của Sói. Hãy giúp ngài sống sót và cai trị ngôi làng!"
+11. Mèo (Cat) 🐈
+Thao tác (Tùy số mạng): Chọn mục tiêu -> Nhấp chế độ tương ứng (Xé xác / Phong ấn) -> Nhấn [KÍCH HOẠT].
+Thay đổi với đối tượng:
+Nếu bị Xé xác: Thẻ xuất hiện vết cào nát rách rưới bốc hơi độc.
+Nếu bị Phong ấn: Thẻ xuất hiện vết chân mèo xám đè lên kèm biểu tượng xích sắt.
+Thông báo tức thì (Popup) cho Mèo:
+Xé xác: "Móng vuốt dã thú đã cào nát lồng ngực của [Tên đối tượng] thành công!"
+Phong ấn: "Đã niêm phong hoàn toàn năng lực phép thuật của [Tên đối tượng] đêm nay."
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Mèo:
+Tiêu đề: [🐈] KẾT QUẢ ĐI SĂN ĐÊM [N]
+Nội dung: "Hành động vuốt mèo đã thi triển thành công lên [Tên đối tượng]. Số lượng sinh mạng hiện tại của bạn: [Số lượng]/9 mạng."
+12. Tử Thần (The Reaper) 💀
+Thao tác: Chọn người chết -> Nhấn [GẶT XÁC] HOẶC Chọn người sống -> Nhấn [CHỈ ĐẠO VOTE] -> Nhấn [XÁC NHẬN].
+Thay đổi với đối tượng:
+Xác chết được gặt: Thẻ bài xám xịt chuyển sang trạng thái Xác Không Hồn bọc khói đen kịt.
+Người bị chỉ đạo vote: Thẻ xuất hiện biểu tượng đầu lâu xám đen xì đè lên (chỉ Tử Thần thấy).
+Thông báo tức thì (Popup) cho Tử Thần:
+Gặt xác: "Gặt xác thành công! Linh hồn [Tên đối tượng] đã chính thức thuộc quyền điều khiển của lưỡi hái địa ngục."
+Chỉ đạo vote: "Lệnh bài đã đóng! Toàn bộ đạo quân Xác Không Hồn sẽ đồng loạt vote treo cổ [Tên đối tượng] vào sáng mai!"
+Hệ thống Thư nhận được (Mailbox System):
+Thư gửi cho Tử Thần:
+Tiêu đề: [💀] ĐẠO QUÂN LĨNH HỒN ĐỊA NGỤC
+Nội dung: "Đã ghi nhận hoạt động gặt xác/chỉ đạo vote đêm nay. Số lượng Xác Không Hồn đang điều khiển: [Số lượng]/2 xác."
+Thư gửi cho người bị cướp xác (Sáng hôm sau):
+Tiêu đề: [🧟] KIẾP SỐNG XÁC KHÔNG HỒN
+Nội dung: "Bạn đã chết, nhưng thể xác bạn đã bị Tử Thần gặt hái! Hôm nay bạn vẫn hiển thị là Sống để che mắt làng, nhưng lá phiếu vote của bạn hoàn toàn bị Tử Thần cưỡng chế điều khiển!"
