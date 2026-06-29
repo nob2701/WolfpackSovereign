@@ -1,0 +1,358 @@
+PHẦN 1: GIAO DIỆN MỚI VÀO (INITIAL LOGIN VIEW)
+Yêu cầu kỹ thuật & UI/UX:
+Bố cục (Layout): Thiết kế dạng thẻ (Card Layout) tối giản nằm chính giữa màn hình (Center Screen), nền mờ (Backdrop Blur) trên nền động của trò chơi.
+Trường Nhập Tên (Name Input Field):
+Gồm 1 dòng nhãn: "Nhập tên của bạn:" (font chữ Serif hoặc Sans-serif hiện đại).
+Ô nhập liệu (Input field): Có thanh placeholder "Tên hiển thị...", giới hạn ký tự tối đa maxlength="15".
+Logic kiểm tra (Validation): Tự động loại bỏ khoảng trắng thừa ở hai đầu (Trim whitespace), không cho phép nhập ký tự đặc biệt để tránh lỗi hiển thị. Lưu giá trị vào localStorage để tự động điền ở lần đăng nhập sau.
+Hai Nút Lựa Chọn Lớn (Interactive Buttons):
+Nút [TẠO PHÒNG / CREATE]: Màu sắc chủ đạo xanh dương hoặc tím (Accent Color), kích thước lớn gấp đôi nút thông thường (Min-height: 60px), font chữ in hoa đậm. Khi di chuột vào (Hover) sẽ phóng to nhẹ (Scale 1.05) và đổi tông màu sáng hơn.
+Nút [THAM GIA PHÒNG / JOIN]: Màu sắc trung tính (ví dụ: xám đậm hoặc xanh lá), kích thước tương đồng nút Tạo phòng.
+Trạng thái tương tác (Interaction State):
+Mặc định khi chưa nhập tên, hai nút này sẽ ở trạng thái mờ (Disabled - opacity: 0.5) và không thể nhấn.
+Khi người dùng nhập tối thiểu 2 ký tự vào ô tên, hai nút này mới kích hoạt trạng thái hoạt động (Active) và đổi màu sắc rõ ràng.
+PHẦN 2: GIAO DIỆN PHÒNG CHỜ (ROOM LOBBY VIEW)
+Yêu cầu kỹ thuật & UI/UX:
+Quyền hạn mặc định (Host Privilege): Người bấm nút "Tạo phòng" từ Phần 1 sẽ tự động được gán cờ isHost: true trên cơ sở dữ liệu Firebase, làm Quản trò của phòng đó.
+Chuyển cảnh (Transition): Không qua bước trung gian. Sau khi bấm "Tạo phòng", màn hình Login biến mất, màn hình Phòng chờ lập tức tải dữ liệu.
+Khu vực phía trên (Header Area):
+Hiển thị dòng chữ mã phòng rõ ràng: "ID PHÒNG: [MÃ CỦA PHÒNG]" (ví dụ: ID PHÒNG: X8R2Y7), có nút "Copy" nhỏ bên cạnh để nhanh chóng gửi cho người chơi khác.
+Diện tích trung tâm và phía dưới (Center & Grid Area):
+Hiển thị danh sách các ô vuông (User Cards) biểu diễn cho những người chơi hiện tại đang có mặt trong phòng theo thời gian thực (Real-time Sync).
+Mỗi ô vuông chứa: Tên người chơi, Avatar mặc định và thẻ trạng thái:
+Đối với người chơi thông thường: Hiển thị nhãn "ĐANG CHỜ..." (Màu cam) hoặc "ĐÃ XONG" / "READY!" (Màu xanh lá) tùy thuộc vào lựa chọn của họ.
+Đối với Quản trò (Host): Hiển thị biểu tượng Vương miện 👑 kế bên tên.
+Nút bấm dưới cùng (Action Button):
+Nút [TIẾN HÀNH TRÒ CHƠI] (Chỉ hiển thị trên màn hình của Quản trò).
+Logic ràng buộc dữ liệu: Nút này mặc định bị khóa (Disabled, màu xám) và chỉ sáng lên (Active, màu đỏ rực) khi và chỉ khi biến trạng thái isReady của tất cả người chơi khác (không tính Quản trò) trong phòng đều chuyển sang giá trị true.
+Sự kiện bấm: Khi Quản trò bấm nút này, hệ thống sẽ cập nhật trạng thái phòng trên Firebase thành meta/started: true và chuyển giao diện Quản trò sang màn hình điều khiển game chính thức.
+PHẦN 3: GIAO DIỆN THAM GIA PHÒNG (JOIN ROOM SCREEN)
+Yêu cầu kỹ thuật & UI/UX:
+Bố cục trung tâm (Center Screen Layout):
+Ngay chính giữa màn hình hiển thị 6 ô nhập liệu dạng hình vuông xếp ngang liền nhau tương ứng với 6 ký tự viết tắt của mã phòng (_ _ _ _ _ _).
+Logic nhập mã (Input Code UX Logic):
+Người chơi chỉ có thể nhập chữ hoặc số (loại bỏ ký tự đặc biệt).
+Tự động viết hoa (Auto-uppercase) tất cả các chữ cái khi nhập.
+Tự động nhảy ô (Auto-focus shift): Khi người chơi gõ xong ô 1, con trỏ tự động nhảy sang ô 2. Khi bấm nút xóa (Backspace), con trỏ tự động lùi về ô trước đó.
+Nút bấm bên dưới (Action Button):
+Nút [THAM GIA PHÒNG]: Nằm dưới khối 6 ô nhập liệu. Nút này chỉ nhấn được sau khi cả 6 ô đã điền đủ ký tự.
+Khi bấm nút, hệ thống kiểm tra ID trên Firebase. Nếu khớp, giao diện lập tức chuyển sang Giao diện phòng chờ (Phần 2) dưới quyền hạn của thành viên thường (isHost: false).
+Tương tác của Thành viên thường tại phòng chờ:
+Phía dưới màn hình hiển thị nút lớn màu xanh lá: [ĐÃ XONG! (READY!)].
+Người chơi bấm vào nút này để chuyển đổi trạng thái sẵn sàng của mình từ false sang true (Nút chuyển thành [HỦY SẴN SÀNG] để cho phép rút lại quyết định).
+Khi Quản trò nhấn nút Tiến hành trò chơi, màn hình người chơi sẽ chuyển sang giao diện chuẩn bị phát vai trò.
+PHẦN 4: GIAO DIỆN SAU KHI BẮT ĐẦU - DÀNH CHO QUẢN TRÒ (GM INTERFACE)
+Yêu cầu kỹ thuật & UI/UX:
+Giao diện chia làm 3 cột song song (Three-Column Dashboard Layout) trên màn hình máy tính (trên di động sẽ chia làm các Tab hiển thị tương ứng):
+code
+Code
++------------------+----------------------------------+-------------------+
+|  CỘT TRÁI        |          CỘT GIỮA                |  CỘT PHẢI         |
+|  (TIẾN TRÌNH DIỄN|  (BẢNG GRID NGƯỜI CHƠI TRẬN ĐẤU) |  (CẤU HÌNH ROLE & |
+|   BIẾN CHI TIẾT) |                                  |   NÚT CHỨC NĂNG)  |
+|                  |  [Box Player 1]  [Box Player 2]  |                   |
+|                  |  [Box Player 3]  [Box Player 4]  |                   |
+|                  |                                  | [TRỘN & PHÁT ROLE]|
+|                  |                                  | [BẮT ĐẦU ĐÊM ĐEN] |
++------------------+----------------------------------+-------------------+
+Cột Giữa - Bảng Grid Người Chơi (Main Board):
+Chiếm diện tích lớn nhất, hiển thị tất cả các thẻ người chơi dưới dạng lưới ô vuông.
+Mỗi ô hiển thị: Số thứ tự, Tên người chơi và Trạng thái sống/chết.
+Logic chuyển ngày: Khi bước sang ngày mới, nếu người chơi đó bị loại đêm qua, tên người chơi trên thẻ sẽ bị hiển thị gạch ngang (text-decoration: line-through) kèm hiệu ứng mờ xám mờ và một icon biểu tượng ngôi mộ gỗ kế bên.
+Cột Bên Trái - Tiến Trình Trò Chơi (Game Timeline Log):
+Hộp văn bản có thanh cuộn dọc riêng (Scrollable Console).
+Ghi chú chi tiết tất cả các sự kiện diễn ra theo thời gian thực (ví dụ: [Đêm 1] Sói chọn cắn Player 3, [Đêm 1] Bảo vệ chọn bảo vệ Player 3 (Cứu thành công!), [Ngày 1] Player 2 bị treo cổ).
+Cột Bên Phải - Cấu Hình & Điều Khiển Trận Đấu (Control & Role Config Panel):
+Hiển thị danh sách gợi ý phân bổ số lượng vai trò phù hợp với số lượng người chơi thực tế.
+Nút [TRỘN VÀ PHÁT ROLES]:
+Nút này chỉ hiển thị và nhấn được duy nhất 1 lần. Khi nhấn, hệ thống chạy thuật toán xáo trộn mảng vai trò ngẫu nhiên và gán trực tiếp thuộc tính role cho từng người chơi trên Firebase.
+Ngay lập tức, dưới tên mỗi người chơi trên Bảng Grid (Cột Giữa) của Quản trò sẽ xuất hiện dòng chữ hiển thị vai trò thực sự của họ (ví dụ: Sói, Tiên tri, Phù thủy).
+Nút [BẮT ĐẦU ĐÊM ĐEN]:
+Nút này chỉ xuất hiện sau khi Quản trò đã thực hiện xong thao tác phát vai trò ở trên. Nhấn nút này để chính thức đưa game bước vào đêm đầu tiên.
+PHẦN 5: GIAO DIỆN SAU KHI BẮT ĐẦU - DÀNH CHO NGƯỜI CHƠI (PLAYER INTERFACE)
+Yêu cầu kỹ thuật & UI/UX:
+Pha lật bài nhận vai trò ban đầu (Card Flip Modal Overlay):
+Khi Quản trò nhấn "Trộn và phát roles", một Pop-up phủ đen toàn bộ màn hình của người chơi xuất hiện.
+Chính giữa màn hình hiển thị mặt sau của một lá bài ma thuật đang úp kèm hiệu ứng hào quang mờ.
+Lần chạm thứ nhất: Lá bài thực hiện hoạt ảnh xoay 180 độ (3D Card Flip Animation) lật mặt trước lên, hiển thị hình vẽ minh họa vai trò, tên vai trò nổi bật cùng dòng mô tả chi tiết chức năng/nhiệm vụ phe phái.
+Lần chạm thứ hai: Lá bài thực hiện hoạt ảnh mờ dần và tan biến (Fade out/Dissolve). Người chơi chính thức truy cập vào giao diện bàn chơi chính.
+Bố cục Giao diện người chơi chính (Main Player Layout):
+Cột Giữa - Bảng Grid Trạng Thái: Hiển thị danh sách các ô vuông người chơi trong phòng tương tự màn hình Quản trò để theo dõi trạng thái sống/chết (chết sẽ bị gạch tên), nhưng không nhìn thấy vai trò của người chơi khác.
+Bảng Chức Năng Động (Nằm ngay dưới Bảng Grid):
+Thay đổi nội dung hiển thị theo pha trò chơi và vai trò sở hữu.
+Với chức năng chọn mục tiêu: Người chơi nhấp trực tiếp vào ô vuông chứa tên của người chơi khác trên bảng Grid. Ô được chọn sẽ đổi sang viền đỏ rực. Bên dưới xuất hiện hai nút lớn: [XÁC NHẬN] (Chốt mục tiêu, gửi lệnh hành động lên server) và [HỦY] (Bỏ chọn để nhấp mục tiêu khác).
+Cột Bên Phải - Hệ thống Trò chuyện (Dynamic Chat Panel):
+Ban Ngày: Kênh thảo luận mở cho toàn làng nhắn tin trao đổi chung.
+Ban Đêm: Kênh chat tự động thay đổi dựa trên vai trò của người chơi.
+Các vai trò đặc biệt (Phe Sói, Phe Cupid, Phe Tử Thần,...) sẽ tự động chuyển sang một Tab chat riêng được trang trí giao diện màu sắc đặc trưng (Phe Sói: Đỏ máu và đen khói; Phe Cupid: Hồng cánh sen nhạt;...).
+Hộp chat này chỉ hoạt động và lưu lịch sử nhắn tin của đúng đêm hôm đó, hệ thống tự động reset nội dung tin nhắn khi trời sáng.
+Cột Bên Trái - Hòm Thư Mailbox: Nơi lưu trữ thông tin mật nhận được.
+PHẦN 1: GIAO DIỆN CHI TIẾT HỆ THỐNG HÒM THƯ (MAILBOX SYSTEM)
+Cột bên trái giao diện của người chơi là một module động, liên tục cập nhật dữ liệu bảo mật từ Firebase.
+code
+Code
++-------------------------------------------------------------+
+| [⚙️] MAILBOX                       [✓ Đọc tất cả]            |
++-------------------------------------------------------------+
+| [ Tất cả ]       [ Thư hệ thống ]       [ Mật thư chức năng]|
++-------------------------------------------------------------+
+| [!] ĐÊM 2: Kết quả soi - Tiên Tri             (Chưa đọc)   |
+|     "Đối tượng [Player_3] có phe cánh là..."               |
++-------------------------------------------------------------+
+| [✓] ĐÊM 2: Thông báo Bảo Vệ                   (Đã đọc)     |
+|     "Bạn đã được bảo vệ an toàn khỏi nanh vuốt"             |
++-------------------------------------------------------------+
+| [✓] ĐÊM 1: Thư tình từ Cupid                  (Đã đọc)     |
+|     "Bạn đã bị trúng mũi tên tình yêu với..."               |
++-------------------------------------------------------------+
+1.1. Bố cục và Thiết kế Trực quan (UI Layout)
+Kích thước & Vị trí: Chiếm trọn cột bên trái (Chiều rộng mặc định 320px trên máy tính; trên di động là một Tab chuyên biệt được mở bằng cử chỉ vuốt từ cạnh trái màn hình).
+Bộ lọc danh mục (Tabs Bar):
+Gồm 3 nút Tab phẳng sát nhau: [ Tất cả ], [ Thư hệ thống ], [ Mật thư chức năng ].
+Tab được chọn sẽ có viền dưới màu xanh neon (border-bottom: 2px solid var(--accent)) và chữ sáng màu. Tab không hoạt động sẽ mờ xám (opacity: 0.5).
+1.2. Thẻ Đơn mục Thư (Single Mail Item Card)
+Mỗi bức thư là một khối chữ nhật nằm ngang (flex-direction: column) với các quy chuẩn hiển thị sau:
+Trạng thái "Chưa đọc" (Unread state):
+Nền thẻ màu xám xanh đậm (#1e293b). Viền thẻ có dải đèn led màu đỏ nhạt chạy quanh.
+Góc trái tiêu đề có biểu tượng dấu chấm than phát sáng nhấp nháy màu đỏ: [!].
+Tiêu đề thư viết hoa, in đậm (font-weight: bold).
+Trạng thái "Đã đọc" (Read state):
+Nền thẻ chuyển sang màu xám mờ (#0f172a).
+Biểu tượng đổi thành dấu tick xanh lục nhẹ: [✓].
+Toàn bộ chữ tiêu đề và nội dung tóm tắt chuyển sang màu xám nhạt (color: var(--log-text)), font chữ mỏng.
+1.3. Luồng Tương tác mở thư (UX Detail Flow)
+Hành động Nhấp Thư: Người chơi nhấp vào một thẻ thư trong danh sách.
+Hiệu ứng Pop-up (Modal Popup):
+Một cửa sổ mô phỏng bức thư cuộn bằng da cổ điển (Parchment Modal) mở ra chính giữa màn hình với hoạt ảnh phóng to dần (transform: scale(0.5) chuyển sang scale(1) trong 0.2 giây).
+Thiết kế cuộn thư: Nền màu vàng măng hoen ố cổ điển, có vết sáp niêm phong màu đỏ đã nứt ở mép thư, font chữ nét thanh đậm kiểu viết tay (Serif cổ điển).
+Nội dung chi tiết: Hiển thị đầy đủ thông điệp bảo mật (Ví dụ: "Hỡi Tiên Tri, đêm nay vị thần bóng tối hé lộ cho bạn biết: Đối tượng [Player_3] thuộc phe MA SÓI").
+Đồng bộ Trạng thái:
+Ngay khi cửa sổ này hiện lên, hệ thống sẽ thực hiện cập nhật cục bộ chuyển thẻ thư đó sang trạng thái "Đã đọc", đồng thời đồng bộ trạng thái lên Firebase (rooms/{roomId}/players/{playerId}/mailbox/{mailId}/isRead: true).
+Người chơi bấm nút [X] ở góc hoặc bấm vào vùng trống xung quanh cuộn thư để đóng Pop-up.
+1.4. Các Tính năng Đặc biệt của Mailbox
+Nút [Đọc tất cả] (Mark All As Read): Nằm ở góc trên cùng bên phải. Khi nhấn, hệ thống chạy lệnh duyệt mảng, chuyển toàn bộ thuộc tính isRead của các bức thư sang true. Toàn bộ dấu chấm đỏ trên danh sách lập tức tắt và chuyển sang màu xám mờ đồng loạt.
+Cơ chế dọn dẹp bộ nhớ (Reset Logic): Ngay khi Quản trò nhấn bắt đầu một ván chơi mới, hệ thống tự động xóa sạch toàn bộ các bản ghi trong hòm thư cũ trên database để ngăn chặn việc người chơi đọc lại thông tin của ván trước đó.
+PHẦN 2: GIAO DIỆN KẾT QUẢ CHUNG CUỘC & VINH DANH (GAME OVER & VICTORY SCREEN)
+Khi trận đấu kết thúc, hệ thống sẽ tự động khóa toàn bộ bàn điều khiển và chuyển người chơi sang hai màn hình tổng kết tuần tự dưới đây.
+2.1. Màn Hình Chuyển Cảnh Chiến Thắng (Victory Splash Screen)
+Màn hình này kéo dài trong 5 giây với mục đích tạo ấn tượng thị giác mạnh mẽ cho phe chiến thắng.
+code
+Code
++-------------------------------------------------------------+
+|                                                             |
+|                         [PHE THẮNG]                         |
+|                                                             |
+|                       (HOẠT ẢNH LỚN)                        |
+|                                                             |
+|                  [ XEM THỐNG KÊ TRẬN ĐẤU ]                  |
+|                                                             |
++-------------------------------------------------------------+
+Tình huống 1: Phe Dân Làng thắng
+Hình ảnh: Giao diện tối tăm biến mất. Hiển thị bầu trời xanh tươi sáng, những dải nắng vàng lấp lánh rọi xuống cánh đồng lúa mì của ngôi làng. Có hoạt ảnh các chú chim bồ câu trắng bay lướt qua màn hình.
+Âm thanh: Nhạc giao hưởng khải hoàn, tươi vui, hùng tráng.
+Tình huống 2: Phe Ma Sói thắng
+Hình ảnh: Toàn bộ màn hình phủ bóng tối, mây mù xám đen bao phủ. Một vầng trăng máu khổng lồ màu đỏ rực xuất hiện ở tâm. Hiển thị bóng đen của một chú sói đứng trên đỉnh núi hú vang.
+Âm thanh: Tiếng sói hú kéo dài dội ngược lại, kèm tiếng gầm gừ nhẹ và nhạc nền bass dồn dập, căng thẳng.
+Tình huống 3: Phe Thứ Ba thắng (Sát Nhân, Vampire, Kẻ Phóng Hỏa, Gã Hề...)
+Hình ảnh: Khung cảnh ngôi làng bốc cháy rực lửa với hoạt ảnh các ngọn lửa màu tím và cam bao phủ góc dưới màn hình. Ở giữa là hình ảnh một chiếc mặt nạ cười của Gã Hề hoặc biểu tượng đôi mắt ma mị phát sáng.
+Âm thanh: Tiếng cười điên cuồng của Gã Hề vang lên, kèm nhạc nền dồn dập mang phong cách xiếc ma quái.
+Tương tác chuyển trang: Sau 5 giây, một nút vàng phát sáng [XEM THỐNG KÊ TRẬN ĐẤU] xuất hiện ở cạnh dưới màn hình để đưa người chơi sang Bảng Vinh Danh.
+2.2. Bảng Vinh Danh Hiệu Năng & Thống Kê Chi Tiết (MVP & Stats Board)
+Bảng kết quả này chia làm 3 Tab thông tin nằm ngang rõ ràng:
+code
+Code
++-------------------------------------------------------------+
+| [ TAB 1: MVP ]      [ TAB 2: BẢN ĐỒ VAI TRÒ ]     [ TAB 3: LOG ] |
++-------------------------------------------------------------+
+Thiết kế: Một chiếc bục vinh quang lớn hiển thị ở giữa. Trên bục là thẻ người chơi của MVP (được tính toán bằng thuật toán chấm điểm cống hiến tự động từ hệ thống).
+Nội dung hiển thị:
+Tên người chơi, Avatar của họ phóng to kèm vòng nguyệt quế vàng xoay quanh.
+Bảng chỉ số cống hiến: Hiển thị chi tiết lý do đạt danh hiệu (Ví dụ: Số lần cứu người thành công: 2, Số lần sói cắn trúng mục tiêu: 3, Số phiếu bỏ đúng Sói ban ngày: 100%).
+Danh hiệu hài hước: Hiển thị một danh hiệu phù hợp dựa trên thống kê hành động (Ví dụ: Kẻ sống thọ nhất trận nhận danh hiệu "Kẻ Vô Hình"; Bảo vệ chết ngay đêm đầu nhận danh hiệu "Tấm Khiên Giấy").
+Bố cục trực quan: Bảng Grid người chơi ban đầu được tái hiện nhưng tất cả các ô tên đều được lật mở và hiển thị rõ ràng Vai trò thực tế cùng biểu tượng Phe cánh của họ ngay từ đầu game.
+Hệ thống đường dẫn biểu đồ (SVG Vector Lines link): Các đường liên kết mờ nối giữa các người chơi để tái hiện các hành động bảo mật trong trận đấu:
+Sợi tơ hồng (Cupid chọn): Đường đứt nét màu hồng lãng mạn nối giữa hai người chơi là Cặp đôi.
+Mũi tên nanh vuốt (Sói cắn): Đường mũi tên màu đỏ đậm chỉ từ vị trí Ma Sói sang những người chơi bị sói tấn công qua các đêm.
+Lá chắn bảo hộ (Bảo vệ): Một bong bóng màu xanh lá cây bao quanh mục tiêu từng được Bảo Vệ bảo vệ thành công.
+Dòng thời gian (Timeline): Một thanh cuộn dọc ghi lại nhật ký tóm tắt ngắn gọn từng đêm diễn ra theo trật tự (Ví dụ: [Đêm 1] Sói cắn Player 4 -> Phù Thủy quăng bình cứu -> Player 4 sống sót. Tiên tri soi Player 2 -> Kết quả: Dân thường).
+Hòm thư Chat công khai toàn phòng:
+Kích hoạt mở khóa toàn bộ lịch sử trò chuyện của các kênh chat mật ban đêm (Chat Sói, Chat Cặp Đôi) vốn bị ẩn trong trận đấu.
+Mọi người chơi ở tất cả phe cánh đều có thể đọc lại các nội dung bàn mưu, tính kế ban đêm của đối phương để cùng thảo luận, rút kinh nghiệm trước khi bắt đầu ván mới.
+ưới đây là mô tả thiết kế chi tiết (UX/UI & Logic) của Giao diện Khán giả & Nghĩa địa (Spectator & Graveyard Mode), mô tả cụ thể các luồng hoạt động trực quan và cơ chế kiểm soát công bằng trong game.
+PHẦN 1: HIỆU ỨNG KÍNH LỌC LINH HỒN (SPECTATOR VISUAL FILTER)
+Khi một người chơi bị loại (treo cổ ban ngày hoặc bị cắn ban đêm), client của họ ngay lập tức chuyển từ trạng thái Người Sống sang trạng thái Linh Hồn.
+Hiệu ứng chuyển cảnh tức thì (Visual Transition):
+Màn hình trò chơi thực hiện một hoạt ảnh chớp mờ ảo. Toàn bộ giao diện chính được phủ lên một lớp kính lọc CSS màu xám xanh (backdrop-filter: grayscale(35%) contrast(105%) brightness(85%)).
+Hiệu ứng khói sương trôi động (Ghostly Mist Animation): Xuất hiện các dải sương mù mờ ảo màu trắng xám (opacity: 0.15) bay lướt nhẹ nhàng từ hai bên mép dọc theo viền màn hình, tạo cảm giác như đang quan sát trận đấu từ thế giới bên kia.
+Trải nghiệm âm thanh (Spectral Audio):
+Âm thanh môi trường ban ngày/ban đêm thông thường giảm 50% âm lượng.
+Kích hoạt tiếng gió rít nhẹ mờ ảo (Ambient wind chimes) phát lặp lại (loop) dưới nền để tách biệt không gian trải nghiệm.
+PHẦN 2: BẢNG GRID GIẢI MÃ VAI TRÒ TOÀN CỤC (SPECTATOR UNMASKED GRID)
+Linh hồn có đặc quyền tối cao là nhìn thấu toàn bộ vai trò bí mật của những người còn sống mà không thể can thiệp.
+code
+Code
++-------------------------------------------------------------------+
+|  [👻 LINH HỒN] BẢNG THEO DÕI VẬN MỆNH NGÔI LÀNG                    |
++-------------------------------------------------------------------+
+|  +--------------------+  +--------------------+  +--------------------+  |
+|  | 1. Nguyen Thai     |  | 2. Quoc Anh        |  | 3. Thao Chi        |  |
+|  | [💀 Đã Chết]       |  | 🟢 SỐNG            |  | 🟢 SỐNG            |  |
+|  | (Dân Thường)       |  | (🔮 Tiên Tri)      |  | (🐺 Ma Sói)        |  |
+|  +--------------------+  +--------------------+  +--------------------+  |
++-------------------------------------------------------------------+
+Logic hiển thị chi tiết trên thẻ người chơi (Player Cards):
+Đối với người chơi đã chết: Thẻ hiển thị hình ảnh bia mộ mờ xám. Phía dưới tên hiển thị rõ dòng chữ vai trò màu xám nhạt trong ngoặc đơn (Ví dụ: (Dân Thường)).
+Đối với người chơi còn sống:
+Thẻ của họ vẫn hiển thị trạng thái 🟢 SỐNG màu xanh lá cây bình thường để Linh hồn theo dõi diễn biến thực tế.
+Ở góc trên bên phải của thẻ xuất hiện một biểu tượng con mắt tâm linh màu xanh cyan phát sáng: 👁️.
+Phía dưới tên hiển thị vai trò thực sự của họ được viết trong ngoặc đơn với màu sắc đặc trưng của phe (Ví dụ: Quoc Anh (🔮 Tiên Tri) chữ màu xanh lam; Thao Chi (🐺 Ma Sói) chữ màu đỏ rực).
+PHẦN 3: KÊNH CHAT LINH HỒN (GHOST CHAT - THE GRAVEYARD CHANNEL)
+Nơi tụ họp trò chuyện bảo mật dành riêng cho các linh hồn và khán giả quan sát phòng.
+code
+Code
++-------------------------------------------------------------+
+| [💬] CHAT LÀNG           [👻] CHAT LINH HỒN                 |
++-------------------------------------------------------------+
+| [👻 Linh Hồn] Nguyen Thai: "Trời ơi, sao Tiên Tri lại     |
+|  tin thằng Sói 3 sái cổ thế kia??"                         |
+|                                                             |
+| [👻 Linh Hồn] Minh Anh: "Phù Thủy quăng bình độc nhầm     |
+|  rồi cứu mạng tôi với mọi người ơi!"                        |
++-------------------------------------------------------------+
+| [ Nhập tin nhắn linh hồn...                             ]   |
++-------------------------------------------------------------+
+Quy tắc phân quyền truy cập (Permission Security Gate):
+Người chơi còn sống: Tab [Chat Linh Hồn] hoàn toàn bị ẩn đi trên giao diện của họ hoặc hiển thị biểu tượng ổ khóa màu đỏ và không thể nhấn vào để tránh việc rò rỉ thông tin từ người đã chết.
+Người chơi đã chết / Khán giả: Tab này được kích hoạt mở ra kế bên Tab Chat Làng thông thường.
+Thiết kế trực quan của khung Chat Linh Hồn:
+Nền khung chat màu đen xám đá (#0f172a), các dòng tin nhắn hiển thị với màu chữ tro xám ấm (#cbd5e1).
+Mỗi tin nhắn gửi đi đều được tự động chèn thêm tiền tố nhận diện nổi bật ở đầu dòng: [👻 Linh Hồn] [Tên người chơi]: [Nội dung].
+Sự kiện tương tác: Cho phép các linh hồn tự do bình luận, giải tỏa căng thẳng và phân tích chiến thuật mà không gây ảnh hưởng đến mạch suy luận của những người đang thi đấu.
+PHẦN 4: WIDGET DỰ ĐOÁN TỈ LỆ THẮNG (WIN PREDICTION POLL)
+Một mini-game nhỏ tương tác trực tiếp dành riêng cho khán giả để dự đoán cục diện.
+code
+Code
++-------------------------------------------------------------+
+| 📊 DỰ ĐOÁN PHE THẮNG CUỘC (Linh Hồn vote)                   |
++-------------------------------------------------------------+
+| 🌾 Dân Làng   [████████░░░░░░░░] 38%  (3 Vote)              |
+| 🐺 Ma Sói     [████████████░░░░] 52%  (4 Vote)              |
+| 🧛 Phe Thứ 3  [██░░░░░░░░░░░░░░] 10%  (1 Vote)              |
++-------------------------------------------------------------+
+Vị trí hiển thị: Một hộp công cụ nhỏ (Widget) có thể thu gọn/mở rộng nằm cố định ở góc trên bên phải màn hình (dưới đồng hồ pha).
+Hành động bỏ phiếu (Voting Action):
+Linh hồn nhấp trực tiếp vào thanh tiến trình của Phe mà họ tin rằng sẽ chiến thắng dựa trên thông tin đã được giải mã:
+Phe Dân Làng (Villagers): Thanh biểu đồ màu xanh lá cây.
+Phe Ma Sói (Werewolves): Thanh biểu đồ màu đỏ.
+Phe Thứ Ba (Third Party): Thanh biểu đồ màu tím.
+Ràng buộc: Mỗi linh hồn chỉ được chọn một phe duy nhất và có thể bấm chọn phe khác để thay đổi phiếu bầu bất kỳ lúc nào khi cục diện trận đấu thay đổi.
+Hiển thị trực quan theo thời gian thực (Real-time Display):
+Khi có linh hồn bỏ phiếu, độ dài các thanh tiến trình sẽ tự động co giãn mềm mại (transition: width 0.3s ease-in-out) kèm tỷ lệ phần trăm được cập nhật tức thì trên cơ sở dữ liệu Firebase.
+Hệ thống khóa hoàn toàn không cho phép người chơi còn sống nhìn thấy bảng dự đoán này để bảo toàn tính bảo mật của ván đấu.
+BƯỚC 1: PHA THẢO LUẬN TỰ DO & TỐ GIÁC (FREE DISCUSSION & NOMINATION)
+Pha này là nơi người chơi trao đổi thông tin công khai qua kênh chat và tiến hành đề cử người chơi đáng nghi nhất lên đài biện hộ.
+code
+Code
++-------------------------------------------------------------+
+| ⏱️ THỜI GIAN THẢO LUẬN: 02:15                                |
++-------------------------------------------------------------+
+| [BẢNG GRID NGƯỜI CHƠI]                                      |
+| +------------------+  +------------------+                  |
+| | 1. Nguyen Thai   |  | 2. Quoc Anh      |                  |
+| | [🪢 Đề cử: 2]     |  | [🔍 Tố Giác]     |                  |
+| +------------------+  +------------------+                  |
++-------------------------------------------------------------+
+| [HỘP CHAT LÀNG BAN NGÀY]                                    |
+| [Nguyen Thai]: "Tôi nghi ngờ số 2 là Sói, đêm qua soi..."   |
++-------------------------------------------------------------+
+1.1. Luồng hành động Tố Giác (Accusation Interaction)
+Hành động của Người chơi A: Nhấp vào nút [🔍 Tố Giác] trên ô vuông đại diện của Người chơi B.
+Phản hồi của giao diện (UI Response):
+Một vòng tròn viền đỏ nét đứt xuất hiện bao quanh ô của Người chơi B để biểu thị mục tiêu đang chọn.
+Dưới chân ô hiện ra bảng xác nhận gồm hai nút: [Xác Nhận Đề Cử] và [Hủy].
+Sau khi nhấn [Xác Nhận Đề Cử]:
+Hệ thống gửi gói tin đồng bộ lên Firebase: rooms/{roomId}/nominations/{playerA_id}: {playerB_id}.
+Ô vuông của Người chơi B lập tức xuất hiện một huy hiệu hình thòng lọng kèm số lượng đề cử tích lũy: 🪢 Đề cử: 1. Các người chơi khác khi đề cử thêm vào ô này sẽ đẩy số đếm nhảy lên theo thời gian thực (🪢 Đề cử: 2, 🪢 Đề cử: 3...).
+Hộp Chat Làng xuất hiện một tin nhắn hệ thống màu cam: [Hệ thống] Nguyen Thai đã đề cử treo cổ Quoc Anh!.
+Nút [🔍 Tố Giác] trên màn hình của Người chơi A chuyển thành nút [Rút Đề Cử] màu đỏ nhạt để cho phép thay đổi quyết định.
+1.2. Logic khóa và chuyển pha tự động (Phase Lock Triggers)
+Trường hợp 1 (Hết giờ): Đồng hồ thảo luận đếm ngược về 00:00. Hệ thống quét cơ sở dữ liệu và tự động chọn ra người chơi có số lượng phiếu 🪢 cao nhất để đưa lên giàn.
+Trường hợp 2 (Đạt đa số phiếu tuyệt đối): Nếu số lượng phiếu đề cử của một người chơi đạt quá bán số người còn sống (Ví dụ: Phòng còn 8 người sống, Người chơi B nhận đủ 5 đề cử):
+Hệ thống lập tức kích hoạt âm thanh tiếng chuông đồng hồ báo tử vang lên: "Kính coong!".
+Toàn bộ hộp chat ban ngày và các nút bấm tố giác bị vô hiệu hóa ngay lập tức để chuyển sang Bước 2.
+BƯỚC 2: PHA BIỆN HỘ CHI TIẾT (DEFENSE SPEECH PHASE)
+Mục tiêu duy nhất của pha này là để bị cáo tự bào chữa, những người chơi khác tạm thời bị khóa quyền phát biểu để lắng nghe.
+code
+Code
++-------------------------------------------------------------+
+|                     ⚖️ ĐÀI BIỆN HỘ                           |
++-------------------------------------------------------------+
+|                                                             |
+|                       [ QUOC ANH ]                          |
+|                       (Bị tình nghi)                        |
+|                                                             |
+|        "Tôi là Tiên Tri thật! Đêm 1 tôi soi số 5..."        |
+|                                                             |
++-------------------------------------------------------------+
+| ⏱️ THỜI GIAN BIỆN HỘ: 32 Giây                                |
++-------------------------------------------------------------+
+2.1. Biến đổi giao diện của Bị cáo (Accused View)
+Sau khi chuyển pha, màn hình của Bị cáo xuất hiện một khung viền vàng kim lớn tỏa sáng ở trung tâm.
+Một hộp soạn thảo văn bản tự động mở ra kèm thông báo: "BẠN ĐANG TRÊN ĐÀI BIỆN HỘ! Hãy viết lời bào chữa trước khi làng bỏ phiếu".
+Bị cáo bắt đầu nhập chữ. Dưới hộp soạn thảo có đồng hồ đếm ngược 45 giây và nút [GỬI LỜI BIỆN HỘ] màu đỏ.
+2.2. Biến đổi giao diện của Hội đồng Dân Làng (Voter View)
+Toàn bộ các thẻ người chơi khác co nhỏ lại xuống mép dưới màn hình và phủ một lớp bóng tối.
+Chính giữa màn hình hiển thị thẻ của Bị cáo phóng to gấp đôi.
+Cơ chế truyền tin thời gian thực (Real-time Typing Sync):
+Khi Bị cáo gõ chữ, hệ thống đồng bộ ký tự lên Firebase với độ trễ dưới 100ms.
+Dân làng sẽ nhìn thấy lời biện hộ của Bị cáo hiển thị chạy chữ trực tiếp lên màn hình theo thời gian thực (hiệu ứng gõ chữ rèm xe), kèm một icon bút lông đang viết chuyển động nhấp nháy.
+2.3. Sự kiện bấm nút [GỬI LỜI BIỆN HỘ] (hoặc khi hết 45 giây)
+Bị cáo nhấn gửi lời biện hộ.
+Nội dung biện hộ lập tức được khóa lại (không thể chỉnh sửa), phóng to và đổi màu sang chữ in hoa màu vàng đậm giữa màn hình để mọi người đọc lại lần cuối trong 3 giây trước khi chuyển sang Bước 3.
+BƯỚC 3: PHA PHÁN QUYẾT SỐNG / CHẾT (JUDGMENT VOTING)
+Đây là thời khắc dân làng đưa ra lá phiếu sinh tử của mình.
+code
+Code
++-------------------------------------------------------------+
+|                 BIỂU QUYẾT SỐ PHẬN: QUOC ANH                |
++-------------------------------------------------------------+
+|        [ THA BỔNG ] (2)             |        [ XỬ TỬ ] (3)          |
+|                                     |                               |
+|        +------------------+         |        +------------------+   |
+|        | 🟢 THA BỔNG      |         |        | 🔴 XỬ TỬ         |   |
+|        |                  |         |        |                  |   |
+|        | [Avatar Player 3]|         |        | [Avatar Player 1]|   |
+|        | [Avatar Player 6]|         |        | [Avatar Player 4]|   |
+|        |                  |         |        | [Avatar Player 5]|   |
+|        +------------------+         |        +------------------+   |
++-------------------------------------------------------------+
+| ⏱️ CÒN LẠI: 12 Giây                                          |
++-------------------------------------------------------------+
+3.1. Thiết lập màn hình chia đôi (Split Screen UI)
+Giao diện chính biến đổi thành 2 cột lớn phân tách bằng một vạch sáng mờ ở chính giữa:
+Nửa bên trái (Nút Tha Bổng): Tông màu chủ đạo xanh lục lá, biểu tượng cán cân công lý thăng bằng.
+Nửa bên phải (Nút Xử Tử): Tông màu chủ đạo đỏ mận, biểu tượng thòng lọng rực lửa.
+Bị cáo bị khóa hoàn toàn chức năng tương tác, chỉ hiển thị trạng thái chờ phán quyết.
+3.2. Quy trình bay của Avatar và Đồng bộ đếm số (Visual UX & Database Sync)
+Người chơi nhấp nút [XỬ TỬ]:
+Ảnh đại diện (Avatar) của người chơi đó ở mép dưới màn hình thực hiện hoạt ảnh bay (Translate animation) rơi thẳng vào trong hộp danh sách của cột [XỬ TỬ].
+Hệ thống phát âm thanh tiếng đá rơi nặng trĩu: "Rầm!".
+Bộ đếm số phiếu trên tiêu đề cột [XỬ TỬ] tự động tăng thêm +1.
+Firebase ghi nhận: rooms/{roomId}/votes/{voterId}: "EXECUTE".
+Người chơi đổi ý và nhấp nút [THA BỔNG]:
+Avatar của người chơi đó lập tức bay ngang từ hộp Xử Tử sang hộp [THA BỔNG].
+Bộ đếm số phiếu bên cột Xử Tử giảm -1, cột Tha Bổng tăng +1.
+Firebase cập nhật: rooms/{roomId}/votes/{voterId}: "ACQUIT".
+BƯỚC 4: PHA PHÁN QUYẾT CHUNG CUỘC & DI NGÔN (VERDICT & LAST WORDS)
+Sau 20 giây bỏ phiếu biểu quyết, hệ thống khóa toàn bộ các lá phiếu và đưa ra kết quả cuối cùng.
+4.1. Hoạt ảnh Búa Tòa Án (The Gavel Strike Animation)
+Một chiếc búa gỗ lớn của thẩm phán xuất hiện ở đỉnh màn hình, đập mạnh xuống thớt gỗ ở tâm màn hình phát ra âm thanh cực lớn: "Cạch!".
+Kịch bản 1 (THA BỔNG): Số phiếu THA >= số phiếu XỬ TỬ.
+Búa đập xuống va vào một lá chắn ánh sáng màu xanh lá bảo vệ Bị cáo. Lá chắn phát sáng rực rỡ báo hiệu an toàn.
+Dòng chữ thông báo lớn: "QUOC ANH ĐÃ ĐƯỢC LÀNG THA BỔNG!". Sau 3 giây, hệ thống tự động trả mọi người về giao diện ban ngày thảo luận tiếp hoặc chuyển đêm tùy thuộc vào cài đặt phòng.
+Kịch bản 2 (XỬ TỬ): Số phiếu XỬ TỬ > số phiếu THA.
+Búa đập xuống làm vỡ tan thẻ bài của Bị cáo. Một con dấu mực đỏ lớn in chữ "💀 ĐÃ CHẾT" đóng thẳng lên thẻ bài của họ.
+Hệ thống kích hoạt pha Di Ngôn (Last Words) trong 30 giây:
+Màn hình của Bị cáo xuất hiện hộp văn bản: "Hãy để lại lời trăn trối cuối cùng...".
+Dân làng theo dõi lời di ngôn hiển thị chạy trên cuộn giấy da ở giữa màn hình. Sau khi hết 30 giây hoặc khi Bị cáo nhấn [Gửi Di Ngôn], thẻ của họ trên bảng Grid chính thức bị gạch tên vĩnh viễn.
+Hệ thống tự động kích hoạt cơ chế hừng đông lặn xuống, đưa toàn phòng chơi trở lại Pha Đêm tiếp theo mà không cần thao tác thủ công.

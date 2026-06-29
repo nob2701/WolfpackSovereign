@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ma Sói Online - Esport Edition</title>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&family=Dancing+Script:wght@400;700&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
     <!-- CSS liên kết ngoài -->
     <link rel="stylesheet" href="style.css">
     
@@ -20,7 +20,7 @@
         }
     </script>
 </head>
-<body data-theme="light" data-font="comfortaa" data-view="lobby">
+<body data-theme="light" data-font="comfortaa" data-view="lobby" data-mobile-tab="3">
 
     <!-- MÀN HÌNH CHỜ CHỐNG TREO -->
     <div id="splash-screen">
@@ -39,40 +39,69 @@
     <button class="desktop-btn-settings" id="btn-desktop-settings" title="Cài đặt">⚙️</button>
 
     <!-- ==========================================
-         MÀN HÌNH 1: SẢNH CHỜ (LOBBY - ĐĂNG NHẬP / PHÒNG)
+         MÀN HÌNH 1 & 3: SẢNH CHỜ (LOBBY - ĐĂNG NHẬP / NHẬP MÃ / READY)
          ========================================== -->
     <div id="lobby-screen" class="app-screen">
         <div class="lobby-container">
             <h1 class="game-logo-title">🐺 MA SÓI ONLINE</h1>
             <p class="game-subtitle">Esport Edition v46.0 (Cloud Sync)</p>
             
-            <!-- Form thông tin cá nhân -->
-            <div class="lobby-form-group">
-                <label for="player-name-input" data-i18n="t_enter_name">Nhập tên của bạn:</label>
-                <input type="text" id="player-name-input" maxlength="15" placeholder="Tên hiển thị...">
-            </div>
-
-            <!-- Khu vực tương tác tạo/join phòng -->
-            <div class="lobby-actions">
-                <div class="join-room-box">
-                    <input type="text" id="room-id-input" placeholder="Nhập mã phòng (Room ID)...">
-                    <button id="btn-join-room" class="btn-success">Tham Gia Phòng</button>
+            <!-- PHẦN 1: GIAO DIỆN MỚI VÀO (INITIAL LOGIN VIEW) -->
+            <div id="login-form-panel">
+                <div class="lobby-form-group">
+                    <label for="player-name-input" data-i18n="t_enter_name">Nhập tên của bạn:</label>
+                    <input type="text" id="player-name-input" maxlength="15" placeholder="Tên hiển thị...">
                 </div>
-                <div class="divider-text">hoặc</div>
-                <button id="btn-create-room" class="btn-accent">Tạo Phòng Mới</button>
+
+                <div class="lobby-actions">
+                    <button id="btn-initial-join-trigger" class="btn-success w-100" disabled>THAM GIA PHÒNG</button>
+                    <div class="divider-text">hoặc</div>
+                    <button id="btn-create-room" class="btn-accent w-100" disabled>TẠO PHÒNG MỚI</button>
+                </div>
             </div>
 
-            <!-- Danh sách phòng gợi ý hoặc lịch sử nếu có -->
+            <!-- PHẦN 3: GIAO DIỆN NHẬP MÃ PHÒNG (JOIN ROOM SCREEN) -->
+            <div id="join-code-panel" class="hidden">
+                <p class="section-instruction">Nhập mã phòng gồm 6 ký tự:</p>
+                <div class="join-code-container">
+                    <input type="text" class="code-input" maxlength="1" id="code-1" pattern="[A-Za-z0-9]">
+                    <input type="text" class="code-input" maxlength="1" id="code-2" pattern="[A-Za-z0-9]">
+                    <input type="text" class="code-input" maxlength="1" id="code-3" pattern="[A-Za-z0-9]">
+                    <input type="text" class="code-input" maxlength="1" id="code-4" pattern="[A-Za-z0-9]">
+                    <input type="text" class="code-input" maxlength="1" id="code-5" pattern="[A-Za-z0-9]">
+                    <input type="text" class="code-input" maxlength="1" id="code-6" pattern="[A-Za-z0-9]">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="btn-back-to-login" class="btn-suggest" style="flex: 1;">Quay lại</button>
+                    <button id="btn-join-room-submit" class="btn-success" style="flex: 2;" disabled>Xác Nhận Tham Gia</button>
+                </div>
+            </div>
+
+            <!-- PHẦN 2: GIAO DIỆN PHÒNG CHỜ TRONG PHÒNG (ROOM LOBBY VIEW) -->
             <div class="room-info-card hidden" id="lobby-room-status">
-                <h3>ĐANG Ở TRONG PHÒNG: <span id="current-room-display" style="color:var(--accent)">-</span></h3>
+                <h3>ID PHÒNG: <span id="current-room-display" style="color:var(--accent); font-weight: bold;">-</span> 
+                    <button id="btn-copy-room-id" class="btn-suggest btn-small" style="margin-left:8px; padding: 2px 8px;">Copy</button>
+                </h3>
+                
                 <div class="lobby-players-list-wrapper">
-                    <h4>Người chơi đã kết nối (<span id="lobby-connected-count">0</span>):</h4>
+                    <h4>Thành viên hiện tại (<span id="lobby-connected-count">0</span>):</h4>
                     <div id="lobby-players-list"></div>
                 </div>
+
+                <!-- Điều khiển dành riêng cho Host (Quản Trò) -->
                 <div class="host-controls hidden" id="lobby-host-controls">
-                    <button id="btn-host-start-setup" class="btn-danger w-100">Vào Cấu Hình Trận Đấu</button>
+                    <button id="btn-host-start-setup" class="btn-danger w-100" disabled>TIẾN HÀNH TRÒ CHƠI</button>
+                    <p class="host-condition-hint" style="font-size:11px; opacity:0.7; text-align:center; margin-top:5px;">
+                        (Nút sáng khi tất cả người chơi khác đã sẵn sàng)
+                    </p>
                 </div>
-                <p class="waiting-msg" id="lobby-waiting-msg">Chờ chủ phòng thiết lập...</p>
+
+                <!-- Điều khiển dành riêng cho Người chơi thường -->
+                <div class="player-controls hidden" id="lobby-player-controls">
+                    <button id="btn-player-toggle-ready" class="btn-success w-100">Đstyle SẴN SÀNG (READY!)</button>
+                </div>
+                
+                <p class="waiting-msg" id="lobby-waiting-msg">Đang chờ người chơi chuẩn bị...</p>
             </div>
         </div>
     </div>
@@ -82,74 +111,159 @@
          ========================================== -->
     <div id="game-screen" class="app-screen hidden">
         
-        <!-- Cột danh sách người chơi (Đồng bộ thời gian thực) -->
-        <div id="col-players" class="panel col-players">
-            <h2><span data-i18n="t_players">👥 NGƯỜI CHƠI</span> (<span id="player-count-display">0</span>)</h2>
-            <div id="players-list" style="margin-bottom: 10px; overflow-y: auto; flex:1;"></div>
-            <button id="btn-flashcard" class="btn-accent" style="display:none; width:100%; margin-bottom:10px;" data-i18n="ui_flashcard_btn">Xem Lá Bài Của Bạn</button>
-        </div>
+        <!-- CỘT TRÁI: Dành cho Mailbox (Người chơi) hoặc Timeline Log (GM) -->
+        <div id="col-left" class="panel col-players">
+            
+            <!-- GM VIEW: Tiến trình diễn biến chi tiết (Game Timeline Log) -->
+            <div id="gm-timeline-container" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+                <h2>📋 TIẾN TRÌNH TRẬN ĐẤU</h2>
+                <div id="gm-timeline-log" class="log-box" style="flex: 1; margin-bottom: 10px;"></div>
+            </div>
 
-        <!-- Cột thiết lập vai trò (Chỉ chủ phòng thấy) -->
-        <div id="col-roles" class="panel col-roles hidden">
-            <h3><span data-i18n="t_role_config">⚙️ CẤU HÌNH ROLE</span> (<span id="role-count" style="color:var(--accent)">0</span>/<span id="player-count">0</span>)</h3>
-            <div class="balance-wrapper">
-                <div class="balance-title" data-i18n="t_balance_meter">CÁN CÂN TRẬN ĐẤU:</div>
-                <div class="balance-bar-container">
-                    <div id="balance-bar-wolf" class="balance-bar-wolf" style="width: 33.3%;"></div>
-                    <div id="balance-bar-third" class="balance-bar-third" style="width: 33.4%;"></div>
-                    <div id="balance-bar-village" class="balance-bar-village" style="width: 33.3%;"></div>
+            <!-- PLAYER VIEW: Hệ thống Hòm thư (Mailbox System) -->
+            <div id="player-mailbox-container" style="display: flex; flex-direction: column; height: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h2 style="margin:0;"><span data-i18n="t_mailbox">⚙️ MAILBOX</span></h2>
+                    <button id="btn-mail-read-all" class="btn-suggest btn-small">✓ Đọc tất cả</button>
                 </div>
-                <div id="balance-text" class="balance-text">Cân Bằng</div>
+                
+                <!-- Bộ lọc danh mục (Tabs Bar) -->
+                <div class="mailbox-tabs">
+                    <button class="mail-tab active" data-category="all">Tất cả</button>
+                    <button class="mail-tab" data-category="system">Hệ thống</button>
+                    <button class="mail-tab" data-category="role">Chức năng</button>
+                </div>
+
+                <!-- Danh sách thư -->
+                <div id="mailbox-list" style="flex: 1; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Tin nhắn rỗng mặc định -->
+                    <p class="empty-mailbox-hint" style="text-align: center; font-size:13px; opacity:0.5; margin-top:20px;">Hòm thư trống</p>
+                </div>
             </div>
-            <div class="game-presets">
-                <button class="btn-suggest" id="preset-classic">Classic Mode</button>
-                <button class="btn-suggest" id="preset-lonewolf">A Waltz Among Wolves</button>
-            </div>
-            <input type="text" id="role-search" data-i18n-ph="t_search_role" placeholder="Tìm kiếm role...">
-            <div id="role-config-list" style="background: var(--bg-main); padding: 5px; border-radius: 6px; margin-bottom: 5px; min-height: 180px;"></div>
-            <div class="pagination-row">
-                <button id="btn-role-prev" class="btn-suggest">&lt; Prev</button>
-                <span id="role-page-indicator">1/1</span>
-                <button id="btn-role-next" class="btn-suggest">Next &gt;</button>
-            </div>
-            <button id="btn-distribute" class="btn-success w-100" data-i18n="t_btn_dist">🎲 Trộn & Phát Role</button>
         </div>
 
-        <!-- Bàn điều khiển chính (Board) -->
+        <!-- CỘT GIỮA: Bảng Grid Người Chơi & Bàn Điều Khiển Chính -->
         <div id="col-board" class="panel col-board">
+            
             <!-- Nút gọi giả dành cho GM -->
             <button class="btn-fake-wake hidden" id="btn-fake-wake">🎭 Gọi Giả</button>
             
-            <h2 data-i18n="t_board">🎮 BÀN ĐIỀU KHIỂN</h2>
+            <!-- Khu vực dự đoán tỉ lệ thắng (Spectator Win Prediction Widget) -->
+            <div id="spectator-prediction-widget" class="hidden">
+                <div class="prediction-header">
+                    <span>📊 DỰ ĐOÁN PHE THẮNG CUỘC</span>
+                    <button id="btn-toggle-prediction-fold" style="background:none; border:none; color:var(--accent); cursor:pointer;">[Ẩn]</button>
+                </div>
+                <div id="prediction-body">
+                    <div class="pred-row">
+                        <span class="lbl">🌾 Dân Làng</span>
+                        <div class="pred-bar-container"><div id="pred-bar-village" class="pred-bar-fill village" style="width: 33%"></div></div>
+                        <span class="pct" id="pred-pct-village">33%</span>
+                    </div>
+                    <div class="pred-row">
+                        <span class="lbl">🐺 Ma Sói</span>
+                        <div class="pred-bar-container"><div id="pred-bar-wolf" class="pred-bar-fill wolf" style="width: 33%"></div></div>
+                        <span class="pct" id="pred-pct-wolf">33%</span>
+                    </div>
+                    <div class="pred-row">
+                        <span class="lbl">🧛 Phe thứ 3</span>
+                        <div class="pred-bar-container"><div id="pred-bar-third" class="pred-bar-fill third" style="width: 33%"></div></div>
+                        <span class="pct" id="pred-pct-third">33%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bảng Grid Người chơi trong trận đấu -->
+            <div class="main-players-grid-wrapper" style="width: 100%; flex: 1; overflow-y: auto; margin-bottom: 10px;">
+                <h3 style="text-align: left; margin-bottom: 10px;"><span data-i18n="t_grid_players">👥 THÀNH VIÊN TRẬN ĐẤU</span> (<span id="player-count-display">0</span>)</h3>
+                <div id="game-players-grid" class="players-grid"></div>
+            </div>
             
-            <!-- Giao diện hiển thị trạng thái phòng cho người chơi -->
-            <div id="board">
+            <!-- Bàn điều khiển trạng thái (Board) -->
+            <div id="board" style="width: 100%; margin-bottom: 0;">
                 <h3 id="phase-title" data-i18n="t_setup_phase">ĐANG KHỞI TẠO TRẬN ĐẤU</h3>
-                <p style="color: var(--text-main); opacity: 0.8;"><span>Trưởng Làng:</span> <b id="mayor-name" style="color:var(--accent)" data-i18n="t_no_mayor">Chưa có</b></p>
+                <p style="color: var(--text-main); opacity: 0.8; margin: 4px 0;"><span>Trưởng Làng:</span> <b id="mayor-name" style="color:var(--accent)" data-i18n="t_no_mayor">Chưa có</b></p>
                 <div id="sovereign-status" style="display:none; color: var(--success); font-weight:bold; font-size:14px; margin-bottom: 10px;"></div>
                 
-                <!-- Văn bản hướng dẫn cập nhật từ Server -->
+                <!-- Văn bản hướng dẫn diễn biến hoặc lời thoại/lời biện hộ -->
                 <div id="script-text" data-i18n="t_setup_guide">Đang đợi chủ phòng phân phối vai trò chơi...</div>
                 
-                <!-- Khu vực điều khiển hành động động -->
+                <!-- Hàng biểu quyết 4 bước: Bộ chỉ báo và Đài Biện Hộ tích hợp -->
+                <div id="trial-stage-container" class="hidden">
+                    <!-- Step Indicator -->
+                    <div class="trial-steps-bar">
+                        <div class="step-indicator active" id="step-ind-1">1. Tố giác</div>
+                        <div class="step-indicator" id="step-ind-2">2. Biện hộ</div>
+                        <div class="step-indicator" id="step-ind-3">3. Phán quyết</div>
+                        <div class="step-indicator" id="step-ind-4">4. Di ngôn</div>
+                    </div>
+                </div>
+
+                <!-- Khu vực điều khiển hành động động và nút bấm chức năng -->
                 <div id="controls"></div>
             </div>
         </div>
 
-        <!-- Cột lịch sử sự kiện (Sync) -->
-        <div id="col-history" class="panel col-history">
-            <div id="log-section">
-                <h2 data-i18n="t_log">📜 LỊCH SỬ & SỰ KIỆN</h2>
-                <div class="log-box" id="log"></div>
+        <!-- CỘT PHẢI: Chat Động (Bình thường / Kênh chat đêm) & Cài đặt Role (Host) -->
+        <div id="col-right" class="panel col-history">
+            
+            <!-- Tab chuyển đổi giữa bảng điều khiển cấu hình (chỉ GM thấy) và tab Chat -->
+            <div class="right-tabs">
+                <button class="right-tab active" id="tab-btn-chat">Kênh Chat</button>
+                <button class="right-tab hidden" id="tab-btn-roles-config">Cấu Hình Role</button>
             </div>
-            <div id="secret-section">
-                <h2 data-i18n="t_secrets">🕵️ BÍ MẬT PHÒNG</h2>
-                <div id="secret-panel">
-                    <div class="faction-grid">
-                        <div class="faction-col"><span class="f-dan" data-i18n="t_villagers">🌾 DÂN LÀNG</span><div id="list-dan"></div></div>
-                        <div class="faction-col"><span class="f-soi" data-i18n="t_wolves">🐺 MA SÓI</span><div id="list-soi"></div></div>
-                        <div class="faction-col"><span class="f-thu3" data-i18n="t_thirds">🧛 PHE THỨ 3</span><div id="list-thu3"></div></div>
+
+            <!-- PHÂN HỆ 1: KÊNH CHAT ĐỘNG (DYNAMIC CHAT PANEL) -->
+            <div id="chat-subpanel" style="display: flex; flex-direction: column; flex: 1;">
+                
+                <!-- Danh sách các kênh chat ban đêm được trang trí đặc trưng -->
+                <div class="chat-channels-bar">
+                    <button class="channel-tab active" id="chan-public">Làng 🌾</button>
+                    <button class="channel-tab hidden" id="chan-wolf" style="background: #3a0000; color: #ff5555; border-color: #ff0000;">Sói 🐺</button>
+                    <button class="channel-tab hidden" id="chan-couple" style="background: #3d1a2f; color: #ff85c0; border-color: #ff4d94;">Uyên Ương 💘</button>
+                    <button class="channel-tab hidden" id="chan-graveyard" style="background: #111e2e; color: #94a3b8; border-color: #475569;">Linh Hồn 👻</button>
+                </div>
+
+                <div class="log-box" id="chat-box" style="flex: 1; margin: 10px 0 5px 0;"></div>
+                
+                <div class="chat-input-row" style="display: flex; gap: 5px;">
+                    <input type="text" id="chat-input-field" placeholder="Nhập tin nhắn..." style="flex:1;">
+                    <button id="btn-chat-send" class="btn-accent" style="padding: 0 15px;">Gửi</button>
+                </div>
+            </div>
+
+            <!-- PHÂN HỆ 2: CẤU HÌNH VAI TRÒ & NÚT GM CHỨC NĂNG (Chỉ mở cho Host khi chọn Tab) -->
+            <div id="roles-config-subpanel" class="hidden" style="display: flex; flex-direction: column; flex: 1;">
+                <h3><span data-i18n="t_role_config">⚙️ CẤU HÌNH ROLE</span> (<span id="role-count" style="color:var(--accent)">0</span>/<span id="player-count">0</span>)</h3>
+                
+                <div class="balance-wrapper">
+                    <div class="balance-title" data-i18n="t_balance_meter">CÁN CÂN TRẬN ĐẤU:</div>
+                    <div class="balance-bar-container">
+                        <div id="balance-bar-wolf" class="balance-bar-wolf" style="width: 33.3%;"></div>
+                        <div id="balance-bar-third" class="balance-bar-third" style="width: 33.4%;"></div>
+                        <div id="balance-bar-village" class="balance-bar-village" style="width: 33.3%;"></div>
                     </div>
+                    <div id="balance-text" class="balance-text">Cân Bằng</div>
+                </div>
+
+                <div class="game-presets">
+                    <button class="btn-suggest" id="preset-classic">Classic Mode</button>
+                    <button class="btn-suggest" id="preset-lonewolf">A Waltz Among Wolves</button>
+                </div>
+
+                <input type="text" id="role-search" data-i18n-ph="t_search_role" placeholder="Tìm kiếm role...">
+                
+                <div id="role-config-list" style="background: var(--bg-main); padding: 5px; border-radius: 6px; margin-bottom: 5px; flex: 1; overflow-y: auto;"></div>
+                
+                <div class="pagination-row" style="margin-bottom: 10px;">
+                    <button id="btn-role-prev" class="btn-suggest">&lt; Prev</button>
+                    <span id="role-page-indicator">1/1</span>
+                    <button id="btn-role-next" class="btn-suggest">Next &gt;</button>
+                </div>
+
+                <div class="gm-role-actions-bar" style="display:flex; flex-direction:column; gap:5px;">
+                    <button id="btn-distribute" class="btn-success w-100" data-i18n="t_btn_dist">🎲 Trộn & Phát Role</button>
+                    <button id="btn-gm-start-night" class="btn-danger w-100 hidden">🌙 BẮT ĐẦU ĐÊM ĐEN</button>
                 </div>
             </div>
         </div>
@@ -250,7 +364,7 @@
         </div>
     </div>
 
-    <!-- Modal Lật Lá Bài / Xem Vai Trò Bảo Mật -->
+    <!-- PHẦN 5: Modal Lật Lá Bài / Xem Vai Trò Bảo Mật (Card Flip Modal Overlay) -->
     <div class="custom-modal-overlay" id="flashcard-modal">
         <div class="custom-modal-card-wrapper">
             <div class="fc-container">
@@ -269,15 +383,43 @@
         </div>
     </div>
 
-    <!-- Modal Biểu Quyết Ngày (Vote) -->
+    <!-- PHẦN 1: Modal Chi tiết Hòm thư Parchment (Parchment Modal Popup) -->
+    <div class="custom-modal-overlay" id="mailbox-parchment-modal">
+        <div class="parchment-scroll-container">
+            <button class="parchment-close-btn" id="btn-close-parchment">✕</button>
+            <div class="parchment-content-body">
+                <div class="parchment-wax-seal"></div>
+                <h2 class="parchment-title" id="parchment-mail-title">MẬT THƯ HỆ THỐNG</h2>
+                <div class="parchment-text" id="parchment-mail-text">
+                    Đang giải mã thông điệp bảo mật từ bóng đêm...
+                </div>
+                <div class="parchment-footer">Quốc chủ tối cao ký bút</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BƯỚC 3 & 4: Modal Biểu Quyết Biện Hộ / Sống Chết (Split Screen Voting Modal) -->
     <div class="custom-modal-overlay" id="vote-modal">
-        <div class="custom-modal" id="vote-modal-content">
-            <h3 id="vote-modal-title">BẢNG BỎ PHIẾU LÀNG</h3>
-            <p id="vote-modal-guide">Vui lòng chọn người bạn muốn biểu quyết treo cổ hôm nay.</p>
-            <div class="vote-grid" id="vote-grid-container"></div>
+        <div class="custom-modal" id="vote-modal-content" style="max-width: 800px; width: 95%;">
+            <h3 id="vote-modal-title">BIỂU QUYẾT SỐ PHẬN</h3>
+            <p id="vote-modal-guide" style="text-align: center;">Đồng ý tha bổng hay kết án tử hình?</p>
+            
+            <div class="voting-split-container">
+                <!-- Cột Trái: Tha Bổng -->
+                <div class="vote-split-column acquit" id="vote-col-acquit">
+                    <div class="column-header">🟢 THA BỔNG (<span id="count-acquit">0</span>)</div>
+                    <div class="voters-avatar-list" id="list-voters-acquit"></div>
+                </div>
+                <!-- Cột Phải: Xử Tử -->
+                <div class="vote-split-column execute" id="vote-col-execute">
+                    <div class="column-header">🔴 XỬ TỬ (<span id="count-execute">0</span>)</div>
+                    <div class="voters-avatar-list" id="list-voters-execute"></div>
+                </div>
+            </div>
+
             <div class="vote-action-footer">
-                <button id="vote-modal-redo" class="btn-suggest">Bỏ Phiếu Lại</button>
-                <button id="vote-modal-submit" class="btn-danger">🔥 CHỐT KẾT QUẢ</button>
+                <button id="btn-vote-acquit" class="btn-success">🟢 THA BỔNG</button>
+                <button id="btn-vote-execute" class="btn-danger">🔴 XỬ TỬ</button>
             </div>
         </div>
     </div>
@@ -291,6 +433,73 @@
                 <button id="target-modal-close" class="btn-suggest">Hủy</button>
                 <button id="target-modal-submit" class="btn-danger">🎯 XÁC NHẬN</button>
             </div>
+        </div>
+    </div>
+
+    <!-- PHẦN 2: Màn Hình Chuyển Cảnh Chiến Thắng & Bảng Vinh Danh MVP (VICTORY & STATS SCREEN) -->
+    <div class="custom-modal-overlay" id="victory-screen-modal">
+        <div class="victory-layout-container">
+            
+            <!-- 2.1 Màn hình chuyển cảnh chiến thắng (Victory Splash Screen) -->
+            <div id="victory-splash-panel" class="victory-splash-card">
+                <div class="victory-halo"></div>
+                <h1 id="victory-faction-title">PE THẮNG CUỘC</h1>
+                <div class="victory-visual-container" id="victory-visual-art">
+                    <!-- Art hoặc hoạt ảnh lớn sẽ chèn tại đây -->
+                </div>
+                <button id="btn-show-stats-board" class="btn-success" style="padding: 15px 30px; font-size:18px;">XEM THỐNG KÊ TRẬN ĐẤU</button>
+            </div>
+
+            <!-- 2.2 Bảng Vinh Danh Hiệu Năng & Thống Kê Chi Tiết (MVP & Stats Board) -->
+            <div id="victory-stats-panel" class="victory-stats-card hidden">
+                <div class="stats-tabs">
+                    <button class="stats-tab active" data-stats-tab="mvp">🏆 MVP</button>
+                    <button class="stats-tab" data-stats-tab="map">🗺️ BẢN ĐỒ VAI TRÒ</button>
+                    <button class="stats-tab" data-stats-tab="logs">📜 NHẬT KÝ</button>
+                </div>
+
+                <div class="stats-tab-content-wrapper">
+                    <!-- Tab MVP Content -->
+                    <div id="stats-content-mvp" class="stats-tab-panel">
+                        <div class="mvp-podium">
+                            <div class="mvp-wreath"></div>
+                            <div class="mvp-avatar" id="mvp-user-avatar">👤</div>
+                            <h2 id="mvp-user-name" style="margin: 10px 0 5px 0;">Tên Người Chơi</h2>
+                            <div class="mvp-badge" id="mvp-badge-title">Kẻ Vô Hình</div>
+                        </div>
+                        <div class="mvp-details-box" id="mvp-stats-details">
+                            <!-- Chèn danh sách đóng góp bằng JS -->
+                        </div>
+                    </div>
+
+                    <!-- Tab Bản đồ vai trò Content -->
+                    <div id="stats-content-map" class="stats-tab-panel hidden" style="position: relative;">
+                        <p style="font-size:12px; opacity:0.6; text-align:center; margin: 0 0 10px 0;">Sơ đồ quan hệ & kỹ năng được sử dụng trong suốt trận đấu</p>
+                        <!-- Container vẽ kết nối hành động đêm (Cupid, Bảo vệ, Sói cắn) -->
+                        <div class="unmasked-relations-grid" id="stats-unmasked-grid"></div>
+                        <svg class="svg-connection-canvas" id="svg-relations-canvas"></svg>
+                    </div>
+
+                    <!-- Tab Nhật ký diễn biến rút gọn -->
+                    <div id="stats-content-logs" class="stats-tab-panel hidden">
+                        <div class="log-box" id="stats-timeline-log" style="max-height: 280px; text-align: left;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 15px; display:flex; gap:10px;">
+                    <button id="btn-stats-back-lobby" class="btn-accent w-100">Quay Về Sảnh Chờ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hoạt ảnh Búa Tòa Án (The Gavel Strike Animation Overlay) -->
+    <div class="gavel-overlay hidden" id="gavel-animation-overlay">
+        <div class="gavel-container">
+            <div class="gavel-hammer" id="gavel-hammer-element">🔨</div>
+            <div class="gavel-anvil">🧱</div>
+            <div class="gavel-strike-flash" id="gavel-flash-element"></div>
+            <h1 class="gavel-announcement" id="gavel-verdict-announcement">PHÁN QUYẾT</h1>
         </div>
     </div>
 

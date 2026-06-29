@@ -1,8 +1,8 @@
-import { Net, dbSendNightAction, dbCastDayVote } from "./app.js";
-import { db, ref, set, get, update, push } from "./firebase-config.js";
+import { Net, runGavelStrikeAnimation } from "./app.js";
+import { db, ref, set, get, update, push, onValue } from "./firebase-config.js";
 
 // ==========================================
-// 1. KHỞI TẠO TRẠNG THÁI TOÀN CỤC CỦA GAME (G)
+// 1. TRẠNG THÁI TOÀN CỤC (GLOBAL STATE - G)
 // ==========================================
 window.G = {
     lang: 'vi',
@@ -23,9 +23,10 @@ window.G = {
     playerStats: {}
 };
 
-// Đăng ký sự kiện điều khiển cấu hình Role cho Chủ Phòng khi DOM load xong
+// Đăng ký sự kiện khởi tạo cấu hình vai trò
 document.addEventListener("DOMContentLoaded", () => {
     initRoleSetupListeners();
+    initVictoryTabsListeners();
 });
 
 // ==========================================
@@ -33,9 +34,8 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==========================================
 export const DICT = {
     vi: {
-        tab1: "Players", tab2: "Roles", tab3: "Board", tab4: "Lịch Sử", tab5: "Cài đặt",
-        t_players: "👥 NGƯỜI CHƠI", t_add_ph: "Nhập tên...", t_add_btn: "Thêm", t_drag_hint: "Trạng thái trực tuyến đồng bộ liên tục",
-        t_load: "Tải DS", t_save: "Lưu DS", t_delete: "Xoá DS",
+        tab1: "Thành viên", tab2: "Vai Trò", tab3: "Bàn Chơi", tab4: "Lịch Sử", tab5: "Cài đặt",
+        t_players: "👥 NGƯỜI CHƠI", t_add_ph: "Nhập tên...", t_add_btn: "Thêm",
         t_role_config: "⚙️ CẤU HÌNH ROLE", t_btn_dist: "🎲 Trộn & Phát Role", t_search_role: "Tìm kiếm role...", t_active_roles: "Role được sử dụng: ",
         t_preset_title: "CHẾ ĐỘ CHƠI:", t_mode_classic: "Classic Mode", t_mode_lonewolf: "A Waltz Among Wolves",
         t_balance_meter: "CÁN CÂN TRẬN ĐẤU:", balance_wolf: "Sói Áp Đảo (Game Nhanh)", balance_village: "Làng Thắng Thế", balance_third: "Phe Thứ 3 Nguy Hiểm", balance_neutral: "Cân Bằng",
@@ -54,7 +54,7 @@ export const DICT = {
     },
     en: {
         tab1: "Players", tab2: "Roles", tab3: "Board", tab4: "Log", tab5: "Settings",
-        t_players: "👥 PLAYERS", t_add_ph: "Enter name...", t_add_btn: "Add", t_drag_hint: "Online connection synced in real-time",
+        t_players: "👥 PLAYERS", t_add_ph: "Enter name...", t_add_btn: "Add",
         t_load: "Load", t_save: "Save", t_delete: "Delete",
         t_role_config: "⚙️ ROLE CONFIG", t_btn_dist: "🎲 Shuffle & Distribute", t_search_role: "Search roles...", t_active_roles: "Roles in play: ",
         t_preset_title: "GAME MODES:", t_mode_classic: "Classic Mode", t_mode_lonewolf: "A Waltz Among Wolves",
@@ -149,7 +149,7 @@ export const ROLE_DB = {
 
 export const ROLE_ICONS = {
     villager: '🌾', seer: '🔮', guard: '🛡️', witch: '🧪', hunter: '🏹', cupid: '💘', halfWolf: '🐺', headlessKnight: '🎃', apprenticeSeer: '👁️', ghost: '👻', thief: '🦹', doppelganger: '🎭', avenger: '⚔️', paradox: '⏳', lostChild: '👶', carver: '🔪', guarantor: '🤝', reflector: '🪞', fugitive: '🏃', cryptoMiner: '⛏️', reverser: '🔄', glitch: '👾', police: '🔫', spy: '🕵️', angel: '👼', sovereign: '👑', demonologist: '🧿', parrot: '🦜', ember: '🔥',
-    wolf: '🐺', wolfBoss: '👑', wolfSnow: '❄️', wolfMage: '👁️‍عون', traitor: '🕵️', blackDeath: '🦠', phantomWolf: '🐺', clairvoyantWolf: '👁️', mirrorWolf: '🪞', resonanceWolf: '🐺', silencerWolf: '🤫', loneWolf: '🐺', solitaireWolf: '🃏', chaosWolf: '🌪️', bloodline: '🩸',
+    wolf: '🐺', wolfBoss: '👑', wolfSnow: '❄️', wolfMage: '👁️', traitor: '🕵️', blackDeath: '🦠', phantomWolf: '🐺', clairvoyantWolf: '👁️', mirrorWolf: '🪞', resonanceWolf: '🐺', silencerWolf: '🤫', loneWolf: '🐺', solitaireWolf: '🃏', chaosWolf: '🌪️', bloodline: '🩸',
     demonDetective: '🦇', missionary: '🕍', vampire: '🧛', arsonist: '🔥', eradicator: '⚔️', clown: '🤡', manipulator: '🪄', impostor: '🥸', bountyHunter: '🎯', shark: '🦈', apprenticeReaper: '🪦', serialKiller: '🔪', prime: '👑', ashenKnight: '⚔️', cat: '🐈', reaper: '💀'
 };
 
@@ -180,6 +180,7 @@ export const Engine_Module = {
             rolePool.push('villager');
         }
 
+        // Xáo trộn ngẫu nhiên vai trò
         for (let i = rolePool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [rolePool[i], rolePool[j]] = [rolePool[j], rolePool[i]];
@@ -195,6 +196,7 @@ export const Engine_Module = {
         try {
             await update(ref(db), updates);
             alert("Trộn và phát vai trò trực tuyến thành công!");
+            document.getElementById("btn-gm-start-night")?.classList.remove("hidden");
         } catch (error) {
             alert("Có lỗi xảy ra khi đồng bộ vai trò lên hệ thống!");
         }
@@ -232,8 +234,65 @@ export const Engine_Module = {
         } catch (error) {
             console.error("Lỗi ghi log trực tuyến:", error);
         }
+    },
+
+    // Quản lý đề cử treo cổ (Bước 1)
+    accusePlayer: async (targetId) => {
+        const selfId = Net.playerId;
+        const currentNomRef = ref(db, `rooms/${Net.roomId}/nominations/${selfId}`);
+        try {
+            const snapshot = await get(currentNomRef);
+            if (snapshot.exists() && snapshot.val() === targetId) {
+                // Nhấp lại lần nữa để rút đề cử
+                await set(currentNomRef, null);
+                Engine_Module.logMsg(`${Net.playerName} đã rút đề cử treo cổ.`, "sys");
+            } else {
+                await set(currentNomRef, targetId);
+                Engine_Module.logMsg(`${Net.playerName} đề cử treo cổ đối tượng ${Net.players[targetId]?.name}`, "sys");
+                
+                // Kiểm tra điều kiện đa số phiếu tuyệt đối (>50% người sống)
+                checkMajorityNominationTrigger();
+            }
+        } catch (error) {
+            console.error(error);
+        }
     }
 };
+
+// Kiểm tra quá bán đề cử để chuyển sang đài Biện hộ (Bước 2)
+async function checkMajorityNominationTrigger() {
+    const nomRef = ref(db, `rooms/${Net.roomId}/nominations`);
+    try {
+        const snap = await get(nomRef);
+        const nominations = snap.val() || {};
+        const aliveCount = window.G.players.filter(p => p.alive).length;
+        const majorityThreshold = Math.floor(aliveCount / 2) + 1;
+
+        // Tính toán đếm phiếu
+        const counts = {};
+        Object.values(nominations).forEach(targetId => {
+            counts[targetId] = (counts[targetId] || 0) + 1;
+        });
+
+        for (let [targetId, votes] of Object.entries(counts)) {
+            if (votes >= majorityThreshold) {
+                // Chuyển dịch tức thì sang Biện hộ
+                const trialUpdates = {
+                    [`rooms/${Net.roomId}/trial`]: {
+                        stage: "defense",
+                        accusedId: targetId,
+                        accusedText: ""
+                    }
+                };
+                await update(ref(db), trialUpdates);
+                Engine_Module.logMsg(`Đối tượng [${Net.players[targetId]?.name}] đã nhận đủ số phiếu tố giác tuyệt đối. Chuyển sang pha biện hộ!`, "info");
+                break;
+            }
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
 
 // ==========================================
 // 5. HIỂN THỊ GIAO DIỆN PHÍA KHÁCH (UI_MODULE)
@@ -312,32 +371,6 @@ export const UI_Module = {
         });
     },
 
-    renderPlayers: () => {
-        const list = document.getElementById('players-list');
-        if (!list) return;
-
-        let html = '';
-        window.G.players.forEach((p, index) => {
-            const statusIcon = p.isConnected ? '<span class="online-dot"></span>' : '<span class="offline-dot"></span>';
-            const rowClass = `player-row ${p.alive ? '' : 'dead'}`;
-            
-            let actionBtn = '';
-            if (p.alive && Net.isHost && window.G.phase !== "setup") {
-                actionBtn = `<button class="btn-danger btn-small" onclick="UI_Module.executeDeath('${p.id}')">Xử từ</button>`;
-            }
-
-            html += `
-            <div class="${rowClass}">
-                <span style="font-weight:bold;">${statusIcon} ${index + 1}. ${p.name}</span>
-                <div style="display:flex; gap:5px; align-items:center;">
-                    <span style="font-size:12px; opacity:0.7;">(${getRoleName(p.role)})</span>
-                    ${actionBtn}
-                </div>
-            </div>`;
-        });
-        list.innerHTML = html;
-    },
-
     executeDeath: async (playerId) => {
         if (!confirm("Bạn có chắc chắn muốn xử tử thủ công người chơi này?")) return;
         const playerRef = ref(db, `rooms/${Net.roomId}/players/${playerId}`);
@@ -406,8 +439,155 @@ export const UI_Module = {
 
     showRoleInfo: (key) => {
         alert(getRoleName(key) + ": " + (DICT[window.G.lang]['r_' + key] || key));
+    },
+
+    // Kích hoạt hiển thị màn hình kết thúc trận đấu và vẽ kết nối hành động đêm SVG
+    showVictoryScreen: (winningFaction, mvpData, relationLogs) => {
+        const modal = document.getElementById("victory-screen-modal");
+        if (!modal) return;
+        modal.style.display = "flex";
+
+        const title = document.getElementById("victory-faction-title");
+        const artContainer = document.getElementById("victory-visual-art");
+
+        // 2.1 Cài đặt Visual Themes dựa trên phe thắng cuộc
+        if (winningFaction === "villager") {
+            title.innerText = "🌾 DÂN LÀNG CHIẾN THẮNG 🌾";
+            title.style.color = "#16a34a";
+            artContainer.innerHTML = `<div style="font-size:72px;">🕊️☀️🌻</div>`;
+        } else if (winningFaction === "wolf") {
+            title.innerText = "🐺 MA SÓI CHIẾN THẮNG 🐺";
+            title.style.color = "#e11d48";
+            artContainer.innerHTML = `<div style="font-size:72px;">🐺🩸🌑</div>`;
+        } else {
+            title.innerText = "🧛 PHE THỨ BA CHIẾN THẮNG 🧛";
+            title.style.color = "#c084fc";
+            artContainer.innerHTML = `<div style="font-size:72px;">🧛🤡🎭</div>`;
+        }
+
+        // Cập nhật thông số MVP và vinh danh danh hiệu hài hước
+        const mvpName = document.getElementById("mvp-user-name");
+        const mvpBadge = document.getElementById("mvp-badge-title");
+        const mvpDetails = document.getElementById("mvp-stats-details");
+
+        if (mvpData) {
+            mvpName.innerText = mvpData.name || "Người chơi ẩn danh";
+            mvpBadge.innerText = mvpData.badge || "Kẻ Vô Hình";
+            
+            mvpDetails.innerHTML = "";
+            (mvpData.stats || []).forEach(stat => {
+                mvpDetails.innerHTML += `
+                    <div class="mvp-stat-row">
+                        <span>${stat.label}</span>
+                        <b>${stat.value}</b>
+                    </div>
+                `;
+            });
+        }
+
+        // Chuẩn bị vẽ các đường kết nối SVG
+        renderRelationsTab(relationLogs);
     }
 };
+
+// Lắng nghe hành vi chuyển tab trên bảng thống kê chi tiết Victory Screen
+function initVictoryTabsListeners() {
+    const tabs = document.querySelectorAll(".stats-tab");
+    tabs.forEach(tab => {
+        tab.addEventListener("click", (e) => {
+            tabs.forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+
+            const selectedTab = tab.getAttribute("data-stats-tab");
+            const panels = ["stats-content-mvp", "stats-content-map", "stats-content-logs"];
+            panels.forEach(p => document.getElementById(p).classList.add("hidden"));
+
+            if (selectedTab === "mvp") {
+                document.getElementById("stats-content-mvp").classList.remove("hidden");
+            } else if (selectedTab === "map") {
+                document.getElementById("stats-content-map").classList.remove("hidden");
+                triggerSgDrawingRelations();
+            } else if (selectedTab === "logs") {
+                document.getElementById("stats-content-logs").classList.remove("hidden");
+            }
+        });
+    });
+
+    document.getElementById("btn-show-stats-board")?.addEventListener("click", () => {
+        document.getElementById("victory-splash-panel").classList.add("hidden");
+        document.getElementById("victory-stats-panel").classList.remove("hidden");
+    });
+
+    document.getElementById("btn-stats-back-lobby")?.addEventListener("click", () => {
+        location.reload();
+    });
+}
+
+// Lưu trữ tạm dữ liệu vẽ đường liên kết SVG hành động bảo mật
+let cachedRelationLogs = [];
+
+function renderRelationsTab(relationLogs) {
+    cachedRelationLogs = relationLogs || [];
+    const container = document.getElementById("stats-unmasked-grid");
+    if (!container) return;
+    container.innerHTML = "";
+
+    // Render danh sách các thẻ người chơi được lật mở đầy đủ vai trò
+    window.G.players.forEach(p => {
+        container.innerHTML += `
+            <div class="player-grid-card" id="relation-card-${p.id}" style="padding: 8px 4px; font-size:11px;">
+                <b class="name" style="font-size:11px;">${p.name}</b>
+                <span class="role-unmasked" style="font-size:10px;">(${getRoleName(p.role)})</span>
+            </div>
+        `;
+    });
+}
+
+// Thực hiện vẽ các đường SVG liên kết (Tơ hồng, Nanh vuốt, Lá chắn bảo hộ)
+function triggerSgDrawingRelations() {
+    const canvas = document.getElementById("svg-relations-canvas");
+    if (!canvas) return;
+    canvas.innerHTML = ""; // Clear canvas cũ
+
+    const container = document.getElementById("stats-content-map");
+    const containerRect = container.getBoundingClientRect();
+
+    cachedRelationLogs.forEach(log => {
+        const fromEl = document.getElementById(`relation-card-${log.fromId}`);
+        const toEl = document.getElementById(`relation-card-${log.toId}`);
+
+        if (fromEl && toEl) {
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = toEl.getBoundingClientRect();
+
+            const x1 = (fromRect.left + fromRect.width / 2) - containerRect.left;
+            const y1 = (fromRect.top + fromRect.height / 2) - containerRect.top;
+            const x2 = (toRect.left + toRect.width / 2) - containerRect.left;
+            const y2 = (toRect.top + toRect.height / 2) - containerRect.top;
+
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1);
+            line.setAttribute("y1", y1);
+            line.setAttribute("x2", x2);
+            line.setAttribute("y2", y2);
+            line.setAttribute("stroke-width", "3");
+
+            // Quyết định màu sắc/đặc tính dựa trên kịch bản hành động mật
+            if (log.type === "couple") { // Sợi tơ hồng Cupid chọn
+                line.setAttribute("stroke", "#f472b6");
+                line.setAttribute("stroke-dasharray", "4,4");
+            } else if (log.type === "wolf_bite") { // Mũi tên nanh sói
+                line.setAttribute("stroke", "#dc2626");
+            } else if (log.type === "guard_protect") { // Lá chắn bảo vệ
+                line.setAttribute("stroke", "#16a34a");
+            } else {
+                line.setAttribute("stroke", "#38bdf8");
+            }
+
+            canvas.appendChild(line);
+        }
+    });
+}
 
 // Khởi tạo các sự kiện giao diện thiết lập vai trò
 function initRoleSetupListeners() {
@@ -445,6 +625,10 @@ function initRoleSetupListeners() {
 
     document.getElementById("btn-distribute")?.addEventListener("click", () => {
         Engine_Module.distributeRoles();
+    });
+
+    document.getElementById("btn-gm-start-night")?.addEventListener("click", () => {
+        Engine_Module.startGame();
     });
 }
 
