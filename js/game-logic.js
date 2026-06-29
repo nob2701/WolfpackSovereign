@@ -1,5 +1,5 @@
-import { Net, runGavelStrikeAnimation } from "./app.js";
-import { db, ref, set, get, update, push, onValue } from "./firebase-config.js";
+import { Net } from "./app.js";
+import { db, ref, set, get, update, push } from "./firebase-config.js";
 
 // ==========================================
 // 1. TRẠNG THÁI TOÀN CỤC (GLOBAL STATE - G)
@@ -23,20 +23,8 @@ window.G = {
     playerStats: {}
 };
 
-// Đăng ký sự kiện khởi tạo cấu hình vai trò sau khi DOM sẵn sàng
-document.addEventListener("DOMContentLoaded", () => {
-    initRoleSetupListeners();
-    initVictoryTabsListeners();
-    
-    // Lắng nghe thay đổi ngôn ngữ từ Selector cài đặt
-    document.getElementById("lang-selector")?.addEventListener("change", (e) => {
-        UI_Module.changeLang(e.target.value);
-    });
-});
-
 // ==========================================
 // 2. TỪ ĐIỂN ĐA NGÔN NGỮ (I18N DICTIONARY)
-// Cập nhật tên thương hiệu Wolfpack Sovereign và các vai trò mới
 // ==========================================
 export const DICT = {
     vi: {
@@ -91,66 +79,66 @@ export const t = (key, ...args) => {
 // 3. ĐỊNH NGHĨA PHÂN PHE VÀ THUỘC TÍNH (FACTIONS DB)
 // ==========================================
 export const ROLE_DB = {
-    villager: { faction: 'villager', flags: { isEvil: false } }, 
-    seer: { faction: 'villager', flags: { isEvil: false } }, 
-    guard: { faction: 'villager', flags: { isEvil: false } }, 
-    witch: { faction: 'villager', flags: { isEvil: true } }, 
-    hunter: { faction: 'villager', flags: { isEvil: true } }, 
-    cupid: { faction: 'villager', flags: { isEvil: false } }, 
-    halfWolf: { faction: 'villager', flags: { isEvil: false } }, 
-    headlessKnight: { faction: 'villager', flags: { isEvil: false } }, 
-    apprenticeSeer: { faction: 'villager', flags: { isEvil: false } }, 
-    ghost: { faction: 'villager', flags: { isEvil: false } }, 
-    doppelganger: { faction: 'villager', flags: { isEvil: false } }, 
-    avenger: { faction: 'villager', flags: { isEvil: true } }, 
-    paradox: { faction: 'villager', flags: { isEvil: false } }, 
-    lostChild: { faction: 'villager', flags: { isEvil: false } }, 
-    carver: { faction: 'villager', flags: { isEvil: false } }, 
-    guarantor: { faction: 'villager', flags: { isEvil: false } }, 
-    reflector: { faction: 'villager', flags: { isEvil: false } }, 
-    thief: { faction: 'villager', flags: { isEvil: false } }, 
-    fugitive: { faction: 'villager', flags: { isEvil: false } }, 
-    cryptoMiner: { faction: 'villager', flags: { isEvil: false } }, 
-    reverser: { faction: 'villager', flags: { isEvil: false } }, 
-    glitch: { faction: 'villager', flags: { isEvil: false } }, 
-    police: { faction: 'villager', flags: { isEvil: true } }, 
-    spy: { faction: 'villager', flags: { isEvil: false } }, 
-    angel: { faction: 'villager', flags: { isEvil: false } }, 
-    sovereign: { faction: 'villager', flags: { isEvil: true } }, 
-    demonologist: { faction: 'villager', flags: { isEvil: false } }, 
-    parrot: { faction: 'villager', flags: { isEvil: false } }, 
-    ember: { faction: 'villager', flags: { isEvil: false } },
-    wolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    wolfBoss: { faction: 'wolf', flags: { isEvil: false } }, 
-    wolfSnow: { faction: 'wolf', flags: { isEvil: true } }, 
-    wolfMage: { faction: 'wolf', flags: { isEvil: true } }, 
-    traitor: { faction: 'wolf', flags: { isEvil: true } }, 
-    blackDeath: { faction: 'wolf', flags: { isEvil: false } }, 
-    phantomWolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    clairvoyantWolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    mirrorWolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    resonanceWolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    silencerWolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    loneWolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    solitaireWolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    chaosWolf: { faction: 'wolf', flags: { isEvil: true } }, 
-    bloodline: { faction: 'wolf', flags: { isEvil: true } },
-    demonDetective: { faction: 'third', flags: { isEvil: true } }, 
-    missionary: { faction: 'third', flags: { isEvil: false } }, 
-    vampire: { faction: 'third', flags: { isEvil: true } }, 
-    arsonist: { faction: 'third', flags: { isEvil: true } }, 
-    eradicator: { faction: 'third', flags: { isEvil: false } }, 
-    clown: { faction: 'third', flags: { isEvil: false } }, 
-    manipulator: { faction: 'third', flags: { isEvil: false } }, 
-    impostor: { faction: 'third', flags: { isEvil: false } }, 
-    bountyHunter: { faction: 'third', flags: { isEvil: false } }, 
-    shark: { faction: 'third', flags: { isEvil: false } }, 
-    apprenticeReaper: { faction: 'third', flags: { isEvil: false } }, 
-    serialKiller: { faction: 'third', flags: { isEvil: true } }, 
-    prime: { faction: 'third', flags: { isEvil: false } }, 
-    ashenKnight: { faction: 'third', flags: { isEvil: false } }, 
-    cat: { faction: 'third', flags: { isEvil: true } }, 
-    reaper: { faction: 'third', flags: { isEvil: true } }
+    villager: { faction: 'villager' }, 
+    seer: { faction: 'villager' }, 
+    guard: { faction: 'villager' }, 
+    witch: { faction: 'villager' }, 
+    hunter: { faction: 'villager' }, 
+    cupid: { faction: 'villager' }, 
+    halfWolf: { faction: 'villager' }, 
+    headlessKnight: { faction: 'villager' }, 
+    apprenticeSeer: { faction: 'villager' }, 
+    ghost: { faction: 'villager' }, 
+    doppelganger: { faction: 'villager' }, 
+    avenger: { faction: 'villager' }, 
+    paradox: { faction: 'villager' }, 
+    lostChild: { faction: 'villager' }, 
+    carver: { faction: 'villager' }, 
+    guarantor: { faction: 'villager' }, 
+    reflector: { faction: 'villager' }, 
+    thief: { faction: 'villager' }, 
+    fugitive: { faction: 'villager' }, 
+    cryptoMiner: { faction: 'villager' }, 
+    reverser: { faction: 'villager' }, 
+    glitch: { faction: 'villager' }, 
+    police: { faction: 'villager' }, 
+    spy: { faction: 'villager' }, 
+    angel: { faction: 'villager' }, 
+    sovereign: { faction: 'villager' }, 
+    demonologist: { faction: 'villager' }, 
+    parrot: { faction: 'villager' }, 
+    ember: { faction: 'villager' },
+    wolf: { faction: 'wolf' }, 
+    wolfBoss: { faction: 'wolf' }, 
+    wolfSnow: { faction: 'wolf' }, 
+    wolfMage: { faction: 'wolf' }, 
+    traitor: { faction: 'wolf' }, 
+    blackDeath: { faction: 'wolf' }, 
+    phantomWolf: { faction: 'wolf' }, 
+    clairvoyantWolf: { faction: 'wolf' }, 
+    mirrorWolf: { faction: 'wolf' }, 
+    resonanceWolf: { faction: 'wolf' }, 
+    silencerWolf: { faction: 'wolf' }, 
+    loneWolf: { faction: 'wolf' }, 
+    solitaireWolf: { faction: 'wolf' }, 
+    chaosWolf: { faction: 'wolf' }, 
+    bloodline: { faction: 'wolf' },
+    demonDetective: { faction: 'third' }, 
+    missionary: { faction: 'third' }, 
+    vampire: { faction: 'third' }, 
+    arsonist: { faction: 'third' }, 
+    eradicator: { faction: 'third' }, 
+    clown: { faction: 'third' }, 
+    manipulator: { faction: 'third' }, 
+    impostor: { faction: 'third' }, 
+    bountyHunter: { faction: 'third' }, 
+    shark: { faction: 'third' }, 
+    apprenticeReaper: { faction: 'third' }, 
+    serialKiller: { faction: 'third' }, 
+    prime: { faction: 'third' }, 
+    ashenKnight: { faction: 'third' }, 
+    cat: { faction: 'third' }, 
+    reaper: { faction: 'third' }
 };
 
 export const ROLE_ICONS = {
@@ -161,29 +149,55 @@ export const ROLE_ICONS = {
 
 export const FACTION_ICONS = { villager: '🌾', wolf: '🐺', third: '🧛' };
 
+// Đăng ký sự kiện cấu hình sau khi DOM sẵn sàng
+document.addEventListener("DOMContentLoaded", () => {
+    initRoleSetupListeners();
+    initVictoryTabsListeners();
+    document.getElementById("lang-selector")?.addEventListener("change", (e) => {
+        UI_Module.changeLang(e.target.value);
+    });
+});
+
 // ==========================================
-// 4. BỘ ĐIỀU HÀNH GM (ENGINE MODULE)
+// 4. BỘ ĐIỀU HÀNH ENGINE (ENGINE MODULE)
 // ==========================================
 export const Engine_Module = {
     distributeRoles: async () => {
         if (!Net.isHost) return;
         
-        const activePlayers = window.G.players;
-        if (activePlayers.length < 3) {
-            alert(t('msg_need_3'));
+        const activePlayers = Object.values(Net.players).filter(p => p.isConnected);
+        const playerCount = activePlayers.length;
+
+        if (playerCount < 3) {
+            window.alert(t('msg_need_3'));
             return;
         }
 
+        // SỬA LỖI 2: Tính toán chính xác tổng cấu hình vai trò của GM
+        let configuredRoleCount = 0;
+        const currentCounts = window.G.roleCounts || {};
+        for (let key in currentCounts) {
+            configuredRoleCount += currentCounts[key] || 0;
+        }
+
+        // Xác thực nghiêm ngặt 100% khớp số lượng người chơi
+        if (configuredRoleCount !== playerCount) {
+            const difference = playerCount - configuredRoleCount;
+            if (difference > 0) {
+                window.alert(`Số lượng vai trò chưa đủ khớp! Vui lòng tăng thêm ${difference} vai trò nữa trong sảnh Cấu Hình để vừa vặn khớp với ${playerCount} người chơi.`);
+            } else {
+                window.alert(`Số lượng vai trò đang bị dư thừa! Vui lòng bớt ${Math.abs(difference)} vai trò ra khỏi danh sách để vừa khớp chính xác với ${playerCount} người chơi.`);
+            }
+            return;
+        }
+
+        // Gom các vai trò hợp lệ vào bể trộn
         let rolePool = [];
         for (let key in ROLE_DB) {
-            let count = window.G.roleCounts[key] || 0;
+            let count = currentCounts[key] || 0;
             for (let i = 0; i < count; i++) {
                 rolePool.push(key);
             }
-        }
-
-        while (rolePool.length < activePlayers.length) {
-            rolePool.push('villager');
         }
 
         // Trộn ngẫu nhiên (Fisher-Yates)
@@ -197,16 +211,16 @@ export const Engine_Module = {
             const assignedRole = rolePool[idx];
             updates[`rooms/${Net.roomId}/players/${p.id}/role`] = assignedRole;
             updates[`rooms/${Net.roomId}/players/${p.id}/realFaction`] = ROLE_DB[assignedRole].faction;
-            // Khởi tạo trạng thái nút Xác nhận lượt
             updates[`rooms/${Net.roomId}/players/${p.id}/turnEnded`] = false;
+            updates[`rooms/${Net.roomId}/players/${p.id}/hasSeenRole`] = false; // Phục vụ xử lý mất kết nối
         });
 
         try {
             await update(ref(db), updates);
-            alert("Trộn và phát vai trò trực tuyến cho thần dân thành công!");
+            window.alert("Trộn và phân phát vai trò trực tuyến hoàn tất. GM có thể bấm BẮT ĐẦU ĐÊM ĐEN!");
             document.getElementById("btn-gm-start-night")?.classList.remove("hidden");
         } catch (error) {
-            alert("Có lỗi xảy ra khi phát vai trò!");
+            window.alert("Đã xảy ra lỗi đồng bộ hóa khi phát vai trò!");
         }
     },
 
@@ -223,7 +237,7 @@ export const Engine_Module = {
             await update(ref(db), updates);
             Engine_Module.logMsg(t('msg_game_start'), "info");
         } catch (error) {
-            alert("Không thể khởi động game!");
+            window.alert("Không thể phát lệnh khởi tạo trận đấu!");
         }
     },
 
@@ -240,11 +254,10 @@ export const Engine_Module = {
         try {
             await push(logRef, logItem);
         } catch (error) {
-            console.error("Lỗi ghi log trực tuyến:", error);
+            console.error("Gặp sự cố khi đẩy lịch sử trận đấu:", error);
         }
     },
 
-    // Quản lý tố giác (Bước 1)
     accusePlayer: async (targetId) => {
         const selfId = Net.playerId;
         const currentNomRef = ref(db, `rooms/${Net.roomId}/nominations/${selfId}`);
@@ -252,10 +265,10 @@ export const Engine_Module = {
             const snapshot = await get(currentNomRef);
             if (snapshot.exists() && snapshot.val() === targetId) {
                 await set(currentNomRef, null);
-                Engine_Module.logMsg(`${Net.playerName} rút lại đề cử treo cổ.`, "sys");
+                Engine_Module.logMsg(`${Net.playerName} đã rút lại đề cử treo cổ của mình.`, "sys");
             } else {
                 await set(currentNomRef, targetId);
-                Engine_Module.logMsg(`${Net.playerName} tố giác đối tượng đài biện hộ: ${Net.players[targetId]?.name}`, "sys");
+                Engine_Module.logMsg(`${Net.playerName} tố cáo và đề nghị đưa đối tượng lên đài biện hộ: ${Net.players[targetId]?.name}`, "sys");
                 checkMajorityNominationTrigger();
             }
         } catch (error) {
@@ -264,7 +277,7 @@ export const Engine_Module = {
     }
 };
 
-// Kiểm tra quá bán đề cử treo cổ
+// Kiểm tra quá bán phiếu tố cáo để tự động đưa lên đài treo cổ
 async function checkMajorityNominationTrigger() {
     const nomRef = ref(db, `rooms/${Net.roomId}/nominations`);
     try {
@@ -288,7 +301,7 @@ async function checkMajorityNominationTrigger() {
                     }
                 };
                 await update(ref(db), trialUpdates);
-                Engine_Module.logMsg(`[${Net.players[targetId]?.name}] nhận quá bán đề cử treo cổ. Chuyển sang pha biện hộ!`, "info");
+                Engine_Module.logMsg(`[${Net.players[targetId]?.name}] đã nhận quá bán đề cử treo cổ từ làng. Bắt đầu thời gian biện hộ!`, "info");
                 break;
             }
         }
@@ -370,13 +383,12 @@ export const UI_Module = {
     },
 
     executeDeath: async (playerId) => {
-        if (!confirm("Xác nhận xử tử thủ công người chơi này?")) return;
         const playerRef = ref(db, `rooms/${Net.roomId}/players/${playerId}`);
         try {
             await update(playerRef, { alive: false });
-            Engine_Module.logMsg(`Người chơi [${window.G.players.find(p=>p.id===playerId).name}] bị Quản trò xử tử thủ công.`, "kill");
+            Engine_Module.logMsg(`Đối tượng [${window.G.players.find(p=>p.id===playerId).name}] đã bị Quản trò hành quyết thủ công!`, "kill");
         } catch (error) {
-            alert("Lỗi thực thi lệnh tử hình!");
+            window.alert("Đã xảy ra lỗi khi thực thi lệnh hành án!");
         }
     },
 
@@ -436,7 +448,7 @@ export const UI_Module = {
     },
 
     showRoleInfo: (key) => {
-        alert(getRoleName(key) + ": " + (DICT[window.G.lang]['r_' + key] || key));
+        window.alert(getRoleName(key) + ": " + (DICT[window.G.lang]['r_' + key] || key));
     },
 
     showVictoryScreen: (winningFaction, mvpData, relationLogs) => {
@@ -453,7 +465,7 @@ export const UI_Module = {
             artContainer.innerHTML = `<div style="font-size:72px;">🕊️☀️🌻</div>`;
         } else if (winningFaction === "wolf") {
             title.innerText = "🐺 MA SÓI CHIẾN THẮNG 🐺";
-            title.style.color = "#e11d48";
+            title.style.color = "#ef4444";
             artContainer.innerHTML = `<div style="font-size:72px;">🐺🩸🌑</div>`;
         } else {
             title.innerText = "🧛 PHE THỨ BA CHIẾN THẮNG 🧛";
@@ -588,9 +600,9 @@ function triggerSgDrawingRelations() {
                 line.setAttribute("stroke", "#f472b6");
                 line.setAttribute("stroke-dasharray", "4,4");
             } else if (log.type === "wolf_bite") {
-                line.setAttribute("stroke", "#dc2626");
+                line.setAttribute("stroke", "#ef4444");
             } else if (log.type === "guard_protect") {
-                line.setAttribute("stroke", "#16a34a");
+                line.setAttribute("stroke", "#22c55e");
             } else {
                 line.setAttribute("stroke", "#38bdf8");
             }
@@ -632,6 +644,6 @@ function initVictoryTabsListeners() {
     });
 }
 
-// Xuất các Module ra môi trường bên ngoài để HTML và app.js liên kết trực tiếp
+// Xuất các Module ra môi trường bên ngoài để HTML và app.js liên kết
 window.UI_Module = UI_Module;
 window.Engine_Module = Engine_Module;

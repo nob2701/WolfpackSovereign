@@ -1,21 +1,21 @@
-/* === HỆ THỐNG BIẾN CSS & THEMES (PALETTE MỚI) === */
+/* === HỆ THỐNG BIẾN CSS & THEMES (PHONG CÁCH GOTHIC / DARK FANTASY) === */
 :root {
-    --bg-main: #001C44;       /* Xanh hải quân đậm (Nền thế giới) */
-    --bg-panel: #0C5776;      /* Xanh teal trầm (Nền bảng điều khiển) */
-    --bg-item: #2D99AE;       /* Xanh đại dương (Thẻ người chơi & khối phụ) */
-    --text-main: #F8DAD0;     /* Hồng phấn nhạt (Độ tương phản chữ dịu mắt) */
-    --accent: #BCFEFE;        /* Xanh lơ sáng (Màu nhấn viền LED & Trạng thái hoạt động) */
-    --danger: #e11d48; 
-    --success: #16a34a;
-    --log-bg: #00112c;        /* Nền tối sâu của khối lịch sử */
-    --log-text: #94a3b8; 
-    --border-color: #2D99AE;
-    --btn-text: #001C44;      /* Màu chữ tối tương phản tốt trên nút sáng xanh lơ */
-    --input-bg: #00112c; 
-    --input-text: #BCFEFE;
-    --modal-overlay: rgba(0, 17, 44, 0.88);
+    --bg-main: #121214;       /* Xám tro tối (Nền sảnh sương mù) */
+    --bg-panel: #1a1a1e;      /* Đen trầm Gothic (Nền bảng điều khiển chính) */
+    --bg-item: #26262b;       /* Xám tối đục (Thẻ người chơi & khối phụ trợ) */
+    --text-main: #f8fafc;     /* Trắng sữa dịu mắt (Độ tương phản tối đa trên nền tối) */
+    --accent: #eab308;        /* Vàng kim vương quyền (Thế lực Làng / Sovereign) */
+    --danger: #ef4444;        /* Đỏ máu dạ quang (Thế lực Sói / Ma thuật ác quỷ) */
+    --success: #22c55e;       /* Xanh lục bảo (Sự sống hồi sinh) */
+    --log-bg: #0a0a0c;        /* Đen tuyền sâu thẳm (Nền khối nhật ký đêm) */
+    --log-text: #94a3b8;      /* Xám bạc nhạt */
+    --border-color: #3f3f46;  /* Viền xám mờ */
+    --btn-text: #0a0a0c;      /* Màu chữ tối tương phản tốt trên nút vàng */
+    --input-bg: #0a0a0c; 
+    --input-text: #f8fafc;
+    --modal-overlay: rgba(10, 10, 12, 0.94);
     
-    /* Biến bổ sung cho các cấu trúc vai trò mới */
+    /* Biến bổ sung cho các phe phái và mật thư cổ */
     --parchment-bg: #f4ecd8;
     --parchment-text: #2c1a04;
     --wolf-red: #991b1b;
@@ -23,9 +23,9 @@
     --couple-pink: #ec4899;
     --couple-bg: #2d132c;
     --ghost-blue: #475569;
-    --ghost-bg: #001C44;
+    --ghost-bg: #121214;
 
-    /* Thang đo Z-index chuẩn hóa tránh va chạm chồng lấp */
+    /* Thang đo Z-index tiêu chuẩn hệ thống */
     --z-nav: 1000; 
     --z-overlay: 2000; 
     --z-modal-bg: 10000; 
@@ -53,20 +53,20 @@ body[data-theme="light"] {
 }
 
 body[data-theme="dark"] { 
-    --bg-main: #001C44; 
-    --bg-panel: #0C5776; 
-    --bg-item: rgba(45, 153, 174, 0.35); /* Xanh đại dương phủ trong suốt nhẹ */
-    --text-main: #F8DAD0; 
-    --accent: #BCFEFE; 
-    --danger: #cf6679; 
-    --success: #03dac6; 
-    --log-bg: #00112c; 
-    --log-text: #cbd5e1; 
-    --border-color: #2D99AE; 
-    --btn-text: #001C44; 
-    --input-bg: #00112c; 
-    --input-text: #BCFEFE; 
-    --modal-overlay: rgba(0, 17, 44, 0.88); 
+    --bg-main: #121214; 
+    --bg-panel: #1a1a1e; 
+    --bg-item: #26262b; 
+    --text-main: #f8fafc; 
+    --accent: #eab308; 
+    --danger: #ef4444; 
+    --success: #22c55e; 
+    --log-bg: #0a0a0c; 
+    --log-text: #94a3b8; 
+    --border-color: #3f3f46; 
+    --btn-text: #0a0a0c; 
+    --input-bg: #0a0a0c; 
+    --input-text: #f8fafc; 
+    --modal-overlay: rgba(10, 10, 12, 0.94); 
 }
 
 body[data-theme="hacker"] { 
@@ -135,7 +135,7 @@ body {
     left: 0; 
     width: 100vw; 
     height: 100vh;
-    background: #001C44; 
+    background: #0a0a0c; 
     z-index: var(--z-splash); 
     display: flex; 
     flex-direction: column; 
@@ -185,6 +185,78 @@ body {
     50% { border-color: var(--accent); } 
 }
 
+/* === MÀN HÌNH NGỦ SAY ĐÊM ĐEN === */
+.night-sleep-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: radial-gradient(circle at center, #0a0a0c 40%, #000000 100%);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease-in-out;
+}
+.night-sleep-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+    display: none !important;
+}
+.night-sleep-content {
+    text-align: center;
+    animation: pulseGlow 4s infinite alternate ease-in-out;
+}
+.moon-container {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.moon-crescent {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    box-shadow: 18px 18px 0 0 var(--accent);
+    transform: rotate(-30deg);
+}
+.ghostly-mist {
+    position: absolute;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(234, 179, 8, 0.15) 0%, transparent 70%);
+    filter: blur(8px);
+    animation: mistDrift 6s infinite alternate ease-in-out;
+}
+.sleep-status-text {
+    font-size: 26px;
+    color: var(--text-main);
+    letter-spacing: 1.5px;
+    margin: 15px 0 5px 0;
+}
+.sleep-instruction {
+    font-size: 14px;
+    color: var(--log-text);
+    font-style: italic;
+}
+.sleep-timer {
+    margin-top: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--danger);
+    font-family: monospace;
+}
+
+@keyframes pulseGlow {
+    0% { transform: scale(0.98); filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.1)); }
+    100% { transform: scale(1.02); filter: drop-shadow(0 0 30px rgba(234, 179, 8, 0.3)); }
+}
+@keyframes mistDrift {
+    0% { transform: translate(-10px, -5px) scale(0.9); }
+    100% { transform: translate(10px, 5px) scale(1.1); }
+}
+
 /* === LỚP ĐIỀU HƯỚNG VIEW CHỦ ĐẠO === */
 .app-screen {
     width: 100%;
@@ -198,7 +270,7 @@ body {
 
 /* === SẢNH CHỜ (LOBBY SCREEN) === */
 #lobby-screen {
-    background: radial-gradient(circle at center, #0C5776 0%, #001C44 100%);
+    background: radial-gradient(circle at center, #1a1a1e 0%, #121214 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -313,13 +385,14 @@ body {
     gap: 6px;
 }
 .lobby-player-tag {
-    background: rgba(45, 153, 174, 0.2);
+    background: rgba(234, 179, 8, 0.05);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 13px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border: 1px solid rgba(234, 179, 8, 0.1);
 }
 
 /* Thẻ trạng thái sẵn sàng */
@@ -349,6 +422,58 @@ body {
 }
 @keyframes blinker {
     50% { opacity: 0.3; }
+}
+
+/* === THẺ CĂN CƯỚC NGƯỜI CHƠI CỐ ĐỊNH (IDENTITY WIDGET) === */
+.player-identity-card {
+    background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-main) 100%);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    gap: 15px;
+    position: relative;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.6);
+    text-align: left;
+    width: 100%;
+}
+.id-card-seal {
+    width: 45px;
+    height: 45px;
+    background: radial-gradient(circle, var(--danger) 30%, transparent 70%);
+    border: 2px dashed var(--accent);
+    border-radius: 50%;
+    opacity: 0.6;
+}
+.id-card-content {
+    flex: 1;
+}
+.id-card-title {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+.id-row {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.id-row span {
+    color: var(--log-text);
+}
+.id-row strong {
+    color: var(--text-main);
+}
+.id-desc {
+    font-size: 11px;
+    color: var(--log-text);
+    font-style: italic;
+    margin-top: 6px;
+    line-height: 1.4;
+    border-top: 1px solid var(--border-color);
+    padding-top: 6px;
 }
 
 /* === TRONG GAME - CÁC CỘT BỐ CỤC === */
@@ -408,7 +533,7 @@ h2, h3 {
 }
 .player-grid-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     border-color: var(--accent);
 }
 .player-grid-card.selected {
@@ -416,14 +541,14 @@ h2, h3 {
     box-shadow: 0 0 10px var(--danger);
 }
 .player-grid-card.dead {
-    opacity: 0.5;
-    background: #00122e;
-    border-color: #0c5776;
+    opacity: 0.4;
+    background: #0d0d0e;
+    border-color: #27272a;
     cursor: not-allowed;
 }
 .player-grid-card.dead .name {
     text-decoration: line-through;
-    color: #64748b;
+    color: #52525b;
 }
 .player-grid-card.dead::after {
     content: "🪦";
@@ -459,12 +584,12 @@ h2, h3 {
     left: 8px;
     z-index: 3;
 }
-.player-grid-card .status-dot.online { background-color: var(--accent); }
-.player-grid-card .status-dot.offline { background-color: #0c5776; }
+.player-grid-card .status-dot.online { background-color: var(--success); }
+.player-grid-card .status-dot.offline { background-color: #3f3f46; }
 
-/* === NÂNG CẤP HIỆU ỨNG THỊ GIÁC VAI TRÒ (ROLES UPDATE 1) === */
+/* === NÂNG CẤP HIỆU ỨNG THỊ GIÁC VAI TRÒ === */
 
-/* 1. Tiên Tri (Seer) - Viền LED Tím Dạ Quang & Biểu tượng Mắt Mở */
+/* 1. Tiên Tri (Seer) */
 .player-grid-card.seer-scanned {
     border-color: #a855f7 !important;
     box-shadow: 0 0 15px #a855f7, inset 0 0 8px rgba(168, 85, 247, 0.4) !important;
@@ -479,28 +604,28 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 2. Bảo Vệ (Guard) - Khiên thép ánh kim & Bị khóa chọn tiếp */
+/* 2. Bảo Vệ (Guard) */
 .player-grid-card.guard-protected::before {
     content: "🛡️";
     position: absolute;
     bottom: 5px;
     left: 5px;
     font-size: 12px;
-    filter: drop-shadow(0 0 2px gold);
+    filter: drop-shadow(0 0 2px var(--accent));
     z-index: 4;
 }
 .player-grid-card.guard-blocked {
     opacity: 0.45 !important;
-    background: #00122e !important;
-    border-color: #0c5776 !important;
+    background: #0d0d0e !important;
+    border-color: #27272a !important;
     pointer-events: none !important;
 }
 .player-grid-card.guard-blocked::after {
     content: "Không thể chọn liên tiếp";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 28, 68, 0.7);
-    color: #f8fafc;
+    background: rgba(18, 18, 20, 0.8);
+    color: var(--text-main);
     font-size: 10px;
     display: flex;
     align-items: center;
@@ -509,7 +634,7 @@ h2, h3 {
     z-index: 5;
 }
 
-/* 3. Phù Thủy (Witch) - Bình hồi sinh & Khói độc dâng lên */
+/* 3. Phù Thủy (Witch) */
 .player-grid-card.witch-healed {
     animation: witchHealFlash 1s ease-out 2;
 }
@@ -517,20 +642,20 @@ h2, h3 {
     content: "";
     position: absolute;
     left: 0; bottom: 0; right: 0; top: 0;
-    background: linear-gradient(to top, rgba(168, 85, 247, 0.5), transparent);
+    background: linear-gradient(to top, rgba(168, 85, 247, 0.4), transparent);
     z-index: 1;
     pointer-events: none;
     animation: poisonSmokeRise 3s infinite alternate ease-in-out;
 }
 
-/* 4. Thợ Săn (Hunter) - Hồng tâm Laser đỏ */
+/* 4. Thợ Săn (Hunter) */
 .player-grid-card.hunter-marked::after {
     content: "";
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     width: 60px; height: 60px;
-    border: 2px dashed #f43f5e;
+    border: 2px dashed var(--danger);
     border-radius: 50%;
     pointer-events: none;
     z-index: 3;
@@ -542,25 +667,25 @@ h2, h3 {
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     font-size: 14px;
-    color: #f43f5e;
+    color: var(--danger);
     z-index: 3;
     pointer-events: none;
 }
 
-/* 5. Cupid - Viền LED hồng cánh sen & tơ hồng liên kết */
+/* 5. Cupid */
 .player-grid-card.cupid-linked {
     border-color: #f472b6 !important;
     box-shadow: 0 0 12px #f472b6 !important;
 }
 
-/* 6. Thiên Sứ (Angel) - Vầng sáng tịnh hóa */
+/* 6. Thiên Sứ (Angel) */
 .player-grid-card.angel-purified {
     animation: purifiedGlow 3s ease-in-out forwards;
 }
 
-/* 8. Kẻ Khắc Tên (Carver) - Thẻ bị rạch nhẹ & Dấu Thập Đen */
+/* 8. Kẻ Khắc Tên (Carver) */
 .player-grid-card.carver-blacklisted {
-    background-image: repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(225, 29, 72, 0.1) 15px, rgba(225, 29, 72, 0.1) 16px);
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(239, 68, 68, 0.15) 15px, rgba(239, 68, 68, 0.15) 16px);
 }
 .player-grid-card.carver-blacklisted::after {
     content: "❌";
@@ -572,25 +697,25 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 9. Người Bảo Lãnh (Guarantor) - Ruy băng rực rỡ */
+/* 9. Người Bảo Lãnh (Guarantor) */
 .player-grid-card.guarantor-sealed::after {
     content: "🎗️";
     position: absolute;
     bottom: 5px;
     right: 5px;
     font-size: 14px;
-    filter: drop-shadow(0 0 3px gold);
+    filter: drop-shadow(0 0 3px var(--accent));
     z-index: 4;
 }
 
-/* 10. Kẻ Phản Chiếu (Reflector) - Khung gương bạc phản quang */
+/* 10. Kẻ Phản Chiếu (Reflector) */
 .player-grid-card.reflector-mirrored {
     border: 3px double #cbd5e1 !important;
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2) !important;
     animation: mirrorReflection 4s infinite linear;
 }
 
-/* 11. Kẻ Báo Thù (Avenger) - Gây mê ngủ xoáy / Phán quyết đẫm máu */
+/* 11. Kẻ Báo Thù (Avenger) */
 .player-grid-card.avenger-asleep::before {
     content: "🌀";
     position: absolute;
@@ -607,9 +732,9 @@ h2, h3 {
     animation: executionBloody 0.5s ease-in-out;
 }
 
-/* 12. Phe Sói - Vết cào rách rưới & Bầu chọn */
+/* 12. Phe Sói */
 .player-grid-card.wolf-targeted {
-    border-color: #ef4444 !important;
+    border-color: var(--danger) !important;
 }
 .player-grid-card.wolf-targeted::before {
     content: "";
@@ -617,7 +742,7 @@ h2, h3 {
     top: 0; left: 0; right: 0; bottom: 0;
     background-image: url('assets/images/scratch.png'); 
     background-size: cover;
-    opacity: 0.3;
+    opacity: 0.35;
     pointer-events: none;
     z-index: 2;
 }
@@ -625,7 +750,7 @@ h2, h3 {
     position: absolute;
     bottom: 5px;
     right: 5px;
-    background: #ef4444;
+    background: var(--danger);
     color: white;
     font-size: 10px;
     font-weight: bold;
@@ -634,7 +759,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 13. Sói Tuyết (Snow Wolf) - Đóng băng & Bông tuyết */
+/* 13. Sói Tuyết (Snow Wolf) */
 .player-grid-card.snowwolf-frozen {
     border-color: #38bdf8 !important;
     background: rgba(56, 189, 248, 0.1) !important;
@@ -651,7 +776,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 14. Pháp Sư Sói (Wolf Mage) - Vòng tròn ma pháp quỷ */
+/* 14. Pháp Sư Sói (Wolf Mage) */
 .player-grid-card.wolfmage-scanned::before {
     content: "🧿";
     position: absolute;
@@ -663,7 +788,7 @@ h2, h3 {
     z-index: 2;
 }
 
-/* 15. Sói Ảo Ảnh (Phantom Wolf) - Mặt nạ đánh tráo */
+/* 15. Sói Ảo Ảnh (Phantom Wolf) */
 .player-grid-card.phantom-swapped::after {
     content: "🎭";
     position: absolute;
@@ -673,12 +798,12 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 16. Sói Câm Lặng (Silencer Wolf) - Khóa ổ mồm */
+/* 16. Sói Câm Lặng (Silencer Wolf) */
 .player-grid-card.silencer-muted::before {
     content: "";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.65);
     z-index: 3;
 }
 .player-grid-card.silencer-muted::after {
@@ -691,7 +816,7 @@ h2, h3 {
     filter: drop-shadow(0 2px 4px #000);
 }
 
-/* 17. Sói Tarot (Solitaire Wolf) - Bài Tarot bốc khói đen */
+/* 17. Sói Tarot (Solitaire Wolf) */
 .player-grid-card.solitaire-cursed::before {
     content: "🃏";
     position: absolute;
@@ -703,30 +828,30 @@ h2, h3 {
     z-index: 2;
 }
 
-/* 18. Sói Hỗn Mang (Chaos Wolf) - Rung chấn màn hình */
+/* 18. Sói Hỗn Mang (Chaos Wolf) */
 .chaoswolf-shaking {
     animation: chaosScreenShake 0.4s infinite;
 }
 
-/* 19. Thám Tử Ác Ma (Demon Detective) - Lửa quỷ khác biệt */
+/* 19. Thám Tử Ác Ma (Demon Detective) */
 .player-grid-card.demon-hellfire {
-    box-shadow: 0 0 20px #ef4444, inset 0 0 10px rgba(239, 68, 68, 0.4) !important;
-    border-color: #ef4444 !important;
+    box-shadow: 0 0 20px var(--danger), inset 0 0 10px rgba(239, 68, 68, 0.4) !important;
+    border-color: var(--danger) !important;
     animation: hellfirePulse 1.5s infinite alternate;
 }
 
-/* 20. Nhà Truyền Giáo (Missionary) - Cây thánh giá vàng */
+/* 20. Nhà Truyền Giáo (Missionary) */
 .player-grid-card.missionary-converted::after {
     content: "🕍";
     position: absolute;
     top: 5px;
     left: 20px;
     font-size: 12px;
-    filter: drop-shadow(0 0 2px gold);
+    filter: drop-shadow(0 0 2px var(--accent));
     z-index: 4;
 }
 
-/* 21. Ma Cà Rồng (Vampire) - Giọt máu pulsing */
+/* 21. Ma Cà Rồng (Vampire) */
 .player-grid-card.vampire-bitten::after {
     content: "🩸";
     position: absolute;
@@ -737,7 +862,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 22. Kẻ Phóng Hỏa (Arsonist) - Bể dầu tẩm xăng / Thiêu rụi */
+/* 22. Kẻ Phóng Hỏa (Arsonist) */
 .player-grid-card.arsonist-petroled::after {
     content: "🛢️";
     position: absolute;
@@ -750,7 +875,7 @@ h2, h3 {
     animation: burningIgnite 1s infinite alternate;
 }
 
-/* 23. Kẻ Thanh Trừng (Eradicator) - Bẫy sắt thép gai */
+/* 23. Kẻ Thanh Trừng (Eradicator) */
 .player-grid-card.eradicator-trapped::before {
     content: "⚔️";
     position: absolute;
@@ -761,19 +886,19 @@ h2, h3 {
     z-index: 2;
 }
 
-/* 24. Kẻ Thao Túng (The Manipulator) - Liên kết xoáy sáng */
+/* 24. Kẻ Thao Túng (The Manipulator) */
 .player-grid-card.manipulator-manipulated {
     border-color: #fbbf24 !important;
     box-shadow: 0 0 10px #fbbf24 !important;
 }
 
-/* 25. Kẻ Mạo Danh (The Impostor) / Sát Nhân (Serial Killer) - Vết đâm loang lổ */
+/* 25. Kẻ Mạo Danh (The Impostor) */
 .player-grid-card.lethal-slashed {
     border-color: #991b1b !important;
-    background-image: radial-gradient(circle, rgba(153, 27, 27, 0.2) 0%, transparent 70%);
+    background-image: radial-gradient(circle, rgba(153, 27, 27, 0.25) 0%, transparent 70%);
 }
 
-/* 26. Thần Chết Tập Sự (Apprentice Reaper) - Bóng ma xanh rêu */
+/* 26. Thần Chết Tập Sự (Apprentice Reaper) */
 .player-grid-card.reaper-predicted::before {
     content: "🪦";
     position: absolute;
@@ -785,7 +910,7 @@ h2, h3 {
     z-index: 2;
 }
 
-/* 27. Chủ Thần (The Prime) - Tinh vân tối tăm */
+/* 27. Chủ Thần (The Prime) */
 .player-grid-card.prime-nebula::after {
     content: "🌌";
     position: absolute;
@@ -795,7 +920,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 28. Mèo (Cat) - Vuốt độc / Phong ấn chân mèo */
+/* 28. Mèo (Cat) */
 .player-grid-card.cat-clawed {
     background-image: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(22, 163, 74, 0.08) 10px, rgba(22, 163, 74, 0.08) 11px);
 }
@@ -808,10 +933,10 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 29. Tử Thần (The Reaper) - Xác không hồn / Đầu lâu */
+/* 29. Tử Thần (The Reaper) */
 .player-grid-card.reaper-corpse {
-    background: #0c5776 !important;
-    border-color: #00122e !important;
+    background: #18181b !important;
+    border-color: #27272a !important;
     opacity: 0.65 !important;
 }
 .player-grid-card.reaper-corpse::after {
@@ -823,7 +948,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* === LỚP HOẠT ẢNH DÙNG CHUNG (ANIMATION KEYFRAMES) === */
+/* === LỚP HOẠT ẢNH VÀ TRANG TRÍ CHUNG === */
 @keyframes eyePulse { 
     0% { transform: scale(0.9); opacity: 0.6; } 
     100% { transform: scale(1.1); opacity: 1; } 
@@ -843,12 +968,12 @@ h2, h3 {
 }
 @keyframes purifiedGlow {
     0% { border-color: var(--border-color); box-shadow: none; }
-    30% { border-color: gold; box-shadow: 0 0 20px gold; }
+    30% { border-color: var(--accent); box-shadow: 0 0 20px var(--accent); }
     100% { border-color: var(--border-color); box-shadow: none; }
 }
 @keyframes mirrorReflection {
     0% { border-color: #cbd5e1; }
-    50% { border-color: #e2e8f0; }
+    50% { border-color: #f8fafc; }
     100% { border-color: #94a3b8; }
 }
 @keyframes rotatingPortal {
@@ -873,8 +998,8 @@ h2, h3 {
     100% { transform: translate(1px, -2px) rotate(-1deg); }
 }
 @keyframes hellfirePulse {
-    0% { box-shadow: 0 0 10px #ef4444; }
-    100% { box-shadow: 0 0 25px #ef4444; }
+    0% { box-shadow: 0 0 10px var(--danger); }
+    100% { box-shadow: 0 0 25px var(--danger); }
 }
 @keyframes bloodPulse {
     0% { transform: scale(0.9); filter: brightness(0.8); }
@@ -883,7 +1008,7 @@ h2, h3 {
 }
 @keyframes burningIgnite {
     0% { border-color: #f97316; box-shadow: 0 0 10px #f97316; }
-    100% { border-color: #ef4444; box-shadow: 0 0 25px #ef4444; }
+    100% { border-color: var(--danger); box-shadow: 0 0 25px var(--danger); }
 }
 @keyframes executionBloody {
     0% { transform: scale(1); }
@@ -932,7 +1057,7 @@ h2, h3 {
 }
 .btn-qty:hover { 
     background: var(--accent); 
-    color: #fff; 
+    color: var(--btn-text); 
 }
 .role-qty-box { 
     width: 26px; 
@@ -942,7 +1067,7 @@ h2, h3 {
 }
 
 .btn-info-role { 
-    background: rgba(45, 153, 174, 0.2); 
+    background: rgba(234, 179, 8, 0.05); 
     color: var(--accent); 
     border: 1px solid var(--accent); 
     border-radius: 4px; 
@@ -962,7 +1087,7 @@ h2, h3 {
 }
 
 /* === LỚP ĐỊNH DẠNG FORM, INPUTS & BUTTONS === */
-input, select, button { 
+input, select, textarea { 
     padding: 10px; 
     border-radius: 8px; 
     border: 1px solid var(--border-color); 
@@ -973,7 +1098,7 @@ input, select, button {
     transition: all 0.2s; 
     font-family: inherit;
 }
-input:focus, select:focus {
+input:focus, select:focus, textarea:focus {
     border-color: var(--accent);
 }
 button { 
@@ -984,6 +1109,9 @@ button {
     border: none; 
     min-height: 42px; 
     user-select: none;
+    border-radius: 8px;
+    font-family: inherit;
+    transition: all 0.2s;
 }
 button:hover:not(:disabled) { 
     filter: brightness(1.15); 
@@ -1000,7 +1128,7 @@ button:disabled {
 .btn-accent { background: var(--accent) !important; color: var(--btn-text) !important; }
 .btn-small { padding: 6px 12px; font-size: 12px; min-height: 30px; }
 .btn-suggest { 
-    background: rgba(45, 153, 174, 0.15); 
+    background: rgba(63, 63, 70, 0.3); 
     color: var(--text-main); 
     border: 1px solid var(--border-color); 
     font-size: 12px; 
@@ -1052,7 +1180,7 @@ button:disabled {
 
 /* Cán cân Game */
 .balance-wrapper { 
-    background: rgba(45, 153, 174, 0.15); 
+    background: rgba(234, 179, 8, 0.05); 
     padding: 10px; 
     border-radius: 8px; 
     margin-bottom: 12px; 
@@ -1061,7 +1189,7 @@ button:disabled {
 .balance-bar-container { width: 100%; height: 8px; background: var(--bg-main); border-radius: 4px; overflow: hidden; display: flex; }
 .balance-bar-wolf { background: var(--danger); transition: width 0.3s; }
 .balance-bar-third { background: #c084fc; transition: width 0.3s; }
-.balance-bar-village { background: #16a34a; transition: width 0.3s; }
+.balance-bar-village { background: var(--success); transition: width 0.3s; }
 .balance-text { font-size: 12px; font-weight: bold; text-align: center; margin-top: 6px; }
 
 /* Phân trang cấu hình */
@@ -1077,6 +1205,41 @@ button:disabled {
 #role-page-indicator {
     font-size: 13px;
     font-weight: bold;
+}
+
+/* === HỆ THỐNG TOAST THAY THẾ ALERT === */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+.toast {
+    background: var(--bg-panel);
+    border-left: 4px solid var(--accent);
+    color: var(--text-main);
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    font-size: 13.5px;
+    font-weight: bold;
+    min-width: 250px;
+    max-width: 350px;
+    pointer-events: auto;
+    animation: toastSlideIn 0.3s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    transition: opacity 0.3s, transform 0.3s;
+}
+.toast.toast-danger { border-left-color: var(--danger); }
+.toast.toast-success { border-left-color: var(--success); }
+.toast.toast-info { border-left-color: #38bdf8; }
+
+@keyframes toastSlideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
 /* === HỆ THỐNG HÒM THƯ (MAILBOX SYSTEM) === */
@@ -1101,10 +1264,9 @@ button:disabled {
     min-height: auto;
 }
 .mail-tab.active {
-    background: rgba(45, 153, 174, 0.25);
+    background: rgba(234, 179, 8, 0.1);
     color: var(--accent);
     font-weight: bold;
-    box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
     border-bottom: 2px solid var(--accent);
 }
 
@@ -1121,14 +1283,14 @@ button:disabled {
 /* Trạng thái chưa đọc */
 .mail-card.unread {
     background: var(--bg-panel);
-    border-color: rgba(225, 29, 72, 0.4);
-    box-shadow: 0 0 10px rgba(225, 29, 72, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
     position: relative;
     animation: mailPulse 2s infinite alternate;
 }
 @keyframes mailPulse {
-    0% { border-color: rgba(225, 29, 72, 0.2); }
-    100% { border-color: rgba(225, 29, 72, 0.6); }
+    0% { border-color: rgba(239, 68, 68, 0.2); }
+    100% { border-color: rgba(239, 68, 68, 0.6); }
 }
 .mail-card.unread .mail-indicator {
     background: var(--danger);
@@ -1152,7 +1314,7 @@ button:disabled {
     opacity: 0.65;
 }
 .mail-card.read .mail-indicator {
-    color: #16a34a;
+    color: var(--success);
     font-weight: bold;
     font-size: 14px;
     position: absolute;
@@ -1234,6 +1396,28 @@ button:disabled {
     font-style: italic;
     white-space: pre-wrap;
 }
+
+/* Điều hướng đọc thư */
+.parchment-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+    border-top: 1px dashed #a08060;
+    padding-top: 15px;
+}
+.btn-parchment-nav {
+    background: #cbd5e1;
+    color: #334155;
+    border: 1px solid #94a3b8;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    min-height: auto;
+}
+.btn-parchment-nav:hover {
+    background: #94a3b8;
+    color: #0f172a;
+}
 .parchment-footer {
     text-align: right;
     font-size: 12px;
@@ -1241,6 +1425,7 @@ button:disabled {
     color: #5c3c10;
     border-top: 1px solid #c0a080;
     padding-top: 8px;
+    margin-top: 10px;
 }
 
 /* === LỊCH SỬ & LÝ LỊCH BẢN ĐỒ === */
@@ -1261,7 +1446,7 @@ button:disabled {
 }
 .sys-msg { color: var(--log-text); }
 .kill-msg { color: var(--danger); font-weight: bold; }
-.info-msg { color: #16a34a; font-weight: bold; }
+.info-msg { color: var(--accent); font-weight: bold; }
 
 /* === PHÂN HỆ KÊNH CHAT ĐỘNG === */
 .right-tabs {
@@ -1271,7 +1456,7 @@ button:disabled {
 }
 .right-tab {
     flex: 1;
-    background: rgba(45, 153, 174, 0.15);
+    background: rgba(63, 63, 70, 0.15);
     color: var(--text-main);
     border: 1px solid var(--border-color);
     padding: 8px;
@@ -1292,7 +1477,7 @@ button:disabled {
 }
 .channel-tab {
     flex: 1;
-    background: rgba(45, 153, 174, 0.15);
+    background: rgba(63, 63, 70, 0.15);
     color: var(--text-main);
     border: 1px solid var(--border-color);
     font-size: 11px;
@@ -1313,27 +1498,27 @@ button:disabled {
     margin-bottom: 6px;
     line-height: 1.4;
 }
-.chat-msg.wolf { color: #ff5555; background: rgba(153, 27, 27, 0.08); border-left: 2px solid var(--danger); padding-left: 5px;}
-.chat-msg.couple { color: #ff85c0; background: rgba(236, 72, 153, 0.08); border-left: 2px solid var(--couple-pink); padding-left: 5px;}
-.chat-msg.graveyard { color: #cbd5e1; font-style: italic; background: rgba(71, 85, 105, 0.1); border-left: 2px solid var(--ghost-blue); padding-left: 5px;}
+.chat-msg.wolf { color: #f87171; background: rgba(220, 38, 38, 0.08); border-left: 2px solid var(--danger); padding-left: 5px;}
+.chat-msg.couple { color: #f472b6; background: rgba(236, 72, 153, 0.08); border-left: 2px solid var(--couple-pink); padding-left: 5px;}
+.chat-msg.graveyard { color: #94a3b8; font-style: italic; background: rgba(71, 85, 105, 0.1); border-left: 2px solid var(--ghost-blue); padding-left: 5px;}
 
 /* === HIỆU ỨNG LINH HỒN === */
 body.ghostly-mist-active {
-    filter: grayscale(35%) contrast(105%) brightness(85%);
+    filter: grayscale(40%) contrast(110%) brightness(80%);
     transition: filter 0.5s ease-in-out;
 }
 body.ghostly-mist-active::before {
     content: "";
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle, transparent 40%, rgba(0, 28, 68, 0.4) 100%);
+    background: radial-gradient(circle, transparent 40%, rgba(10, 10, 12, 0.5) 100%);
     pointer-events: none;
     z-index: 1001;
     animation: ghostlyFog 8s infinite alternate ease-in-out;
 }
 @keyframes ghostlyFog {
     0% { opacity: 0.2; }
-    100% { opacity: 0.45; }
+    100% { opacity: 0.5; }
 }
 
 /* Widget dự đoán tỷ lệ thắng */
@@ -1374,7 +1559,7 @@ body.ghostly-mist-active::before {
     border-radius: 5px;
     transition: width 0.4s ease-in-out;
 }
-.pred-bar-fill.village { background-color: #16a34a; }
+.pred-bar-fill.village { background-color: var(--success); }
 .pred-bar-fill.wolf { background-color: var(--danger); }
 .pred-bar-fill.third { background-color: #c084fc; }
 .pred-row .pct { width: 35px; text-align: right; font-weight: bold; }
@@ -1399,10 +1584,37 @@ body.ghostly-mist-active::before {
     transition: all 0.2s ease;
 }
 .step-indicator.active {
-    background: rgba(45, 153, 174, 0.2);
+    background: rgba(234, 179, 8, 0.1);
     color: var(--accent);
     font-weight: bold;
-    box-shadow: 0 0 5px rgba(56, 189, 248, 0.4);
+    box-shadow: 0 0 5px rgba(234, 179, 8, 0.3);
+}
+
+/* THANH TIẾN TRÌNH BIỂU QUYẾT TREO CỔ */
+.trial-vote-progress-wrapper {
+    background: var(--bg-main);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+    border: 1px solid var(--border-color);
+}
+.progress-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+.progress-track {
+    background: var(--bg-panel);
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: var(--danger);
+    width: 0%;
+    transition: width 0.3s ease-out;
 }
 
 /* GIAO DIỆN CHIA ĐÔI BỎ PHIẾU */
@@ -1425,10 +1637,10 @@ body.ghostly-mist-active::before {
     max-height: 250px;
 }
 .vote-split-column.acquit {
-    border-color: rgba(22, 163, 74, 0.3);
+    border-color: rgba(34, 197, 94, 0.3);
 }
 .vote-split-column.execute {
-    border-color: rgba(225, 29, 72, 0.3);
+    border-color: rgba(239, 68, 68, 0.3);
 }
 .vote-split-column .column-header {
     font-weight: bold;
@@ -1437,7 +1649,7 @@ body.ghostly-mist-active::before {
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 6px;
 }
-.vote-split-column.acquit .column-header { color: #16a34a; }
+.vote-split-column.acquit .column-header { color: var(--success); }
 .vote-split-column.execute .column-header { color: var(--danger); }
 
 /* Chứa avatar người tham gia biểu quyết */
@@ -1448,7 +1660,7 @@ body.ghostly-mist-active::before {
     justify-content: center;
 }
 .voter-avatar-chip {
-    background: rgba(45, 153, 174, 0.15);
+    background: rgba(63, 63, 70, 0.3);
     border: 1px solid var(--border-color);
     border-radius: 15px;
     padding: 4px 8px;
@@ -1468,7 +1680,7 @@ body.ghostly-mist-active::before {
 .gavel-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 17, 44, 0.85);
+    background: rgba(10, 10, 12, 0.88);
     z-index: var(--z-alert);
     display: flex;
     justify-content: center;
@@ -1543,8 +1755,8 @@ body.ghostly-mist-active::before {
     font-family: 'Cinzel', serif;
     font-size: 32px;
     font-weight: bold;
-    color: gold;
-    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    color: var(--accent);
+    text-shadow: 0 0 15px rgba(234, 179, 8, 0.4);
     margin-bottom: 20px;
 }
 .victory-visual-container {
@@ -1599,13 +1811,13 @@ body.ghostly-mist-active::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 4px solid gold;
+    border: 4px solid var(--accent);
     margin: 0 auto;
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.3);
 }
 .mvp-badge {
-    background: #eab308;
-    color: #000;
+    background: var(--accent);
+    color: var(--btn-text);
     font-weight: bold;
     font-size: 12px;
     padding: 4px 10px;
@@ -1619,7 +1831,7 @@ body.ghostly-mist-active::before {
     gap: 8px;
 }
 .mvp-stat-row {
-    background: rgba(45, 153, 174, 0.15);
+    background: rgba(63, 63, 70, 0.3);
     padding: 8px 12px;
     border-radius: 6px;
     display: flex;
@@ -1665,7 +1877,7 @@ body.ghostly-mist-active::before {
     max-width: 580px; 
     padding: 25px; 
     box-shadow: 0 -8px 30px rgba(0,0,0,0.7); 
-    transition: transform 0.25s ease-out; 
+    transition: transform 0.25s cubic-bezier(0.1, 0.8, 0.3, 1); 
     transform: translateY(100%); 
     max-height: 80vh; 
     overflow-y: auto;
@@ -1715,30 +1927,6 @@ body.ghostly-mist-active::before {
     color: var(--text-main); 
     font-weight: bold; 
 }
-.pill-switch {
-    position: relative; 
-    width: 48px; 
-    height: 24px; 
-    background: var(--border-color);
-    border-radius: 12px; 
-    cursor: pointer; 
-    transition: background 0.2s;
-}
-.pill-switch.active { background: #16a34a; }
-.pill-switch.active::after { left: 26px; }
-.pill-switch.active-danger { background: var(--danger); }
-.pill-switch::after {
-    content: ''; 
-    position: absolute; 
-    top: 3px; 
-    left: 3px; 
-    width: 18px; 
-    height: 18px;
-    background: white; 
-    border-radius: 50%; 
-    transition: left 0.2s; 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
 
 /* === SỰ KIỆN TAROT (THE LAST HUNT) === */
 .tarot-container { 
@@ -1782,7 +1970,7 @@ body.ghostly-mist-active::before {
     box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
 }
 .t-front { 
-    background: linear-gradient(135deg, #0C5776 0%, #001C44 100%); 
+    background: linear-gradient(135deg, #1a1a1e 0%, #0a0a0c 100%); 
     font-size: 28px; 
     color: var(--accent); 
 }
@@ -1825,7 +2013,7 @@ body.ghostly-mist-active::before {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--accent);
+    background: var(--success);
     display: inline-block;
     margin-right: 5px;
 }
@@ -1911,6 +2099,25 @@ body.ghostly-mist-active::before {
 /* === GIAO DIỆN PHƯƠNG TIỆN DI ĐỘNG (MOBILE LAYOUT) === */
 .mobile-nav { display: none; }
 
+/* Huy hiệu chỉ báo thông báo chưa đọc trên Mobile Nav */
+.nav-badge {
+    position: absolute;
+    top: 5px;
+    right: calc(50% - 20px);
+    background: var(--danger);
+    color: white;
+    font-size: 9px;
+    font-weight: bold;
+    min-width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    box-shadow: 0 0 4px var(--danger);
+}
+
 @media (max-width: 900px) {
     body { flex-direction: column; overflow-y: auto; }
     
@@ -1946,12 +2153,13 @@ body.ghostly-mist-active::before {
         padding: 5px 0;
         border-radius: 0;
         min-height: auto;
+        position: relative;
     }
     .mobile-nav button.active { 
         opacity: 1; 
         color: var(--accent); 
         font-weight: bold; 
-        background: rgba(0,0,0,0.1); 
+        background: rgba(0,0,0,0.15); 
         border-top: 3px solid var(--accent); 
     }
     
@@ -2026,8 +2234,8 @@ body.ghostly-mist-active::before {
 }
 
 /* Kiểu Bloody/Quỷ đỏ */
-.bloody-overlay { background: rgba(150, 0, 0, 0.85) !important; }
-.bloody-modal { border-color: #ff0000 !important; box-shadow: 0 0 35px #ff0000 !important; background: #000 !important; }
+.bloody-overlay { background: rgba(20, 5, 5, 0.94) !important; }
+.bloody-modal { border-color: var(--danger) !important; box-shadow: 0 0 35px var(--danger) !important; background: #000 !important; }
 
 /* === BỘ THẺ CHỨC NĂNG (FLASHCARD) === */
 .custom-modal-card-wrapper {

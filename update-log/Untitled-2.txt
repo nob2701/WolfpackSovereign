@@ -1,0 +1,139 @@
+MasoiOnline/
+│
+├── server.js                 (File chạy máy chủ Node.js)
+├── package.json
+│
+└── public/                   (Thư mục chứa mã nguồn giao diện)
+    │
+    ├── index.html            (Chỉ chứa cấu trúc khung HTML cốt lõi)
+    │
+    ├── css/
+    │   └── styles.css        (Chứa toàn bộ CSS & Themes)
+    │
+    └── js/
+        ├── main.js           (Điểm khởi chạy game - Entry Point)
+        ├── config.js         (Chứa ROLE_DB, từ điển DICT, biến G)
+        ├── audio.js          (Chứa AUDIO_MANAGER)
+        ├── ui.js             (Chứa UI_Module điều khiển giao diện)
+        ├── engine.js         (Chứa Engine_Module điều khiển luồng game)
+        ├── roles.js          (Chứa logic đêm ROLE_LOGIC của từng vai trò)
+        └── online.js         (Chứa Online_Module kết nối Socket)
+
+
+
+Khởi đầu: Trang đăng nhập:
++)2 lựa chọn: Quản trò, hoặc người chơi
++)Nếu chọn người chơi, chỉ cần nhập tên và id phòng
++)nếu chọn quản trò, tự động tạo phòng và vào giao diện quản trò
++)sau đó có nút tiếp tục, nhấn nút tiếp tục sẽ tự động chuyển tới giao diện tương ứng
+
+UI giao diện quản trò: 
++) ngay thẳng phía trên bên phải hiện ID phòng được hệ thống tự generate: 6 ký tự
++) chia màn hình ra làm 3 cột dọc:
+Cột bên trái hiển thị người chơi hiện tại (tự động cập nhật khi có người chơi join) (hiển thị tên người chơi)
+Cột bên phải là lựa chọn số lượng của từng roles và gamemode (sau đó khi quản trò nhấn chia role, bên cạnh tên người chơi ở cột bên trái sẽ hiển thị roles của người đó)
+Cột giữa chia làm 2 nửa trên dưới, ở trên là hiển thị tiến trình chơi từng chút MỘT, ở dưới là trạng thái thực tế của việc bỏ phiếu (Nhìn người chơi bỏ phiếu thực)
++) quản trò có quyền kick người chơi ra khỏi phòng
+
+UI giao diện người chơi:
++) giao diện chia làm 3 nhưng phần diện tích bên trái chiếm 1/4, giao diện giữa chiếm 1/2 và giao diện bên phải chiếm 1/4
++) giao diện bên phải sẽ là hòm thư, hòm thư sẽ như nhận email, sẽ dùng để nhận thông báo từ trò chơi (ví dụ như Từ giờ bạn là tay sai của Tử thần), mỗi mail sẽ hiện và đẩy mail như mail của google thật, có con lăn di lên di xuống và bấm chọn để đọc nội dung thư
++) giao diện ở giữa sẽ là các thao tác của roles tương ứng
++) khi quản trò bấm chia roles, giữa màn hình sẽ dần hiện ra một thẻ bài đang úp, người chơi nhấn để lật thẻ bài và biết roles của mình, thẻ bài sẽ tự biến mất sau 5s hoặc người chơi nhấn để biết vai trò của mình
++) giao diện bên trái là trạng thái hiện tại của các người chơi như thuộc phe nào,... và có ghi chức năng có thể sử dụng của role mà người chơi sở hữu.
++) Ban ngày sẽ chữ màu sáng, nền màu tối và ngược lại vào ban đêm, hiệu ứng chuyển màu nhẹ kiểu chuyển dần sang màu kia.
+Chung cho các giao diện:
+Nút cài đặt
+Support ME
+
+Sắp xếp UI thật hợp lý
+
+UI kết thúc:
+Sau khi có 1 bên thắng, hiện UI là Victory hay Defeat, và có nút new game để reset lại về UI giao diện người chơi (Không đổi phòng, không cần nhập lại tên, trực tiếp quay lại UI người chơi trắng lúc chưa phát roles)
+
+
+
+
+PHẦN 1: THIẾT KẾ LẠI CƠ CHẾ BAN ĐÊM (THE NIGHT PHASE REWORK)
+Thay vì GM phải gọi từng người, hệ thống sẽ chuyển sang chế độ Tự động & Đồng thời (Automated & Simultaneous Phase).
+Luồng hoạt động mới:
+Màn đêm buông xuống: Tất cả người chơi có chức năng ban đêm sẽ đồng loạt nhận được bảng thao tác UI của riêng mình (Tiên Tri thấy bảng soi, Sói thấy bảng chọn mồi...). Những người không có chức năng (Dân làng) sẽ thấy màn hình "Đang ngủ...".
+Nút "Kết thúc lượt" (End Turn):
+Sau khi chọn mục tiêu, người chơi bấm "Kết thúc lượt".
+Nếu đổi ý trước khi mọi người xong, có thể bấm "Hủy kết thúc" để chọn lại.
+Những chức năng không muốn dùng kỹ năng (ví dụ Phù thủy không muốn cứu/giết) cũng bắt buộc phải bấm "Bỏ qua & Kết thúc lượt" để điểm danh.
+Thanh Tiến Trình (Progress Bar): Trên màn hình mọi người (và GM) sẽ có thông báo: "Đang đợi các thế lực đêm hành động (3/5 người đã xong)..."
+Cơ chế đặc biệt cho Phù Thủy: Vì Phù thủy cần biết Sói cắn ai để cứu, đêm sẽ chia làm 2 nhịp tự động (Sub-phases):
+Nhịp 1: Sói, Tiên Tri, Bảo Vệ, Cupid... hành động đồng loạt. Xong Nhịp 1.
+Nhịp 2: UI của Phù Thủy mới hiện lên (kèm thông tin ai vừa bị cắn). Phù Thủy thao tác xong -> Bấm kết thúc lượt.
+Chuyển Sáng Tự Động: Khi số người đã bấm Kết thúc == tổng số người có chức năng thức dậy, hệ thống tự động gọi hàm resolveNightCalculations(), tính toán ai chết ai sống, và tự động chuyển UI tất cả mọi người sang Ban Ngày.
+PHẦN 2: KẾ HOẠCH NĂNG CẤP & FIX LỖI TOÀN DIỆN (COMPREHENSIVE UPGRADE PLAN)
+Để game thực sự mượt mà, chuyên nghiệp và không bị "break" giữa chừng, đây là các phương án nâng cấp chia theo từng module:
+1. Đập đi xây lại Kiến trúc State Management (Quan trọng nhất)
+Lỗi hiện tại: Biến window.G (GameState) đang được lưu ở phía GM. Nếu GM lỡ tay F5 (Refresh) trang web, hoặc mất mạng, toàn bộ ván game sẽ bốc hơi. Server NodeJS hiện tại chỉ làm vai trò "chuyển phát thư" (Relay).
+Phương án nâng cấp:
+Server is the Source of Truth: Chuyển toàn bộ file engine.js và roles.js lên Backend (NodeJS).
+Server sẽ lưu trữ trạng thái GameState. Máy khách (kể cả GM) chỉ hiển thị UI và gửi lệnh (Intent) như: VOTE, USE_SKILL. Server tính toán và gửi trạng thái mới về cho tất cả.
+Cơ chế Reconnect (Tái kết nối): Gắn ID người chơi bằng localStorage hoặc Session. Khi người chơi bị rớt mạng và vào lại bằng mã phòng, server nhận diện ID cũ và tự động đồng bộ lại UI đúng với trạng thái hiện tại (không bị đuổi ra hay mất vai trò).
+2. Nâng cấp Hệ thống Biểu quyết (Voting System Rework)
+Lỗi hiện tại: Biểu quyết đang đếm phiếu ngầm, hết giờ GM bấm kết án. Nếu hòa (Tie) thì không ai chết, khá nhàm chán và thiếu tính tranh luận.
+Phương án nâng cấp:
+Live Voting Board: Hiển thị thời gian thực ai đang vote cho ai (Icon của A hiện lên cạnh tên B). Có thể thay đổi phiếu trước khi hết giờ.
+Quy trình 3 bước Ban Ngày:
+Thảo luận & Đề cử (Nomination): Chọn ra 2-3 người bị nghi ngờ nhiều nhất.
+Biện hộ (Defense): Những người bị đề cử có 30 giây để type chat/nói biện hộ.
+Biểu quyết sinh tử (Final Vote): Làng chỉ được vote Giết hoặc Tha cho những người trên bục án.
+3. Cải tiến Logic Các Vai Trò (Role Interactions)
+Lỗi hiện tại: Logic đang xử lý tuyến tính, chưa chặt chẽ trong các trường hợp "Góc khuất" (Edge cases).
+Phương án nâng cấp:
+Sử dụng Event Priority Stack (Ngăn xếp ưu tiên). Ví dụ: (1) Bảo vệ tạo khiên -> (2) Sói cắn -> (3) Phù thủy cứu -> (4) Sát nhân giết (xuyên khiên) -> (5) Thợ săn bị giết thì bắn trả. Logic chạy theo thứ tự này sẽ không bao giờ bị lỗi mâu thuẫn.
+Sói phải có cơ chế Thống nhất (Consensus): Nếu 3 con Sói vote cắn 3 người khác nhau, hệ thống tự động chọn ngẫu nhiên 1 trong 3, hoặc hủy cắn (buộc Sói phải thảo luận).
+4. Giao diện & Trải nghiệm Người Dùng (UI/UX)
+Lỗi hiện tại: Code đang dùng alert() để thông báo. Trên mobile, alert() rất khó chịu, làm đứng luồng game và dễ gây mất kết nối Socket.
+Phương án nâng cấp:
+Xóa bỏ hoàn toàn 100% alert(). Thay bằng hệ thống Toast Notifications (Thông báo trượt từ góc màn hình) và In-game Modals (Popup đẹp trong game).
+Hệ thống Khung Chat (Chatbox): Chơi online bắt buộc phải có khung Chat. Cần chia làm 3 kênh:
+Chat chung: Dân làng dùng ban ngày.
+Chat Sói: Sói dùng ban đêm để bàn mưu cắn ai.
+Chat Âm Phủ: Dành cho những người đã chết "chém gió" với nhau (người sống không thấy).
+Nhật ký riêng tư (Personal Log): Mỗi người có một cửa sổ nhỏ ghi lại: "Đêm 1: Bạn đã soi A, A là Dân làng", tránh việc quên lãng khi game kéo dài.
+5. Chống Gian Lận (Anti-Cheat & Security)
+Lỗi hiện tại: Trạng thái gửi về có thể chứa toàn bộ vai trò của người chơi khác. Nếu ai đó biết F12 (DevTools) mở Console xem object window.G, họ sẽ biết hết ai là Sói.
+Phương án nâng cấp (Data Sanitization):
+Server trước khi gửi GameState về cho Player A phải lọc dữ liệu (Masking).
+Ví dụ: Player A là Dân, server chỉ gửi danh sách người chơi với thông tin role: "hidden". Chỉ những đồng đội Sói mới nhận được danh sách có role: "ma_soi".
+CÁC BƯỚC THỰC HIỆN TIẾP THEO (Tương lai)
+Nếu bạn đồng ý với kế hoạch này, chúng ta sẽ không viết lại code ngay lặp tức mà sẽ đi theo lộ trình:
+Bước 1: Cấu trúc lại NodeJS Server (chuyển Engine và Role Logic từ Frontend sang Backend).
+Bước 2: Xây dựng cơ chế Reconnection (Vào lại phòng không bị mất bài).
+Bước 3: Áp dụng luồng Ban Đêm Tự Động (End Turn) như ý tưởng của bạn.
+Bước 4: Xây dựng hệ thống biểu quyết Live Voting & Khung Chat.
+Bước 5: Tối ưu hóa UI/UX (bỏ alert, thêm animation).
+. GIẢI QUYẾT TRIỆT ĐỂ "HỘP THƯ": HỆ THỐNG "SỔ TAY BÍ MẬT" (PERSISTENT GRIMOIRE)
+Thay vì một cái popup "Mailbox" hiện lên rồi biến mất, mỗi người chơi sẽ có một nút Sổ Tay (Journal/Grimoire) ở góc màn hình, có thể mở ra bất cứ lúc nào (Ngày, Đêm, khi đang Vote, hay thậm chí khi đã chết).
+Sổ tay này chia làm 3 tab:
+Tab Báo Cáo Hệ Thống: Lưu vĩnh viễn mọi kết quả của bạn qua từng đêm (Đêm 1: Soi #3 - Sói; Đêm 2: Bị cắn nhưng có khiên...).
+Tab Ghi Chú Cá Nhân (Notepad): Bạn có thể tự gõ note vào đây để suy luận (VD: "#4 nhận là Tiên Tri, nghi ngờ #4 xạo").
+Tab Đánh Dấu (Marking): Bảng danh sách người chơi, cho phép bạn đánh tag họ bằng các Icon (Mặt sói, Kính lúp, Dấu hỏi, Hình xăm tình yêu...) để dễ quản lý.
+2. CƠ CHẾ DÀNH CHO NGƯỜI ĐÃ CHẾT (THE GHOST REALM MECHANIC)
+Chết sớm ở ngày 1 là một cực hình vì người chơi chỉ ngồi nhìn. Hãy tạo việc làm cho những linh hồn:
+Kênh Chat Âm Phủ: Giống như Town of Salem, người chết chat với nhau thoải mái, chửi thề, phân tích cục diện mà người sống không đọc được.
+Ngoại Cảm (Medium/Seance): Thêm chức năng "Bà Đồng" cho dân làng. Bà Đồng có thể nói chuyện với người chết vào ban đêm. Người chết có thể truyền đạt lại thông tin (VD: "Tiên Tri thật chết rồi, tôi bị Sói cắn hôm qua, cẩn thận thằng #5!").
+Cá Cược Sinh Tử (Bên lề): Người chết có thể dùng điểm (coin ảo) để cá cược xem phe nào sẽ thắng hoặc đêm nay ai sẽ chết, tạo tính giải trí khi chờ đợi ván mới.
+3. HỆ THỐNG GIAO TIẾP "THÌ THẦM" VÀ "ĐUỐI LÝ" (WHISPER & DEFENSE SYSTEM)
+Thì Thầm (Whispering): Ban ngày, thay vì chỉ có chat tổng, Player A có thể "Thì thầm" bí mật với Player B. Tuy nhiên, tất cả những người khác sẽ nhận được thông báo "A đang thì thầm với B". Điều này tạo ra sự nghi ngờ (Tại sao 2 người kia lại chat riêng?).
+Chế độ Lên Thớt (On Trial): Khi một người bị Vote nhiều nhất, trò chơi không treo cổ ngay. Bảng chat của mọi người bị khóa lại, TRỪ bảng chat của người bị lên thớt. Người đó có 30 giây "Di Ngôn Khẩn Cấp" để thanh minh. Sau đó, làng mới Vote lần 2: Tội Chết hoặc Trắng Án (Guilty or Innocent).
+4. SỰ KIỆN ĐỘT XUẤT THAY ĐỔI CỤC DIỆN (DYNAMIC GAME EVENTS)
+Để tránh việc game kéo dài nhàm chán hoặc đi vào bế tắc (Stalemate), server có thể tung ra các sự kiện ngẫu nhiên (hoặc khi thỏa điều kiện):
+Đêm Huyết Nguyệt (Blood Moon): (Sẽ xảy ra vào đêm 3 nếu Sói chưa giết được ai). Đêm nay, khiên của Bảo Vệ bị vô hiệu hóa, Sói chắc chắn giết được người.
+Nhật Thực (Eclipse): Ban ngày không ai được quyền chat hay thảo luận, chỉ được câm lặng và Vote dựa trên linh cảm.
+Dịch Bệnh (Plague): Nếu 2 ngày liên tiếp dân làng không treo cổ ai (Skip Vote), một người bất kỳ (ngoài sói) sẽ lăn ra chết vì bệnh. Buộc dân làng phải đưa ra quyết định đẫm máu.
+5. NHÓM VAI TRÒ "GÂY NHIỄU" & "LẬT MẶT" (CHAOS ROLES)
+Chỉ với Sói và Dân thì dễ bị bắt bài. Cần thêm nhóm vai trò phá bĩnh cục diện:
+Kẻ Ngốc (Fool/Jester): Phe thứ 3. Mục tiêu chiến thắng duy nhất: Làm sao để chọc tức dân làng treo cổ chính mình vào ban ngày. Nếu Kẻ Ngốc bị treo cổ, game kết thúc và Kẻ Ngốc thắng (hoặc Kẻ Ngốc sẽ được quyền kéo 1 người chết chung). Vai trò này khiến dân làng cực kỳ sợ hãi khi treo cổ những kẻ ăn nói linh tinh.
+Kẻ Trộm (Thief): Đêm 1 được thức dậy, xem 2 lá bài thừa ở ngoài (khi chia bài luôn để dư 2 lá). Kẻ trộm có quyền vứt bài của mình và lấy 1 trong 2 lá đó để chơi tiếp.
+Pháp Sư Câm (Silencer): Phe Sói. Đêm chỉ định 1 người, ngày hôm sau người đó bị khóa mõm (không thể gõ chat, không thể vote).
+6. CƠ CHẾ "LÀNG TRƯỞNG" CHUYỂN GIAO (MAYOR LEGACY)
+Hiện tại Trưởng Làng đang do GM tự gán. Chỉnh lại:
+Sáng ngày 1, mọi người phải Vote bầu Trưởng Làng (Trưởng Làng có 2 phiếu vote).
+Nếu Trưởng Làng bị giết chết vào ban đêm hoặc bị treo cổ, ngay trong khoảnh khắc chết, hệ thống sẽ hiện Popup cho Trưởng Làng: "Hãy trao lại Huy Hiệu cho một người bạn tin tưởng". Trưởng Làng chọn người kế nhiệm và nhắm mắt.

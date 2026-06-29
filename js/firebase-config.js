@@ -1,4 +1,4 @@
-// Khởi tạo và liên kết các thư viện SDK Firebase từ importmap
+// Khởi tạo và liên kết các thư viện SDK Firebase từ importmap cấu hình trong index.html
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { 
@@ -15,7 +15,7 @@ import {
     runTransaction
 } from "firebase/database";
 
-// Thông số cấu hình đồng bộ trực tuyến của ứng dụng
+// Thông số cấu hình đồng bộ hóa trực tuyến của ứng dụng Wolfpack Sovereign
 const firebaseConfig = {
     apiKey: "AIzaSyANIopuQprhN_dHI2W7WYwwPU2U4_Q8cWQ",
     authDomain: "wolfsovereignonline.firebaseapp.com",
@@ -30,18 +30,18 @@ const firebaseConfig = {
 // Khởi tạo thực thể Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Khởi tạo dịch vụ phân tích dữ liệu (Analytics) một cách an toàn
+// Khởi tạo dịch vụ phân tích dữ liệu (Analytics) một cách an toàn đề phòng bị chặn bởi trình duyệt
 let analytics = null;
 try {
     analytics = getAnalytics(app);
 } catch (error) {
-    console.warn("Analytics blocked or failed to initialize:", error.message);
+    console.warn("Dịch vụ Analytics bị chặn hoặc không thể khởi tạo:", error.message);
 }
 
-// Khởi tạo thực thể Realtime Database để đồng bộ trò chơi
+// Khởi tạo thực thể Realtime Database để đồng bộ hóa trò chơi trực tuyến
 const db = getDatabase(app);
 
-// Xuất các thực thể và hàm ra ngoài để hệ thống app.js và game-logic.js sử dụng
+// Xuất các thực thể và hàm ra ngoài để hệ thống app.js và game-logic.js sử dụng trực tiếp
 export {
     app,
     db,

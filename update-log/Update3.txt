@@ -1,0 +1,309 @@
+PHẦN I: CÁC LỖI LOGIC GAME & ĐỒNG BỘ TRẠNG THÁI (CRITICAL BUGS)
+1. Lỗi bất đối xứng thông tin: Quản trò (GM) và Người chơi bị "mù" vai trò
+Hiện trạng:
+Hàm showPlayerBottomSheet trong tệp ui-manager.js hoàn toàn không hiển thị trường thông tin role của người chơi, kể cả khi tham số isGM được truyền vào là true. GM chỉ nhìn thấy trạng thái Sống/Chết mà không thể biết ai đang giữ vai trò gì để điều phối.
+Đối với người chơi thường, sau khi tắt màn hình lật thẻ (flashcard-modal) ở đầu trận, giao diện không có bất kỳ khu vực nào hiển thị cố định vai trò hiện tại của họ. Nếu lỡ quên hoặc lỡ tay đóng thẻ, họ sẽ không thể xem lại vai trò của mình.
+Giải pháp:
+Đối với GM: Cập nhật lưới danh sách người chơi (renderUnmaskedSpectatorGrid) để hiển thị vai trò bên dưới tên của từng người chơi ngay trên màn hình chính của GM suốt trận đấu.
+Đối với Người chơi: Thiết lập một widget cố định (ví dụ: "Thẻ căn cước" nhỏ ở góc trên màn hình hoặc trong tab "Board") luôn hiển thị Vai trò, Phe phái và tóm tắt kỹ năng của bản thân.
+2. Lỗi phân phối sai lệch số lượng vai trò (Role Distribution Discard)
+Hiện trạng: Trong hàm distributeRoles (game-logic.js), thuật toán lấy danh sách vai trò từ cấu hình và đẩy vào mảng rolePool.
+Nếu tổng số lượng vai trò trong cấu hình lớn hơn số người chơi hiện tại, các vai trò ở cuối mảng sau khi trộn sẽ bị bỏ rơi do vòng lặp phân bổ chỉ chạy theo số lượng người chơi (activePlayers.forEach). Điều này phá vỡ hoàn toàn ý đồ thiết lập cán cân lực lượng của GM.
+Nếu số lượng vai trò nhỏ hơn, hệ thống tự động bù bằng villager mà không có cảnh báo hay chặn luồng, dễ dẫn đến việc thiếu các vai trò chức năng quan trọng.
+Giải pháp:
+Xây dựng cơ chế kiểm tra tính hợp lệ trước khi phân phối (Validation).
+Nút "Trộn & Phát Role" chỉ được phép kích hoạt khi tổng số lượng vai trò được cấu hình khớp chính xác 100% với số lượng người chơi thực tế trong phòng chờ. Nếu không khớp, hiển thị thông báo yêu cầu GM điều chỉnh tăng/giảm cụ thể.
+3. Lỗi bất đồng bộ luồng lật thẻ (Race Condition in Card Flip)
+Hiện trạng: Khi GM nhấn bắt đầu game, trạng thái meta/started chuyển sang true trên Firebase, kích hoạt hàm transitionToGameScreen cho tất cả người chơi. Lúc này, tiến trình ghi dữ liệu vai trò (players/${playerId}/role) của từng người chơi có thể chưa kịp hoàn tất hoặc chưa đồng bộ xong về máy khách. Hệ quả là trình lật thẻ sẽ đọc giá trị mặc định ban đầu là "villager", khiến người chơi nhận sai vai trò.
+Giải pháp:
+Tách biệt tiến trình: GM thực hiện lệnh "Phát vai trò" trước -> Hệ thống ghi nhận và phản hồi trạng thái "Đã sẵn sàng bắt đầu" khi toàn bộ người chơi đã được cập nhật vai trò trên DB -> GM mới có thể nhấn nút "Bắt đầu trận đấu".
+Hoặc ở phía Client, chỉ kích hoạt Modal lật thẻ khi nhận được dữ liệu vai trò hợp lệ khác với giá trị khởi tạo mặc định.
+4. Lỗi mất kết nối giữa chừng (Broken Reconnection Flow)
+Hiện trạng: Điều kiện để hiển thị Modal lật thẻ (triggerCardFlipModal) là người chơi phải có mặt ở màn hình chờ (body[data-view="lobby"]) tại thời điểm game bắt đầu. Nếu một người chơi bị mất kết nối (F5, rớt mạng) đúng lúc GM bấm bắt đầu, khi họ kết nối lại, màn hình game đã tải xong nhưng Modal lật thẻ sẽ không bao giờ xuất hiện nữa.
+Giải pháp:
+Lưu trạng thái đã xác nhận xem vai trò (hasSeenRole: true/false) lên Firebase cho từng người chơi.
+Khi Client kết nối lại, nếu kiểm tra thấy game đã bắt đầu (started === true) và hasSeenRole === false, hệ thống sẽ tự động kích hoạt Modal lật thẻ ngay lập tức để người chơi cập nhật thông tin sinh mệnh của mình.
+5. Kẹt pha đêm vô thời hạn (Night Phase Indefinite Stall)
+Hiện trạng: Pha đêm chỉ tự động chuyển sang ngày khi toàn bộ người chơi còn sống có trạng thái turnEnded === true. Đối với các vai trò không có kỹ năng đêm (như Dân thường) hoặc người chơi bị treo máy/AFK quên bấm nút "Đi ngủ", trò chơi sẽ bị kẹt vĩnh viễn ở pha đêm.
+Giải pháp:
+Tự động gán trạng thái turnEnded = true cho các vai trò không có kỹ năng kích hoạt ban đêm ngay khi pha đêm bắt đầu.
+Cung cấp quyền hạn cho GM: Hiển thị nút "Cưỡng chế chuyển sang ngày" (Force Transition) trên bảng điều khiển của GM để họ có thể bỏ qua những người chơi phản hồi chậm, duy trì nhịp độ trận đấu.
+PHẦN II: BẤT CẬP GIAO DIỆN & TRẢI NGHIỆM NGƯỜI CHƠI (UI/UX ISSUES)
+6. Tông màu và Bảng màu chưa phù hợp với chủ đề (Unfitting Theme & Color Palette)
+Hiện trạng: Tông màu hiện tại sử dụng Xanh hải quân phối Hồng phấn và Xanh lơ sáng (#001C44, #0C5776, #2D99AE, #F8DAD0). Đây là bảng màu mang thiên hướng công nghệ hoặc ứng dụng biển cả, không lột tả được không khí u ám, kịch tính, ma mị và đầy căng thẳng của một vương quốc bị Ma Sói cô lập.
+Giải pháp: Thiết kế lại bảng màu theo chủ đề Gothic/Dark Fantasy cổ điển:
+Nền chủ đạo: Xám tro tối (#121214), Đen huyền bí (#0a0a0c).
+Màu nhấn (Accent): Vàng kim vương quyền (#eab308 đại diện cho thế lực Sovereign/Làng), Đỏ máu dạ quang (#ef4444 đại diện cho thế lực Ma sói).
+Văn bản: Trắng sữa dịu mắt (#f8fafc) để tăng cường độ tương phản trên nền tối mà không gây mỏi mắt.
+7. Lỗi giật lag và cuộn trang khi cập nhật dữ liệu (UI Flickering & Rerender Bug)
+Hiện trạng: Mỗi khi Firebase có bất kỳ cập nhật nhỏ nào (ví dụ: có tin nhắn chat mới, một người chơi thay đổi lựa chọn mục tiêu), hàm renderNormalPlayerGrid lại xóa toàn bộ lưới bằng grid.innerHTML = "" và dựng lại từ đầu. Điều này gây ra hiện tượng nhấp nháy màn hình liên tục, cuộn trang bị nhảy về đầu, và làm gián đoạn trải nghiệm tương tác (người chơi đang định bấm chọn thẻ thì thẻ bị xóa dựng lại).
+Giải pháp:
+Áp dụng kỹ thuật cập nhật trạng thái cục bộ (State-driven DOM update). Không xóa toàn bộ HTML.
+Chỉ cập nhật các class trang trí (ví dụ: thêm class .dead, .silencer-muted) hoặc cập nhật text hiển thị trên các thẻ người chơi cụ thể khi dữ liệu của họ trên Firebase thay đổi, giữ nguyên các thẻ khác không bị dựng lại.
+8. Lỗi tích lũy sự kiện (Accumulated Event Listeners / Memory Leak)
+Hiện trạng: Trình lật thẻ (fc-card) và các nút trong Modal chọn mục tiêu gán sự kiện click trực tiếp bằng addEventListener mỗi khi modal được mở ra. Khi người chơi mở/đóng modal nhiều lần, các trình lắng nghe sự kiện (Event Listeners) sẽ bị xếp chồng lên nhau, dẫn đến việc click một lần nhưng hệ thống gửi đi hàng chục yêu cầu lên Firebase, gây crash ứng dụng hoặc thực hiện sai hành động.
+Giải pháp:
+Sử dụng thuộc tính { once: true } cho các sự kiện chỉ cần kích hoạt một lần.
+Gán sự kiện click một lần duy nhất lúc khởi tạo trang (DOMContentLoaded) cho các nút tĩnh của Modal, thay vì gán động mỗi lần mở.
+Sử dụng cơ chế gán sự kiện ủy quyền (Event Delegation) lên phần tử cha.
+PHẦN III: TỐI ƯU HÓA QUY TRÌNH CHO GM & NGƯỜI CHƠI (GAMEPLAY FLOW WORKFLOWS)
+9. Quy trình đề cử và Biện hộ quá cứng nhắc
+Hiện trạng: Pha thảo luận ban ngày yêu cầu người chơi phải chọn mục tiêu thông qua bảng chọn để đưa lên đài biện hộ. Tuy nhiên, việc chuyển pha tự động khi đạt quá bán phiếu đề cử có thể diễn ra quá nhanh khi người chơi chưa kịp thảo luận xong, làm mất đi tính chiến thuật thương thuyết của trò chơi.
+Giải pháp:
+Cung cấp cho GM quyền "Khóa/Mở" tính năng bỏ phiếu tự động.
+Bổ sung khoảng thời gian đệm (Discussion Timer) đếm ngược công khai trên màn hình. Khi hết giờ thảo luận, hệ thống mới chính thức mở cổng nhận đề cử treo cổ.
+10. Hệ thống hòm thư (Mailbox) thiếu phân loại thông tin trực quan
+Hiện trạng: Hòm thư hiển thị tất cả các loại thư từ hệ thống đến kết quả chức năng đêm một cách hỗn loạn. Người chơi khó lòng phân biệt đâu là tin nhắn hệ thống quan trọng (ví dụ: bị câm lặng, bị tẩm xăng) và đâu là thông tin chức năng thông thường.
+Giải pháp:
+Phân loại thư bằng mã màu (Color-coded envelopes) hoặc biểu tượng rõ ràng:
+Thư Đỏ (Cảnh báo nguy hiểm): Bị tẩm xăng, bị cắn, bị nguyền rủa.
+Thư Vàng (Chức năng): Kết quả soi của Tiên tri, kết quả bảo vệ.
+Thư Xanh (Hệ thống): Thông báo chuyển pha, kết quả tha bổng.
+Bổ sung hiệu ứng rung nhẹ (Shake effect) cho hòm thư khi nhận được Thư Đỏ để cảnh báo người chơi.
+I. CÁC LỖI & BẤT LỢI CỦA KHUNG CHAT TRONG CODE HIỆN TẠI
+Lỗi rò rỉ thông tin ban đêm (No Night Lock on Public Chat)
+Bất lợi: Kênh Làng (chan-public) hiện tại không hề bị khóa vào ban đêm. Người chơi (đặc biệt là những người dân thường không có chức năng) vẫn có thể nhắn tin vào kênh này lúc nửa đêm. Điều này phá vỡ luật chơi (đêm xuống mọi người phải im lặng ngủ say) và tạo cơ hội cho việc gian lận hoặc gây nhiễu thông tin.
+Lỗi "Kênh Uyên Ương Ma" - Cupid se duyên nhưng không có kênh chat
+Lỗi logic cực nặng: Trong file tick-engine.js (Tick 5), khi Cupid ghép đôi thành công, hệ thống chỉ gửi mật thư vào Mailbox của 2 người chơi mà không hề cập nhật thuộc tính inCouple: true hay bất kỳ ID cặp đôi nào vào hồ sơ của họ trên Firebase. Hệ quả là điều kiện mySelf.inCouple trong app.js sẽ luôn là undefined, kênh chat Uyên Ương (chan-couple) không bao giờ xuất hiện.
+Thiếu hoàn toàn kênh chat cho các thế lực mới (Chủ Thần, Tử Thần, Vampire)
+Thiếu sót: Code hiện tại mới chỉ định nghĩa cứng 4 kênh: Làng, Sói, Cặp đôi, Địa ngục (Linh hồn). Trò chơi đã bổ sung các vai trò tối cao như Chủ Thần (The Prime) có khả năng liên kết Thân cận, hoặc Tử Thần (Reaper), nhưng hệ thống chat hoàn toàn bỏ quên việc cấp kênh thảo luận đêm cho các phe này.
+Lỗ hổng đọc trộm chat qua Console (Security Leak)
+Bất lợi: Do Firebase Realtime Database được gọi hoàn toàn từ Client-side không có Rules bảo mật nghiêm ngặt, một người chơi hiểu biết về công nghệ có thể mở F12 (Console), lắng nghe trực tiếp đường dẫn rooms/roomId/chats/wolf để biết ai là Sói và họ đang bàn bạc những gì.
+II. GIẢI PHÁP THIẾT KẾ PHÂN LUỒNG CHAT ĐA PHE PHÁI BAN ĐÊM
+Để mang lại trải nghiệm nhập vai chân thực và an toàn nhất, hệ thống chat cần được tái cấu trúc theo mô hình Đóng băng theo thời gian và Phát kênh động theo phe.
+1. Cơ chế đóng băng/Mở khóa theo Pha (Day/Night Chat Locking)
+Khi chuyển sang Pha Đêm (Night Phase):
+Kênh Làng (chan-public): Ngay lập tức bị khóa (Muted). Ô nhập liệu chat sẽ bị xám màu và hiển thị dòng chữ: "Đêm đã buông xuống, toàn làng đang ngủ say... Hãy giữ im lặng!".
+Các kênh phe phái ban đêm: Hệ thống kiểm tra vai trò của người chơi để mở khóa các kênh riêng tư tương ứng. Ô chat của các kênh này được kích hoạt để thảo luận.
+Khi chuyển sang Pha Ngày (Day Phase):
+Kênh Làng (chan-public): Được mở khóa trở lại cho toàn bộ người chơi còn sống thảo luận công khai.
+Các kênh phe phái ban đêm: Sẽ chuyển sang trạng thái Chỉ đọc (Read-only). Người chơi có thể xem lại lịch sử thảo luận đêm qua của phe mình nhưng không thể nhắn tin mới vào ban ngày (tránh việc phân tâm hoặc phối hợp ngầm quá lộ liễu ban ngày).
+2. Thiết lập cơ chế sinh kênh chat động cho các phe phái mới
+Hệ thống chat không nên viết cứng (hardcode) các tab, mà phải tự động tạo kênh trên Firebase dựa trên diễn biến đêm:
+Phe Uyên Ương (Couple Chat):
+Logic sửa lỗi: Khi giải quyết hành động của Cupid trong Tick Engine, hệ thống phải cập nhật thuộc tính coupleId: "couple_123" cho cả hai người chơi được ghép đôi trên Firebase.
+Tạo kênh: Client của hai người chơi này sẽ tự động lắng nghe đường dẫn chat rooms/roomId/chats/couple_123 và hiển thị tab "Uyên Ương 💘".
+Phe Chủ Thần & Thân Cận (Prime Covenant Chat):
+Cơ chế: Khi Chủ Thần (The Prime) thực hiện khế ước kết nối thành công hai Thân Cận (Followers), hệ thống sẽ tạo một kênh chat riêng biệt: rooms/roomId/chats/prime_covenant.
+Quyền truy cập: Chỉ có Chủ Thần và hai Thân Cận được liên kết mới nhìn thấy tab "Khế Ước 🌌" để trò chuyện ngầm ban đêm.
+Phe Tử Thần (Reaper Faction Chat):
+Cơ chế: Nếu trận đấu có sự xuất hiện của Tử Thần (Reaper) và Thần Chết Tập Sự (Apprentice Reaper), hệ thống sẽ mở kênh rooms/roomId/chats/reaper_faction hiển thị tab "Tử Thần 💀" cho hai người này phối hợp chọn mục tiêu thu hoạch hồn.
+Phe Ma Cà Rồng (Vampire Chat):
+Cơ chế: Khi có nhiều hơn 1 Vampire trong ván đấu, hoặc khi Vampire thuần phục được tín đồ mới, kênh rooms/roomId/chats/vampire (Tab "Huyết Tộc 🧛") sẽ được mở ra để họ hội ý đêm.
+3. Cơ chế mã hóa tin nhắn cục bộ (Local Encrypted Chat Keys)
+Để ngăn chặn tuyệt đối tình trạng người chơi dùng DevTools đọc trộm gói tin Firebase của các kênh phe phái khác:
+Mỗi khi game bắt đầu, hệ thống sẽ cấp cho mỗi phe một mã khóa bí mật (Secret Hash Key) chỉ lưu trữ ở bộ nhớ RAM của Client thuộc phe đó (ví dụ: Sói có khóa WOLF_KEY, Cặp đôi có khóa COUPLE_KEY).
+Khi một thành viên gửi tin nhắn lên Firebase, tin nhắn sẽ được mã hóa bằng mã khóa của phe họ trước khi tải lên.
+Những người chơi khác dù có hack được đường dẫn Firebase để đọc tin nhắn cũng sẽ chỉ thấy các chuỗi ký tự vô nghĩa (Ciphertext). Chỉ có những client sở hữu đúng mã khóa của phe đó mới có thể giải mã ngược lại thành văn bản đọc được.
+I. THIẾT KẾ MÀN HÌNH CHỜ: "MÀN ĐÊM ĐANG TRÔI DẦN..."
+Để tạo hiệu ứng nhập vai sâu sắc, khi pha đêm bắt đầu, toàn bộ người chơi (không phân biệt vai trò) sẽ bị bao phủ bởi một màn hình chờ ngủ say.
+Thiết kế Giao diện (UI overlay):
+Một lớp phủ màn hình (Overlay) màu đen sâu, kết hợp hiệu ứng sương mù chuyển động nhẹ (ghostly-mist-active) và vòng tròn trăng khuyết mờ ảo ở giữa.
+Dòng chữ trạng thái trung tâm: "Màn đêm đang trôi dần... Hãy nhắm mắt lại và cầu nguyện cho bình minh!".
+Vô hiệu hóa toàn bộ tương tác chạm/click trên màn hình của người chơi trong trạng thái này.
+Cơ chế kích hoạt âm thanh:
+Khi chuyển pha đêm, hệ thống phát đoạn nhạc nền âm u (giếng nước, tiếng gió rít, tiếng sói hú xa xăm).
+Cơ chế gọi dậy (The Wake-up Cue):
+Chỉ khi đến lượt vai trò của người chơi đó được gọi dậy (theo tiến trình hàng đợi), lớp phủ màu đen này mới tự động mờ dần và biến mất (Fade out), kèm theo tiếng động hiệu ứng đặc trưng (ví dụ: tiếng cú kêu cho Tiên Tri, tiếng bình thí nghiệm cho Phù Thủy, tiếng xích sắt cho Sói).
+Lúc này, bảng nút kích hoạt kỹ năng đêm mới hiển thị để họ thực hiện hành động. Sau khi họ bấm "Xác nhận kết thúc lượt" (Sleep/Confirm), lớp phủ đen sẽ lập tức đóng lại, đưa họ về trạng thái ngủ say.
+II. THUẬT TOÁN TÍNH TOÁN SỐ LƯỢNG NGƯỜI CHƠI CHỦ ĐỘNG (
+X
+X
+)
+Để bộ đếm 
+X
+/
+X
+X/X
+ hoạt động chính xác và tự động chuyển pha ngay khi đủ người hành động mà không cần chờ Dân Làng thường, hệ thống cần tính toán giá trị 
+X
+X
+ một cách động vào đầu mỗi đêm.
+1. Công thức xác định 
+X
+X
+ tại thời điểm hoàng hôn (Sunset Scan)
+Ngay khi pha đêm bắt đầu, một tiến trình chạy ngầm (chạy bởi máy Host/GM) sẽ quét toàn bộ danh sách người chơi trong phòng và tính toán 
+X
+X
+ theo các điều kiện lọc sau:
+X
+=
+Tổng s
+o
+ˆ
+ˊ
+ người chơi thỏa m
+a
+˜
+n t
+a
+ˆ
+ˊ
+t cả đi
+e
+ˆ
+ˋ
+u kiện
+X=Tổng s 
+o
+ˆ
+ 
+ˊ
+  người chơi thỏa m 
+a
+˜
+ n t 
+a
+ˆ
+ 
+ˊ
+ t cả đi 
+e
+ˆ
+ 
+ˋ
+ u kiện
+Các điều kiện lọc cụ thể:
+Trạng thái sinh mệnh: Người chơi phải còn sống (alive === true).
+Sở hữu chức năng đêm: Vai trò của người chơi phải nằm trong danh sách các vai trò có kỹ năng chủ động ban đêm (Loại trừ các vai trò thụ động hoặc không hành động đêm như: villager - Dân làng thường, idiot - Chàng ngốc, clown - Gã hề...).
+Khả năng sử dụng kỹ năng đêm nay: Người chơi không bị tước đoạt kỹ năng bởi các trạng thái bất lợi:
+Không bị khóa phép/gây mê bởi kẻ khác (isAvengerAsleep === true hoặc bị khóa bởi Mèo).
+Phù Thủy đã dùng hết cả 2 bình thuốc cứu/độc sẽ không được tính vào 
+X
+X
+.
+Bảo Vệ bị phong tỏa lượt (nếu có luật) sẽ không được tính.
+2. Lưu trữ chỉ số 
+X
+X
+ lên Firebase
+Hệ thống lưu trữ hai thông số này tại đường dẫn:
+rooms/${roomId}/meta/activeNightActorsCount 
+=
+X
+=X
+ (Số lượng người cần hành động đêm nay).
+rooms/${roomId}/meta/submittedNightActionsCount 
+=
+Y
+=Y
+ (Số lượng người đã hoàn thành và xác nhận lượt).
+Mỗi khi một người chơi thuộc diện 
+X
+X
+ hoàn thành kỹ năng và bấm "Xác nhận kết thúc lượt", hệ thống sẽ dùng lệnh runTransaction để tăng giá trị 
+Y
+Y
+ lên 
+1
+1
+.
+III. QUY TRÌNH VẬN HÀNH TUẦN TỰ (SEQUENTIAL NIGHT FLOW)
+Có hai phương án vận hành đêm tùy thuộc vào nhịp độ game bạn mong muốn:
+Phương án A: Gọi dậy tuần tự tuyệt đối (Strict Sequential - Cổ điển)
+Cách hoạt động: Hệ thống tạo ra một mảng hàng đợi thứ tự các vai trò sẽ thức dậy đêm nay (Ví dụ: [Guard, Wolf, Seer, Witch]).
+Tiến trình:
+Hệ thống gọi Guard (Bảo vệ) dậy. Màn hình Bảo Vệ mở ra. Các vai trò khác thấy màn hình "Màn đêm đang trôi dần...".
+Bảo Vệ hành động xong -> Bấm xác nhận -> Trạng thái Bảo Vệ đóng lại.
+Hệ thống chuyển con trỏ sang Wolf -> Các Ma Sói cùng thức dậy thảo luận và chọn mục tiêu cắn.
+Cứ thế cho đến hết hàng đợi. Khi người cuối cùng trong hàng đợi hoàn thành (
+Y
+=
+X
+Y=X
+), game tự động chuyển sang ban ngày.
+Ưu điểm: Đúng chuẩn Ma Sói truyền thống, tạo cảm giác hồi hộp tột độ.
+Phương án B: Gọi dậy song song che giấu (Parallel Disguised Night - Tối ưu thời gian)
+Cách hoạt động: Để tránh việc game bị chậm do phải chờ từng người, tất cả 
+X
+X
+ người chơi có chức năng đêm sẽ thức dậy cùng một lúc trên màn hình riêng của họ để thực hiện kỹ năng.
+Tiến trình:
+Dân làng thường chỉ nhìn thấy màn hình "Màn đêm đang trôi dần...".
+X
+X
+ người có chức năng sẽ thấy màn hình mở ra, thực hiện kỹ năng của mình một cách độc lập và song song.
+Người nào xong trước sẽ đi ngủ trước (màn hình tối lại).
+Bộ đếm 
+Y
+/
+X
+Y/X
+ hoạt động liên tục. Ngay khi người cuối cùng trong số 
+X
+X
+ người bấm xác nhận (
+Y
+=
+X
+Y=X
+), toàn bộ hệ thống xử lý kết quả đêm (Tick Engine) và lập tức chuyển sang ban ngày.
+Ưu điểm: Tiết kiệm tối đa thời gian chờ đợi (thời gian đêm chỉ bằng thời gian của người suy nghĩ lâu nhất), rất phù hợp cho chơi trực tuyến.
+IV. CƠ CHẾ DỰ PHÒNG CHỐNG TREO PHÒNG (NIGHT TIMEOUT SAFETY)
+Để đề phòng trường hợp một trong số 
+X
+X
+ người chơi bị treo máy, rớt mạng hoặc cố tình không bấm xác nhận khiến 
+Y
+Y
+ không bao giờ bằng 
+X
+X
+:
+Bộ đếm thời gian Đêm (Night Timer): Thiết lập một bộ đếm ngược tối đa cho pha đêm (ví dụ: 60 giây).
+Tự động bỏ lượt khi hết giờ: Khi đồng hồ đếm ngược về 
+0
+0
+:
+Bất kỳ người chơi nào chưa bấm xác nhận sẽ bị hệ thống tự động khóa lượt (bỏ qua hành động đêm nay).
+Hệ thống tự động ép buộc giá trị 
+Y
+=
+X
+Y=X
+ và thực hiện chuyển sang pha ngày ngay lập tức để cứu ván đấu.
+1. Thao tác dán (Paste) mã phòng bị lỗi trên thiết bị di động
+Điểm tệ (UX Bug):
+Hệ thống mã phòng chia làm 6 ô nhập liệu tĩnh (code-1 đến code-6). Hàm setupCodeInputNavigation chỉ bắt sự kiện input đơn lẻ để tự động chuyển con trỏ sang ô tiếp theo.
+Nếu người chơi nhận được mã phòng qua tin nhắn Zalo/Messenger, họ sao chép toàn bộ mã (ví dụ: A4B9XZ) và nhấn "Dán" vào ô đầu tiên, hệ thống sẽ chỉ nhận chữ A và đứng im, không tự phân tách 5 ký tự còn lại vào các ô tiếp theo do giới hạn maxlength="1". Người chơi buộc phải nhớ và gõ thủ công từng chữ — một trải nghiệm cực kỳ tồi tệ trên điện thoại.
+Giải pháp: Bổ sung trình lắng nghe sự kiện paste trên toàn bộ khu vực nhập mã. Khi phát hiện người dùng dán chuỗi 6 ký tự, hệ thống tự động bóc tách từng chữ cái và điền nhanh vào 6 ô tương ứng.
+2. Lạm dụng hộp thoại hệ thống alert() gây đứt gãy cảm xúc
+Điểm tệ (UX Bug):
+Game đang dùng lệnh alert() mặc định của trình duyệt cho các thông báo quan trọng (ví dụ: "Đã ghi nhận mục tiêu!", "Đã sao chép mã phòng!").
+alert() của trình duyệt rất xấu, chặn hoàn toàn luồng xử lý giao diện (freeze CSS), bắt người dùng phải bấm "OK" mới được đi tiếp. Trong một game cần không khí ma mị, sự xuất hiện đột ngột của một popup hệ thống màu xám xịt sẽ phá hỏng hoàn toàn sự nhập vai.
+Giải pháp: Thay thế toàn bộ alert() bằng hệ thống Toasts/Notification tự động ẩn sau 2-3 giây ở góc màn hình, hoặc các modal chuyển cảnh được thiết kế đồng bộ với tông màu tối của game.
+3. "Hành xác" người chơi bằng việc chuyển Tab liên tục trên di động
+Điểm tệ (UX Bug):
+Trên di động, giao diện bị bẻ thành 5 Tab ẩn/hiện hoàn toàn độc lập (display: none !important).
+Hãy tưởng tượng kịch bản ban ngày: Người chơi muốn xem kết quả soi đêm qua trong Hòm thư (Tab 1) -> Phải bấm Tab 1 -> Xem xong muốn bàn luận phải bấm sang Chat (Tab 4) -> Đọc chat xong muốn bỏ phiếu treo cổ phải bấm sang Board (Tab 3) để nominate. Việc liên tục chuyển đổi qua lại giữa 3-4 màn hình chỉ để thực hiện một chuỗi hành động đơn giản trong 30 giây thảo luận sẽ gây ức chế cực kỳ lớn.
+Giải pháp: Tích hợp thông tin đa kênh thông minh. Khi ở Tab "Board" (Bàn chơi chính), hãy thiết kế một chấm đỏ thông báo (Notification Badge) nhỏ khi có thư mới, hoặc một khung chat rút gọn (Mini-chat overlay) trượt từ cạnh bên để người chơi vừa xem bàn cờ, vừa chat, vừa đọc thư được cùng lúc.
+4. Thiếu chỉ báo ý nghĩa của các biểu tượng trạng thái (Emoji Ambiguity)
+Điểm tệ (UX Bug):
+Hàm applyDecorativeClasses gắn rất nhiều emoji lên thẻ người chơi để biểu thị trạng thái (ví dụ: 🧿 cho Wolf Mage scanned, 🎗️ cho Guarantor, 🪦 cho Reaper predicted...).
+Tuy nhiên, người chơi mới (hoặc kể cả người chơi cũ) không thể nhớ nổi ý nghĩa của hàng chục emoji này. Khi bấm vào thẻ, giao diện cũng không hề giải thích các ký hiệu đó có nghĩa là gì.
+Giải pháp: Thêm tính năng hiển thị chú giải (Tooltip/Legend). Khi người chơi bấm vào thẻ của ai đó, Bottom Sheet hiện lên phải liệt kê rõ: "Người chơi này đang được [Bảo vệ 🛡️] và bị [Câm lặng 🤫]" thay vì chỉ hiển thị emoji thô cứng.
+5. Sự tù túng khi đọc hòm thư Mailbox và Parchment Modal
+Điểm tệ (UX Bug):
+Khi người chơi nhận được nhiều mật thư chức năng qua các đêm, họ phải bấm vào từng thư để mở cuộn giấy cổ (Parchment Modal), đọc xong lại phải bấm nút ✕ để tắt, rồi lại bấm vào thư tiếp theo.
+Hệ thống không hề có nút "Thư tiếp theo ➡️" hoặc "Thư trước đó ⬅️" ngay trong màn hình đọc thư, khiến thao tác kiểm tra thông tin trở nên rất rườm rà.
+Giải pháp: Thêm nút điều hướng nhanh hoặc hỗ trợ thao tác vuốt trái/phải (Swipe left/right) ngay trên cuộn giấy cổ để chuyển đổi nhanh giữa các thư chưa đọc.
+6. Nguy cơ bấm nhầm phá hỏng ván đấu từ phía Quản trò (GM)
+Điểm tệ (UX Bug):
+Nút "🎲 Trộn & Phát Role" của GM không hề có bước xác nhận lại (Double Confirmation). Nếu GM lỡ tay bấm nhầm nút này khi trận đấu đang diễn ra hoặc chuẩn bị bắt đầu, toàn bộ vai trò của người chơi sẽ bị xáo trộn lại từ đầu, phá hỏng ván đấu của cả phòng.
+Nút "Xử tử người chơi" trong Bottom Sheet của GM cũng hoạt động tương tự, chỉ cần chạm nhẹ là người chơi "bay màu" mà không có hộp thoại xác nhận khẩn cấp.
+Giải pháp: Bắt buộc phải hiển thị một popup xác nhận: "Bạn có chắc chắn muốn phát lại vai trò? Hành động này sẽ reset ván đấu!" trước khi thực thi các lệnh mang tính hủy diệt của GM.
+7. Bottom Sheet "bất động" trên điện thoại
+Điểm tệ (UX Bug):
+Bảng thông tin người chơi (player-sheet-overlay) hiển thị dưới dạng Bottom Sheet trượt từ dưới lên — một UI rất chuẩn di động. Tuy nhiên, người dùng di động ngày nay có thói quen vuốt xuống (Swipe down to dismiss) để tắt nhanh các bảng này.
+Giao diện hiện tại bắt buộc người dùng phải tìm và bấm chính xác vào nút "ĐÓNG LÝ LỊCH" ở dưới cùng hoặc chạm ra vùng ngoài, gây cảm giác đơ cứng về mặt vuốt chạm.
+Giải pháp: Tích hợp thư viện hoặc viết mã bắt sự kiện vuốt chạm vuốt xuống (touchstart, touchmove, touchend) để cho phép kéo trượt tấm bảng xuống dưới để tắt mượt mà.
+8. Thiếu hiển thị tiến trình biểu quyết công khai ban ngày
+Điểm tệ (UX Bug):
+Khi có ai đó bị tố giác lên đài biện hộ, hệ thống hiển thị biểu chỉ báo 4 bước nhưng người chơi không biết có bao nhiêu phiếu đang đồng ý treo cổ họ, ai đã bỏ phiếu và thời gian biện hộ còn lại là bao nhiêu giây. Sự thiếu hụt thông số thời gian thực này làm giảm đi 80% sự kịch tính và dồn dập của pha treo cổ.
+Giải pháp: Thiết kế một thanh tiến trình (Progress Bar) hiển thị tỷ lệ phiếu phạt đền thời gian thực (ví dụ: 4/7 phiếu để lên đài) kèm đồng hồ đếm ngược biện hộ (Defense Countdown Timer) nhấp nháy đỏ khi sắp hết giờ.
+9. Kết thúc trận đấu hụt hẫng (Abrupt Victory Transition)
+Điểm tệ (UX Bug):
+Khi đạt điều kiện thắng, hàm showVictoryScreen lập tức bật ra che phủ toàn bộ màn hình. Người chơi đang gõ dở tin nhắn chat hoặc đang thảo luận gay cấn sẽ bị cắt đứt đột ngột mà không có màn hình thông báo chuyển tiếp hay hiệu ứng vinh danh rõ ràng.
+Giải pháp: Tạo một khoảng trễ 3-5 giây sau khi trận đấu kết thúc, phát hiệu ứng âm thanh chiến thắng vang dội, sau đó mới từ từ mở màn hình vinh danh MVP và hiển thị toàn bộ vai trò thật của cả làng để mọi người cùng "ồ" lên thích thú.
+Loại bỏ gọi giả, fake role

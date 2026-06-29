@@ -6,13 +6,13 @@ export const TickEngine = {
     async resolveNightActions(roomId) {
         const roomRef = ref(db, `rooms/${roomId}`);
         const snapshot = await get(roomRef);
-        if (!snapshot.exists()) return { deaths: [], mailboxDeliveries: {} };
+        if (!snapshot.exists()) return { deaths: [], mailboxDeliveries: {}, playerStateUpdates: {} };
 
         const roomData = snapshot.val();
         const playersMap = roomData.players || {};
         const playersList = Object.values(playersMap);
 
-        // Mảng gom toàn bộ lệnh hành động đêm gửi lên từ client
+        // Mảng gom toàn bộ lệnh hành động đêm gửi lên từ client của người chơi còn sống
         let actionBuffer = [];
         playersList.forEach(p => {
             if (p.alive && p.targetSelection) {
@@ -27,16 +27,21 @@ export const TickEngine = {
             }
         });
 
-        // Khởi tạo các cấu trúc lưu trữ trạng thái cuối cùng
+        // Khởi tạo các cấu trúc lưu trữ trạng thái kết quả cuối cùng
         const deathsSet = new Set();
         const mailboxDeliveries = {}; // Cấu trúc: { [playerId]: [ {title, content, category} ] }
+        const playerStateUpdates = {}; // Lưu thay đổi thuộc tính người chơi để ghi đè lên Firebase
         
         const initMailbox = (pid) => {
             if (!mailboxDeliveries[pid]) mailboxDeliveries[pid] = [];
         };
 
-        // Biến bổ trợ kiểm soát xuyên suốt các bước
-        const purifiedPlayers = new Set();      // Đối tượng được Thiên Sứ thanh tấy
+        const initPlayerState = (pid) => {
+            if (!playerStateUpdates[pid]) playerStateUpdates[pid] = {};
+        };
+
+        // Biến bổ trợ kiểm soát xuyên suốt các bước phân giải
+        const purifiedPlayers = new Set();      // Đối tượng được Thiên Sứ thanh tẩy
         const identitySwaps = {};              // Tráo đổi Tiên tri: { [PlayerA]: PlayerB }
         const trappedPlayers = {};             // Eradicator sập bẫy: { [EradicatorId]: TargetId }
         const protectedPlayers = new Set();    // Bảo Vệ tuần tra thành công
@@ -46,7 +51,6 @@ export const TickEngine = {
         const silencedPlayers = new Set();     // Người chơi bị câm lặng tiếp theo
         const convertedPlayers = new Set();    // Tín đồ bị thu phục
         const vampireBittenPlayers = new Set(); // Nạn nhân bị Vampire cắn
-        const petrolMarks = roomData.petrolMarks || {}; // Giữ trạng thái xăng cũ từ cơ sở dữ liệu
         const newlyPetroled = new Set();       // Các nhà vừa bị tưới xăng đêm nay
 
         // ==========================================
@@ -55,6 +59,11 @@ export const TickEngine = {
         actionBuffer.forEach(act => {
             if (act.role === "angel" && act.actionType === "purify") {
                 purifiedPlayers.add(act.targetId);
+                
+                // Giải trừ xăng dầu trên Firebase nếu có dính
+                initPlayerState(act.targetId);
+                playerStateUpdates[act.targetId].isPetroled = false;
+
                 initMailbox(act.srcId);
                 mailboxDeliveries[act.srcId].push({
                     title: "[👼] SỨ MỆNH KHAI SÁNG",
@@ -131,18 +140,27 @@ export const TickEngine = {
                 primeFollowers.add(act.targetId);
                 primeFollowers.add(act.secondaryId);
                 
-                initMailbox(act.srcId);
-                mailboxDeliveries[act.srcId].push({
-                    title: "[🌌] THIẾT LẬP KHẾ ƯỚC CHỦ THẦN",
-                    content: `Khế ước linh hồn hoàn tất! Thần dân ${playersMap[act.targetId]?.name} và ${playersMap[act.secondaryId]?.name} đã chính thức trở thành Thân Cận.`
-                });
+                // Đồng bộ sinh mã kênh chat Khế Ước động bảo mật chống coi trộm console
+                const primeCovenantChatId = "prime_cov_" + roomId;
+                initPlayerState(act.srcId);
+                playerStateUpdates[act.srcId].primeCovenantId = primeCovenantChatId;
 
                 [act.targetId, act.secondaryId].forEach(followerId => {
+                    initPlayerState(followerId);
+                    playerStateUpdates[followerId].primeCovenantId = primeCovenantChatId;
+                    playerStateUpdates[followerId].isPrimeFollower = true;
+
                     initMailbox(followerId);
                     mailboxDeliveries[followerId].push({
                         title: "[🌌] KHẾ ƯỚC TỐI CAO",
-                        content: "Bạn đã được chọn làm Thân Cận của Chủ Thần tối cao! Bạn được ngài che chở bảo vệ khỏi đòn cắn của Sói."
+                        content: "Bạn đã được lựa chọn làm Thân Cận của Chủ Thần tối cao! Bạn được ngài che chở bảo vệ khỏi đòn cắn của Sói và được mở kênh thảo luận đêm Khế Ước."
                     });
+                });
+
+                initMailbox(act.srcId);
+                mailboxDeliveries[act.srcId].push({
+                    title: "[🌌] THIẾT LẬP KHẾ ƯỚC CHỦ THẦN",
+                    content: `Khế ước linh hồn hoàn tất! Thần dân ${playersMap[act.targetId]?.name} và ${playersMap[act.secondaryId]?.name} đã chính thức trở thành Thân Cận đêm nay.`
                 });
             }
         });
@@ -183,6 +201,10 @@ export const TickEngine = {
             if (act.role === "silencerWolf" && act.actionType === "silence") {
                 if (!purifiedPlayers.has(act.targetId)) {
                     silencedPlayers.add(act.targetId);
+                    
+                    initPlayerState(act.targetId);
+                    playerStateUpdates[act.targetId].isSilencerMuted = true; // Lưu câm lặng để UI hiển thị tắt chat
+
                     initMailbox(act.srcId);
                     mailboxDeliveries[act.srcId].push({
                         title: "[🤫] VUỐT TĨNH LẶNG",
@@ -218,8 +240,17 @@ export const TickEngine = {
         // TICK 5: LIÊN KẾT & THU PHỤC ĐỒNG MINH (ALIGNMENT SHIFT & LINKS)
         // ==========================================
         actionBuffer.forEach(act => {
-            // Cupid se duyên
+            // SỬA LỖI LOGIC: Cupid se duyên và đồng bộ kích hoạt sinh mã coupleId
             if (act.role === "cupid" && act.actionType === "link_lovers") {
+                const uniqueCoupleId = "couple_" + roomId + "_" + Math.random().toString(36).substring(2, 7);
+
+                // Gán thuộc tính liên kết lên hồ sơ của cả 2 mục tiêu để Client mở khóa tab "Uyên Ương"
+                [act.targetId, act.secondaryId].forEach(loverId => {
+                    initPlayerState(loverId);
+                    playerStateUpdates[loverId].inCouple = true;
+                    playerStateUpdates[loverId].coupleId = uniqueCoupleId;
+                });
+
                 initMailbox(act.srcId);
                 mailboxDeliveries[act.srcId].push({
                     title: "[💘] THẮT NÚT TƠ HỒNG",
@@ -239,7 +270,7 @@ export const TickEngine = {
                 });
             }
 
-            // Nhà Truyền Giáo (Missionary) thu phục
+            // Nhà Truyền Giáo (Missionary) thu phục tín đồ
             if (act.role === "missionary" && act.actionType === "convert") {
                 convertedPlayers.add(act.targetId);
                 initMailbox(act.srcId);
@@ -254,9 +285,18 @@ export const TickEngine = {
                 });
             }
 
-            // Vampire hút máu
+            // Vampire hút máu và biến đổi Huyết Tộc
             if (act.role === "vampire" && act.actionType === "bite") {
                 vampireBittenPlayers.add(act.targetId);
+                const vampireChatId = "vampire_" + roomId;
+
+                initPlayerState(act.srcId);
+                playerStateUpdates[act.srcId].vampireFactionId = vampireChatId;
+
+                initPlayerState(act.targetId);
+                playerStateUpdates[act.targetId].isVampireBitten = true;
+                playerStateUpdates[act.targetId].vampireFactionId = vampireChatId;
+
                 initMailbox(act.srcId);
                 mailboxDeliveries[act.srcId].push({
                     title: "[🧛] HUYẾT LỆNH ĐÊM ĐEN",
@@ -265,7 +305,7 @@ export const TickEngine = {
                 initMailbox(act.targetId);
                 mailboxDeliveries[act.targetId].push({
                     title: "[🩸] VẾT CẮN BÓNG ĐÊM",
-                    content: "Đêm qua một Vampire đã ghé thăm phòng ngủ của bạn và để lại vết cắn nguyền rủa râm ran đau nhức!"
+                    content: "Đêm qua một Vampire đã ghé thăm phòng ngủ của bạn và để lại vết cắn nguyền rủa râm ran đau nhức! Bạn đã được kết nối vào kênh chat Huyết Tộc."
                 });
             }
 
@@ -279,7 +319,7 @@ export const TickEngine = {
                 initMailbox(act.targetId);
                 mailboxDeliveries[act.targetId].push({
                     title: "[🦜] LỜI NGUYỀN GHI ÂM",
-                    content: `Cổ họng bạn bị điều khiển bởi bùa chú của Vẹt! Bạn buộc phải thốt ra câu: "${act.phrase}" sáng mai để giải tỏa.`
+                    content: `Cổ họng bạn bị điều khiển bởi bùa chú của Vẹt! Sáng nay bạn bắt buộc phải thốt ra câu: "${act.phrase}" để giải tỏa bùa chú.`
                 });
             }
         });
@@ -291,7 +331,7 @@ export const TickEngine = {
         let witchHealTarget = null;
         const witchPoisonTargets = new Set();
 
-        // 6.1 Thu thập thông tin hành động của Phù thủy (Witch) trước để làm bộ lọc
+        // 6.1 Thu thập thông tin hành động của Phù thủy (Witch) trước để làm bộ lọc cứu hộ
         actionBuffer.forEach(act => {
             if (act.role === "witch") {
                 if (act.actionType === "heal") witchHealTarget = act.targetId;
@@ -321,6 +361,11 @@ export const TickEngine = {
                 if (act.actionType === "pour_petrol") {
                     newlyPetroled.add(act.targetId);
                     if (act.secondaryId) newlyPetroled.add(act.secondaryId);
+
+                    [act.targetId, act.secondaryId].filter(id => id !== null).forEach(id => {
+                        initPlayerState(id);
+                        playerStateUpdates[id].isPetroled = true; // Lưu trạng thái tẩm xăng vĩnh viễn lên DB
+                    });
                 } else if (act.actionType === "ignite") {
                     // Châm lửa thiêu đốt tất cả nhà dính xăng (Sát thương tuyệt đối)
                     playersList.forEach(p => {
@@ -336,7 +381,7 @@ export const TickEngine = {
         damageQueue.forEach(dmg => {
             const { targetId, sourceRole } = dmg;
 
-            // Nếu được Phù thủy quăng bình hồi sinh cứu mạng
+            // Nếu được Phù thủy quăng bình hồi sinh cứu mạng thành công
             if (targetId === witchHealTarget) return;
 
             // Nếu được Bảo Vệ che chở (Ngoại trừ sát thương tuyệt đối từ thiêu rụi của Arsonist)
@@ -354,7 +399,7 @@ export const TickEngine = {
                 return;
             }
 
-            // Tử vong thực tế
+            // Ghi nhận tử vong thực tế
             deathsSet.add(targetId);
         });
 
@@ -388,7 +433,7 @@ export const TickEngine = {
             if (trappedPlayers[act.srcId]) {
                 const trapTargets = trappedPlayers[act.srcId];
                 actionBuffer.forEach(subAct => {
-                    // Nếu một trong các mục tiêu đặt bẫy dám dùng phép lên Eradicator đêm nay
+                    // Nếu một trong các mục tiêu đặt bẫy thi triển kỹ năng đêm lên Eradicator đêm nay
                     if (trapTargets.includes(subAct.srcId) && subAct.targetId === act.srcId) {
                         deathsSet.add(subAct.srcId);
                         initMailbox(subAct.srcId);
@@ -405,10 +450,10 @@ export const TickEngine = {
         // TICK 8: TRUY XUẤT THÔNG TIN BẢO MẬT (SEER & WOLF MAGE RESOLUTIONS)
         // ==========================================
         actionBuffer.forEach(act => {
-            // Tiên tri (Seer) soi
+            // Tiên tri (Seer) soi mục tiêu
             if (act.role === "seer" && (act.actionType === "seer_scan" || act.actionType === "seer_open_eye")) {
                 const originalTarget = act.targetId;
-                // Áp dụng ảo ảnh Phantom Wolf hoán đổi nếu có dính
+                // Áp dụng ảo ảnh Phantom Wolf hoán đổi nếu có dính líu
                 const finalTargetId = identitySwaps[originalTarget] || originalTarget;
                 const targetPlayer = playersMap[finalTargetId];
 
@@ -449,9 +494,20 @@ export const TickEngine = {
             }
         });
 
+        // Quét tự động đồng bộ kênh chat đêm Tử Thần (Reaper Faction) cho các Reaper còn sống
+        const reaperFactionChatId = "reaper_" + roomId;
+        const reapers = playersList.filter(p => p.alive && (p.role === "reaper" || p.role === "apprenticeReaper"));
+        if (reapers.length >= 2) {
+            reapers.forEach(r => {
+                initPlayerState(r.id);
+                playerStateUpdates[r.id].reaperFactionId = reaperFactionChatId;
+            });
+        }
+
         return {
             deaths: Array.from(deathsSet),
-            mailboxDeliveries: mailboxDeliveries
+            mailboxDeliveries: mailboxDeliveries,
+            playerStateUpdates: playerStateUpdates
         };
     }
 };

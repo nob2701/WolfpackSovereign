@@ -31,6 +31,22 @@
         <div class="splash-hint">Đang chuẩn bị kết nối... Chạm để tiếp tục!</div>
     </div>
 
+    <!-- MÀN HÌNH NGỦ SAY ĐÊM ĐEN (NIGHT TRANSITION SLEEP OVERLAY) -->
+    <div id="night-sleep-overlay" class="night-sleep-overlay hidden">
+        <div class="night-sleep-content">
+            <div class="moon-container">
+                <div class="moon-crescent"></div>
+                <div class="ghostly-mist"></div>
+            </div>
+            <h2 class="sleep-status-text">Màn đêm đang trôi dần...</h2>
+            <p class="sleep-instruction">Hãy nhắm mắt lại và cầu nguyện cho bình minh!</p>
+            <div id="sleep-timer-fallback" class="sleep-timer">Còn lại: 60s</div>
+        </div>
+    </div>
+
+    <!-- HỆ THỐNG TOASTS THAY THẾ ALERT MẶC ĐỊNH -->
+    <div id="toast-container" class="toast-container"></div>
+
     <!-- HỆ THỐNG PHÁT ĐỒNG BỘ ÂM THANH -->
     <div class="audio-system-container" style="display: none;">
         <audio id="bgm-player" loop><source src="assets/audio/bgm.mp3" type="audio/mpeg"></audio> 
@@ -67,7 +83,7 @@
             <!-- PHẦN 3: GIAO DIỆN NHẬP MÃ PHÒNG (JOIN ROOM SCREEN) -->
             <div id="join-code-panel" class="hidden">
                 <p class="section-instruction">Nhập mã phòng gồm 6 ký tự:</p>
-                <div class="join-code-container">
+                <div class="join-code-container" id="join-code-wrapper">
                     <input type="text" class="code-input" maxlength="1" id="code-1" pattern="[A-Za-z0-9]" autocomplete="off">
                     <input type="text" class="code-input" maxlength="1" id="code-2" pattern="[A-Za-z0-9]" autocomplete="off">
                     <input type="text" class="code-input" maxlength="1" id="code-3" pattern="[A-Za-z0-9]" autocomplete="off">
@@ -188,6 +204,7 @@
 
                 <div class="gm-role-actions-bar" style="display:flex; flex-direction:column; gap:5px;">
                     <button id="btn-distribute" class="btn-success w-100" data-i18n="t_btn_dist">🎲 Trộn & Phát Role</button>
+                    <button id="btn-gm-force-day" class="btn-danger w-100 hidden">⚠️ Cưỡng chế sang ngày</button>
                     <button id="btn-gm-start-night" class="btn-danger w-100 hidden">🌙 BẮT ĐẦU ĐÊM ĐEN</button>
                 </div>
             </div>
@@ -196,9 +213,17 @@
         <!-- CỘT 3 (GIỮA): Bảng Grid Người Chơi & Bàn Điều Khiển Chính -->
         <div id="col-board-container" class="panel col-board">
             
-            <!-- Nút gọi giả dành cho GM -->
-            <button class="btn-fake-wake hidden" id="btn-fake-wake" style="position: absolute; top: 10px; right: 10px; z-index: 100;">🎭 Gọi Giả</button>
-            
+            <!-- THẺ CĂN CƯỚC NGƯỜI CHƠI CỐ ĐỊNH (IDENTITY WIDGET) -->
+            <div id="player-identity-card" class="player-identity-card hidden">
+                <div class="id-card-seal"></div>
+                <div class="id-card-content">
+                    <div class="id-card-title">CĂN CƯỚC THẦN DÂN</div>
+                    <div class="id-row"><span>Vai trò:</span> <strong id="id-role-val">-</strong></div>
+                    <div class="id-row"><span>Phe phái:</span> <strong id="id-faction-val">-</strong></div>
+                    <div class="id-desc" id="id-skills-summary">Đang tải dữ liệu thuộc tính...</div>
+                </div>
+            </div>
+
             <!-- Khu vực dự đoán tỉ lệ thắng (Spectator Win Prediction Widget) -->
             <div id="spectator-prediction-widget" class="hidden">
                 <div class="prediction-header">
@@ -247,6 +272,17 @@
                         <div class="step-indicator" id="step-ind-3">3. Phán quyết</div>
                         <div class="step-indicator" id="step-ind-4">4. Di ngôn</div>
                     </div>
+                    
+                    <!-- Tiến trình bỏ phiếu trực quan (Voting Progress Bar Indicator) -->
+                    <div id="trial-vote-progress-wrapper" class="trial-vote-progress-wrapper hidden">
+                        <div class="progress-info-row">
+                            <span>Bỏ phiếu biểu quyết:</span>
+                            <strong id="trial-vote-ratio">0/0</strong>
+                        </div>
+                        <div class="progress-track">
+                            <div id="trial-vote-progress-fill" class="progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Khu vực điều khiển hành động động và các nút xác nhận -->
@@ -264,6 +300,9 @@
                     <button class="channel-tab active" id="chan-public">Làng 🌾</button>
                     <button class="channel-tab hidden" id="chan-wolf" style="background: #3a0000; color: #ff5555; border-color: #ff0000;">Sói 🐺</button>
                     <button class="channel-tab hidden" id="chan-couple" style="background: #3d1a2f; color: #ff85c0; border-color: #ff4d94;">Uyên Ương 💘</button>
+                    <button class="channel-tab hidden" id="chan-prime" style="background: #1e1b4b; color: #a5b4fc; border-color: #4f46e5;">Khế Ước 🌌</button>
+                    <button class="channel-tab hidden" id="chan-vampire" style="background: #450a0a; color: #fca5a5; border-color: #dc2626;">Huyết Tộc 🧛</button>
+                    <button class="channel-tab hidden" id="chan-reaper" style="background: #14532d; color: #86efac; border-color: #16a34a;">Tử Thần 💀</button>
                     <button class="channel-tab hidden" id="chan-graveyard" style="background: #111e2e; color: #94a3b8; border-color: #475569;">Linh Hồn 👻</button>
                 </div>
 
@@ -323,8 +362,8 @@
         <div class="setting-item">
             <h3 data-i18n="t_theme">🎨 THEME GIAO DIỆN</h3>
             <select id="theme-selector" style="width: 100%;">
+                <option value="dark">Theme Tối Gothic (Mặc định)</option>
                 <option value="light">Theme Sáng</option>
-                <option value="dark">Theme Tối</option>
                 <option value="hacker">Theme Hacker</option>
             </select>
         </div>
@@ -348,7 +387,7 @@
         <button id="nav-tab1">👥<br><span data-i18n="tab1">Players</span></button>
         <button id="nav-tab2">⚙️<br><span data-i18n="tab2">Roles</span></button>
         <button id="nav-tab3" class="active">🎮<br><span data-i18n="tab3">Board</span></button>
-        <button id="nav-tab4">📜<br><span data-i18n="tab4">Log</span></button>
+        <button id="nav-tab4">📜<br><span data-i18n="tab4">Log</span><span id="mail-badge" class="nav-badge hidden">0</span></button>
         <button id="nav-tab5">⚙️<br><span data-i18n="tab5">Setting</span></button>
     </div>
 
@@ -362,6 +401,18 @@
             <h3 id="alert-title">Thông báo</h3>
             <p id="alert-message">Nội dung thông báo</p>
             <button id="alert-btn" class="btn-success w-100">Đã Hiểu</button>
+        </div>
+    </div>
+
+    <!-- Modal Xác Nhận Double-Confirmation (Chống bấm nhầm của GM/Người chơi) -->
+    <div class="custom-modal-overlay" id="confirm-modal">
+        <div class="custom-modal">
+            <h3 id="confirm-modal-title">XÁC NHẬN HÀNH ĐỘNG</h3>
+            <p id="confirm-modal-message">Bạn có chắc chắn muốn thực hiện hành động mang tính thay đổi này?</p>
+            <div style="display: flex; gap: 10px;">
+                <button id="confirm-modal-cancel" class="btn-suggest" style="flex: 1;">HỦY</button>
+                <button id="confirm-modal-submit" class="btn-danger" style="flex: 1;">XÁC NHẬN</button>
+            </div>
         </div>
     </div>
 
@@ -393,7 +444,7 @@
         </div>
     </div>
 
-    <!-- Modal Xem Thư Parchment Cổ Điển -->
+    <!-- Modal Xem Thư Parchment Cổ Điển Có Điều Hướng Nhanh -->
     <div class="custom-modal-overlay" id="mailbox-parchment-modal">
         <div class="parchment-scroll-container">
             <button class="parchment-close-btn" id="btn-close-parchment">✕</button>
@@ -403,6 +454,13 @@
                 <div class="parchment-text" id="parchment-mail-text">
                     Đang giải mã thông điệp bảo mật từ bóng đêm...
                 </div>
+                
+                <!-- Thanh điều hướng đọc thư nhanh -->
+                <div class="parchment-navigation">
+                    <button id="btn-prev-parchment" class="btn-parchment-nav">⬅️ Trước</button>
+                    <button id="btn-next-parchment" class="btn-parchment-nav">Sau ➡️</button>
+                </div>
+                
                 <div class="parchment-footer">Quốc chủ tối cao ký bút</div>
             </div>
         </div>
