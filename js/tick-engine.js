@@ -193,8 +193,13 @@ export const TickEngine = {
             if (!currentTargetId || currentTargetId === "neutralized_by_void") return "neutralized_by_void";
             if (visited.has(currentTargetId)) return "neutralized_by_void"; 
             visited.add(currentTargetId);
-            if (mirrorsMap[currentTargetId] && mirrorsMap[currentTargetId] !== casterId) {
-                return getRoutedTarget(casterId, mirrorsMap[currentTargetId], visited);
+            
+            if (mirrorsMap[currentTargetId]) {
+                const nextTarget = mirrorsMap[currentTargetId];
+                if (nextTarget === casterId) {
+                    return casterId; // Phản đòn dội lại chính người thi triển
+                }
+                return getRoutedTarget(casterId, nextTarget, visited);
             }
             return currentTargetId;
         };

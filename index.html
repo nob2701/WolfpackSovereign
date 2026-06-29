@@ -86,16 +86,16 @@
                 </div>
             </div>
 
-            <!-- NHẬP MÃ PHÒNG 6 KÝ TỰ -->
+            <!-- NHẬP MÃ PHÒNG 6 KÝ TỰ (ĐÃ TỐI ƯU HÓA HOẠT ĐỘNG NHẬP) -->
             <div id="join-code-panel" class="hidden">
                 <p class="section-instruction">Nhập mã phòng gồm 6 ký tự:</p>
                 <div class="join-code-container" id="join-code-wrapper">
-                    <input type="text" class="code-input" maxlength="1" id="code-1" pattern="[A-Za-z0-9]" autocomplete="off">
-                    <input type="text" class="code-input" maxlength="1" id="code-2" pattern="[A-Za-z0-9]" autocomplete="off">
-                    <input type="text" class="code-input" maxlength="1" id="code-3" pattern="[A-Za-z0-9]" autocomplete="off">
-                    <input type="text" class="code-input" maxlength="1" id="code-4" pattern="[A-Za-z0-9]" autocomplete="off">
-                    <input type="text" class="code-input" maxlength="1" id="code-5" pattern="[A-Za-z0-9]" autocomplete="off">
-                    <input type="text" class="code-input" maxlength="1" id="code-6" pattern="[A-Za-z0-9]" autocomplete="off">
+                    <input type="text" class="code-input" maxlength="1" id="code-1" pattern="[A-Za-z0-9]" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
+                    <input type="text" class="code-input" maxlength="1" id="code-2" pattern="[A-Za-z0-9]" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
+                    <input type="text" class="code-input" maxlength="1" id="code-3" pattern="[A-Za-z0-9]" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
+                    <input type="text" class="code-input" maxlength="1" id="code-4" pattern="[A-Za-z0-9]" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
+                    <input type="text" class="code-input" maxlength="1" id="code-5" pattern="[A-Za-z0-9]" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
+                    <input type="text" class="code-input" maxlength="1" id="code-6" pattern="[A-Za-z0-9]" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off">
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button id="btn-back-to-login" class="btn-suggest" style="flex: 1;">Quay lại</button>
@@ -219,8 +219,8 @@
         <!-- CỘT 3 (GIỮA): LƯỚI BÀN ĐIỀU KHIỂN CHÍNH -->
         <div id="col-board-container" class="panel col-board">
             
-            <!-- THẺ CĂN CƯỚC NGƯỜI CHƠI (HỖ TRỢ CHẠM GIỮ) -->
-            <div id="player-identity-card" class="player-identity-card hidden">
+            <!-- THẺ CĂN CƯỚC NGƯỜI CHƠI (HỖ TRỢ CHẠM GIỮ BẢO MẬT) -->
+            <div id="player-identity-card" class="player-identity-card hidden" style="user-select: none; -webkit-user-select: none;">
                 <div class="id-card-seal"></div>
                 <div class="id-card-content">
                     <div class="id-card-title">CĂN CƯỚC THẦN DÂN</div>

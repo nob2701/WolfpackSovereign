@@ -11,7 +11,16 @@ export const ModalManager = {
         if (this.currentModalId) {
             const el = document.getElementById(this.currentModalId);
             if (el) el.style.display = "none";
-            this.modalHistory.push(this.currentModalId);
+            
+            // Chống đẩy trùng lặp modal vào danh sách lịch sử hoán đổi
+            if (!this.modalHistory.includes(this.currentModalId)) {
+                this.modalHistory.push(this.currentModalId);
+            }
+        }
+
+        // Đặt giới hạn trần bảo vệ bộ nhớ khỏi lỗi phình to ngăn xếp
+        if (this.modalHistory.length > 20) {
+            this.modalHistory.shift();
         }
 
         const newEl = document.getElementById(modalId);
@@ -334,7 +343,7 @@ export function initMobileTabSync() {
 
 // ==========================================
 // CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT (HOLD TO REVEAL)
-// SỬA LỖI RÒ RỈ HOẶC LỖI TƯƠNG TÁC KHI DUY TRÌ BẢN MỜ CĂN CƯỚC
+// SỬA LỖI TƯƠNG TÁC CHẠM CHỒNG CHÉO TRÊN THIẾT BỊ DI ĐỘNG
 // ==========================================
 export function setupIdentityCardHoldGesture() {
     const idCard = document.getElementById("player-identity-card");
@@ -347,18 +356,25 @@ export function setupIdentityCardHoldGesture() {
     let isHolding = false;
 
     const startHold = (e) => {
-        if (e.type === "touchstart") {
-            // Ngăn chặn hành vi cuộn phóng to ngoài ý muốn trên trình duyệt di động
-            e.stopPropagation();
+        // Chặn tuyệt đối hành vi giả lập mousedown mặc định của hệ điều hành di động
+        if (e.cancelable) {
+            e.preventDefault();
         }
+
+        if (isHolding) return;
         isHolding = true;
+
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+        }
+
         holdTimer = setTimeout(() => {
             if (isHolding) {
                 idRoleVal.style.filter = "none";
                 idFactionVal.style.filter = "none";
                 showToast("Đã giải mờ căn cước tạm thời!", "info");
             }
-        }, 1500); // Trễ giữ 1.5 giây
+        }, 1500); // Trễ giữ đúng 1.5 giây để mở sáp niêm phong
     };
 
     const endHold = () => {
@@ -371,12 +387,12 @@ export function setupIdentityCardHoldGesture() {
         idFactionVal.style.filter = "blur(5px)";
     };
 
-    // Sự kiện chuột máy tính
+    // Đăng ký sự kiện chuột máy tính độc lập
     idCard.addEventListener("mousedown", startHold);
     idCard.addEventListener("mouseup", endHold);
     idCard.addEventListener("mouseleave", endHold);
 
-    // Sự kiện cảm ứng điện thoại di động
+    // Đăng ký sự kiện cảm ứng trên di động (Cấu hình passive: false cho phép preventDefault)
     idCard.addEventListener("touchstart", startHold, { passive: false });
     idCard.addEventListener("touchend", endHold, { passive: true });
     idCard.addEventListener("touchcancel", endHold, { passive: true });
@@ -472,6 +488,7 @@ function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
     
     sheet.ontouchstart = (e) => {
         startY = e.touches[0].clientY;
+        currentY = startY; // Đồng bộ hóa tọa độ tránh giật mốc di chuyển ban đầu
     };
 
     sheet.ontouchmove = (e) => {

@@ -421,6 +421,12 @@ body {
     box-shadow: 0 6px 15px rgba(0,0,0,0.6);
     text-align: left;
     width: 100%;
+    
+    /* Chặn menu và phóng to mặc định trên iOS/Android khi chạm giữ */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
 }
 .id-card-seal {
     width: 45px;
@@ -503,7 +509,7 @@ h2, h3 {
     align-content: flex-start;
 }
 
-/* Ô Thẻ Người Chơi cơ bản */
+/* Ô Thẻ Người Chơi cơ bản (Đã bổ sung tăng tốc phần cứng GPU) */
 .player-grid-card {
     background: var(--bg-item);
     border: 2px solid var(--border-color);
@@ -514,7 +520,7 @@ h2, h3 {
     cursor: pointer;
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s, box-shadow 0.2s;
     overflow: hidden;
-    will-change: transform, border-color, box-shadow;
+    will-change: transform, border-color, box-shadow, filter;
 }
 .player-grid-card:hover {
     transform: translateY(-3px);
@@ -1330,6 +1336,7 @@ button:disabled {
     max-height: 85vh;
     overflow-y: auto;
     animation: parchmentLoad 0.25s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    overscroll-behavior: contain; /* Cô lập hành vi cuộn chống đơ UI di động */
 }
 @keyframes parchmentLoad {
     from { transform: scale(0.65) rotate(-3deg); opacity: 0; }
@@ -1417,6 +1424,7 @@ button:disabled {
     padding: 10px; 
     border-radius: 8px; 
     border: 1px solid var(--border-color);
+    overscroll-behavior: contain;
 }
 .log-item { 
     margin-bottom: 6px; 
@@ -1861,6 +1869,7 @@ body.ghostly-mist-active::before {
     transform: translateY(100%); 
     max-height: 80vh; 
     overflow-y: auto;
+    overscroll-behavior: contain; /* Ngăn chặn cuộn lan tỏa khóa cứng UI */
 }
 .bottom-sheet.show { 
     transform: translateY(0); 
@@ -2024,6 +2033,7 @@ body.ghostly-mist-active::before {
     border: 1px solid var(--border-color); 
     padding: 20px; 
     overflow-y: auto; 
+    overscroll-behavior: contain;
 }
 .setting-item {
     margin-bottom: 15px;
@@ -2198,6 +2208,7 @@ body.ghostly-mist-active::before {
     font-family: inherit; 
     max-height: 80vh; 
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 .custom-modal h3 { 
     color: var(--accent); 

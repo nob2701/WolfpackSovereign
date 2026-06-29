@@ -40,10 +40,10 @@ export const DICT = {
         r_demonDetective: 'Thám Tử Ác Ma', r_missionary: 'Nhà Truyền Giáo', r_vampire: 'Ma Cà Rồng', r_arsonist: 'Kẻ Phóng Hỏa', r_eradicator: 'Kẻ Thanh Trừng', r_clown: 'Gã Hề', r_manipulator: 'Kẻ Thao Túng', r_impostor: 'Kẻ Mạo Danh', r_bountyHunter: 'Thợ Săn Tiền Thưởng', r_shark: 'Cá Mập Tài Chính', r_apprenticeReaper: 'Thần Chết Tập Sự', r_serialKiller: 'Sát Nhân', r_prime: 'Chủ Thần',
         r_ashenKnight: 'Kỵ Sĩ Tro Tàn', r_cat: 'Mèo', r_reaper: 'Tử Thần',
         alert_btn: "Đã Hiểu",
-        msg_need_3: "Cần tối thiểu 3 người kết nối để bắt đầu ván chơi!",
-        msg_game_start: "🚀 WOLF PACK SOVEREIGN: TRẬN ĐẤU BẮT ĐẦU!",
-        phase_night: "🌙 ĐÊM SỐ {0}", phase_day: "☀️ BAN NGÀY SỐ {0}",
-        ui_dead_count: "Đêm qua có {0} người tử vong", ui_dead_names: "Danh sách: {0}"
+        msg_need_3: "Cần tối thiểu 3 người chơi kết nối trực tuyến!",
+        msg_game_start: "🚀 CHÀO MỪNG ĐẾN VỚI WOLFPACK SOVEREIGN!",
+        phase_night: "Đêm {0}", phase_day: "Ngày {0}",
+        ui_dead_count: "Đêm qua ghi nhận {0} người chết", ui_dead_names: "Danh sách tử vong: {0}"
     },
     en: {
         tab1: "Players", tab2: "Roles", tab3: "Board", tab4: "Log", tab5: "Settings",
@@ -278,7 +278,6 @@ export const Engine_Module = {
             } else {
                 await set(currentNomRef, targetId);
                 Engine_Module.logMsg(`${Net.playerName} tố cáo và đề nghị đưa đối tượng lên đài biện hộ: ${Net.players[targetId]?.name}`, "sys");
-                checkMajorityNominationTrigger();
             }
         } catch (error) {
             console.error(error);
@@ -286,10 +285,10 @@ export const Engine_Module = {
     }
 };
 
-// Kiểm tra đa số phiếu đề cử treo cổ tự động đưa bị cáo lên đài
-async function checkMajorityNominationTrigger() {
+// Kiểm tra đa số phiếu đề cử treo cổ (Chỉ chạy trên máy chủ của Quản trò Host)
+export async function checkMajorityNominationTrigger() {
     const Net = window.Net;
-    if (!Net) return;
+    if (!Net || !Net.isHost) return; // Bảo vệ luồng chuyển pha duy nhất từ máy Quản trò
     
     const nomRef = ref(db, `rooms/${Net.roomId}/nominations`);
     try {
@@ -300,7 +299,9 @@ async function checkMajorityNominationTrigger() {
 
         const counts = {};
         Object.values(nominations).forEach(targetId => {
-            counts[targetId] = (counts[targetId] || 0) + 1;
+            if (targetId) {
+                counts[targetId] = (counts[targetId] || 0) + 1;
+            }
         });
 
         for (let [targetId, votes] of Object.entries(counts)) {
@@ -318,9 +319,12 @@ async function checkMajorityNominationTrigger() {
             }
         }
     } catch (err) {
-        console.error(err);
+        console.error("Lỗi Quản trò quét biểu quyết quá bán:", err);
     }
 }
+
+// Lộ diện hàm kiểm tra cho hệ thống đồng bộ phòng sảnh
+window.checkMajorityNominationTrigger = checkMajorityNominationTrigger;
 
 // ==========================================
 // 5. HIỂN THỊ GIAO DIỆN CHUNG (UI MODULE)
@@ -593,6 +597,9 @@ function triggerSgDrawingRelations() {
     canvas.innerHTML = "";
 
     const container = document.getElementById("stats-content-map");
+    // Chốt chặn: Chỉ thực hiện đo đạc khi phân vùng chứa sơ đồ thực tế đã hiển thị (ngăn chặn Forced Reflow)
+    if (!container || container.classList.contains("hidden")) return;
+
     const containerRect = container.getBoundingClientRect();
 
     cachedRelationLogs.forEach(log => {

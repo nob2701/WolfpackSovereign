@@ -22,6 +22,10 @@ export const Net = {
 // Đăng ký toàn cục để các mô-đun độc lập truy cập không bị lỗi phụ thuộc vòng
 window.Net = Net;
 
+// Mảng quản lý giải phóng bộ nhớ của các Listener Realtime Database
+let activeUnsubscribers = [];
+let activeChatUnsub = null;
+
 // Theo dõi danh sách mật thư để hỗ trợ điều hướng đọc liên tục
 let openedMailsList = [];
 let currentMailIndex = -1;
@@ -51,6 +55,19 @@ function dismissSplashScreen() {
         };
         splash.addEventListener("click", dismiss);
         setTimeout(dismiss, 1200);
+    }
+}
+
+// Giải phóng bộ nhớ của toàn bộ các Listener Realtime Database cũ
+function clearActiveListeners() {
+    activeUnsubscribers.forEach(unsub => {
+        if (typeof unsub === "function") unsub();
+    });
+    activeUnsubscribers = [];
+
+    if (activeChatUnsub) {
+        activeChatUnsub();
+        activeChatUnsub = null;
     }
 }
 
@@ -345,10 +362,13 @@ function cleanSessionStorage() {
 // 3. ĐỒNG BỘ THỜI GIAN THỰC TỪ FIREBASE
 // ==========================================
 function listenToRoom() {
+    // Giải phóng hoàn toàn các Listener lắng nghe cũ trước khi đăng ký mới
+    clearActiveListeners();
+
     setupActivePlayersPresence();
 
     const roomRef = ref(db, `rooms/${Net.roomId}`);
-    onValue(roomRef, (snapshot) => {
+    const unsubRoom = onValue(roomRef, (snapshot) => {
         if (!snapshot.exists()) return;
         const roomData = snapshot.val();
         
@@ -397,29 +417,35 @@ function listenToRoom() {
             if (Net.isHost) {
                 if (roomData.meta.phase === "night") {
                     StateMachine.checkAndAutoTransitionToDay();
+                } else if (roomData.meta.phase === "day" && roomData.nominations) {
+                    // Quản trò chủ động kiểm tra biểu quyết quá bán tự động
+                    window.checkMajorityNominationTrigger();
                 }
             }
         }
 
         updateBalanceAndCountsUI();
     });
+    activeUnsubscribers.push(unsubRoom);
 
     // Lắng nghe hộp thư Mailbox trực tiếp của người chơi thường
     if (!Net.isHost) {
         const mailboxRef = ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/mailbox`);
-        onValue(mailboxRef, (snap) => {
+        const unsubMailbox = onValue(mailboxRef, (snap) => {
             const mails = snap.val() || {};
             renderMailbox(mails);
         });
+        activeUnsubscribers.push(unsubMailbox);
     }
 
     // Lắng nghe dòng nhật ký GM dành cho Quản Trò
     if (Net.isHost) {
         const logsRef = ref(db, `rooms/${Net.roomId}/logs`);
-        onValue(logsRef, (snap) => {
+        const unsubLogs = onValue(logsRef, (snap) => {
             const logs = snap.val() || {};
             renderGMLogs(logs);
         });
+        activeUnsubscribers.push(unsubLogs);
     }
 }
 
@@ -514,7 +540,7 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             if (mySelf.vampireFactionId) {
                 document.getElementById("chan-vampire")?.classList.remove("hidden");
             }
-            if (mySelf.role === "reaper" || mySelf.role === "apprenticeReaper") {
+            if (mySelf.role === "reaper" || mySelf.role === "apprenticeSeer" || mySelf.role === "apprenticeReaper") {
                 document.getElementById("chan-reaper")?.classList.remove("hidden");
             }
         }
@@ -715,6 +741,7 @@ function syncTrialPhases(roomData) {
     }
 
     if (trial.stage === "vote") {
+        document.getElementById("step-ind-2").classList.add("active");
         document.getElementById("step-ind-3").classList.add("active");
         openSplitScreenVoteModal(trial.accusedId, roomData);
     }
@@ -757,11 +784,12 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
         `;
         
         const textRef = ref(db, `rooms/${Net.roomId}/trial/accusedText`);
-        onValue(textRef, (snap) => {
+        const unsubText = onValue(textRef, (snap) => {
             const txt = snap.val() || "...";
             const display = document.getElementById("defense-realtime-display");
             if (display) display.innerText = `"${txt}"`;
         });
+        activeUnsubscribers.push(unsubText);
     }
 }
 
@@ -821,18 +849,10 @@ function openSplitScreenVoteModal(accusedId, roomData) {
     document.getElementById("btn-vote-execute").onclick = () => {
         set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "EXECUTE");
     };
-
-    if (Net.isHost) {
-        const totalVotes = countAcquit + countExecute;
-        const totalAlive = window.G.players.filter(p => p.alive).length;
-        if (totalVotes >= totalAlive && totalAlive > 0) {
-            StateMachine.resolveVotingOutcome();
-        }
-    }
 }
 
 // ==========================================
-// 6. HỘP THƯ MAILBOX & THẢO LUẬN MẬT THƯ PARCHMENT
+// HỆ THỐNG HÒM THƯ (MAILBOX SYSTEM)
 // ==========================================
 function renderMailbox(mails) {
     const container = document.getElementById("mailbox-list");
@@ -1050,8 +1070,13 @@ async function sendChatMessage() {
 }
 
 function listenToChatChannel(channelPath) {
+    if (activeChatUnsubscribe) {
+        activeChatUnsubscribe();
+        activeChatUnsubscribe = null;
+    }
+
     const chatRef = ref(db, `rooms/${Net.roomId}/chats/${channelPath}`);
-    onValue(chatRef, (snap) => {
+    activeChatUnsubscribe = onValue(chatRef, (snap) => {
         const chatBox = document.getElementById("chat-box");
         if (!chatBox) return;
         chatBox.innerHTML = "";
@@ -1066,6 +1091,7 @@ function listenToChatChannel(channelPath) {
         chatBox.scrollTop = chatBox.scrollHeight;
     });
 }
+let activeChatUnsubscribe = null;
 
 function setupSpectatorWinPoll() {
     const buttons = [
@@ -1085,7 +1111,8 @@ function setupSpectatorWinPoll() {
         });
     });
 
-    onValue(ref(db, `rooms/${Net.roomId}/prediction_poll`), (snap) => {
+    const pollRef = ref(db, `rooms/${Net.roomId}/prediction_poll`);
+    const unsubPoll = onValue(pollRef, (snap) => {
         const polls = snap.val() || {};
         const total = Object.keys(polls).length || 1;
         let counts = { village: 0, wolf: 0, third: 0 };
@@ -1105,11 +1132,11 @@ function setupSpectatorWinPoll() {
         document.getElementById("pred-bar-third").style.width = `${thirdPct}%`;
         document.getElementById("pred-pct-third").innerText = `${thirdPct}%`;
     });
+    activeUnsubscribers.push(unsubPoll);
 }
 
 // ==========================================
 // 8. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING - CHỐNG FLICKER LẬP TRÌNH)
-// SỬA LỖI 8: Chỉ cập nhật trạng thái động, tuyệt đối không triệt hạ toàn bộ lưới
 // ==========================================
 function renderPlayersGridSmartly() {
     const grid = document.getElementById("game-players-grid");

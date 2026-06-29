@@ -3,7 +3,8 @@ import { Engine_Module, ROLE_DB } from "./game-logic.js";
 import { TickEngine } from "./tick-engine.js";
 import { runGavelStrikeAnimation, showToast } from "./ui-manager.js";
 
-// Khóa trạng thái (Mutex Lock) chống lặp phân giải biểu quyết dồn dập khi nhận sự kiện onValue liên tục
+// Khóa trạng thái cục bộ (Mutex Locks) bảo vệ luồng bất đồng bộ
+let isTransitioning = false;
 let isResolvingVote = false;
 
 // Danh sách vai trò thụ động ban đêm đồng bộ với thiết lập hệ thống
@@ -23,12 +24,18 @@ export const StateMachine = {
     async transitionToNight() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
+        if (isTransitioning) return;
 
+        isTransitioning = true;
         const roomRef = ref(db, `rooms/${Net.roomId}`);
+        
         try {
             const snapshot = await get(roomRef);
             if (!snapshot.exists()) return;
             const roomData = snapshot.val();
+
+            // Guard: Chỉ chuyển sang đêm nếu đang ở pha chuẩn bị hoặc ban ngày
+            if (roomData.meta.phase === "night") return;
 
             const nextDay = (roomData.meta.day || 0) + 1;
             
@@ -67,6 +74,8 @@ export const StateMachine = {
         } catch (error) {
             console.error("Gặp sự cố khi chuyển đổi sang pha đêm:", error);
             showToast("Không thể đồng bộ pha đêm sang máy chủ!", "danger");
+        } finally {
+            isTransitioning = false;
         }
     },
 
@@ -74,6 +83,7 @@ export const StateMachine = {
     async checkAndAutoTransitionToDay() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
+        if (isTransitioning) return;
 
         const playersRef = ref(db, `rooms/${Net.roomId}/players`);
         try {
@@ -87,7 +97,7 @@ export const StateMachine = {
             const allTurnsEnded = alivePlayers.every(p => p.turnEnded === true);
 
             if (allTurnsEnded) {
-                await Engine_Module.logMsg("⚡ Toàn bộ thần dân có chức năng chủ động đã hoàn thành lượt hành động. Bình minh đang đến...", "sys");
+                // Nhận diện điều kiện chuyển ngày đạt chuẩn, tiến hành chuyển ngày
                 await StateMachine.transitionToDay();
             }
         } catch (error) {
@@ -99,6 +109,7 @@ export const StateMachine = {
     async forceTransitionToDay() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
+        if (isTransitioning) return;
         
         try {
             await Engine_Module.logMsg("⚠️ Quản trò đã cưỡng chế kết thúc đêm đen sớm để duy trì nhịp độ trận đấu!", "kill");
@@ -112,7 +123,10 @@ export const StateMachine = {
     async transitionToDay() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
+        if (isTransitioning) return;
 
+        isTransitioning = true;
+        
         try {
             // Phân giải các hành động đêm đồng thời bằng Tick Engine chuyên dụng
             const resolutionOutcome = await TickEngine.resolveNightActions(Net.roomId);
@@ -167,6 +181,8 @@ export const StateMachine = {
         } catch (error) {
             console.error("Lỗi tiến trình phân giải đêm đen:", error);
             showToast("Có lỗi xảy ra khi tính toán kết quả đêm!", "danger");
+        } finally {
+            isTransitioning = false;
         }
     },
 
@@ -174,9 +190,8 @@ export const StateMachine = {
     async resolveVotingOutcome() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
-
-        // Tránh thực thi trùng lặp khi nhận onValue phản hồi dồn dập
         if (isResolvingVote) return;
+
         isResolvingVote = true;
 
         const roomRef = ref(db, `rooms/${Net.roomId}`);
@@ -222,31 +237,35 @@ export const StateMachine = {
 
             // Kích hoạt hoạt ảnh búa gõ phán quyết đồng nhất cho tất cả Client
             runGavelStrikeAnimation(decisionText, async () => {
-                const finalUpdates = {};
-                if (executeTarget) {
-                    finalUpdates[`rooms/${Net.roomId}/players/${trial.accusedId}/alive`] = false;
-                    await Engine_Module.logMsg(`⚖️ Dân làng đã phán quyết thi hành án treo cổ đối tượng [${accusedName}].`, "kill");
-                } else {
-                    await Engine_Module.logMsg(`⚖️ Dân làng đã phán quyết tha bổng hoàn toàn cho [${accusedName}].`, "sys");
+                try {
+                    const finalUpdates = {};
+                    if (executeTarget) {
+                        finalUpdates[`rooms/${Net.roomId}/players/${trial.accusedId}/alive`] = false;
+                        await Engine_Module.logMsg(`⚖️ Dân làng đã phán quyết thi hành án treo cổ đối tượng [${accusedName}].`, "kill");
+                    } else {
+                        await Engine_Module.logMsg(`⚖️ Dân làng đã phán quyết tha bổng hoàn toàn cho [${accusedName}].`, "sys");
+                    }
+
+                    // Dọn dẹp trạng thái biểu quyết cũ
+                    finalUpdates[`rooms/${Net.roomId}/trial`] = {
+                        stage: "none",
+                        accusedId: null,
+                        accusedText: "",
+                        decisionText: ""
+                    };
+                    finalUpdates[`rooms/${Net.roomId}/votes`] = null;
+                    finalUpdates[`rooms/${Net.roomId}/nominations`] = null;
+
+                    await update(ref(db), finalUpdates);
+                    
+                    // Kiểm tra điều kiện thắng sau phán quyết treo cổ
+                    await StateMachine.checkVictoryConditions();
+                } catch (err) {
+                    console.error("Lỗi cập nhật dữ liệu sau biểu quyết:", err);
+                } finally {
+                    // Mở khóa phân giải chỉ sau khi tiến trình ghi DB hoàn tất thành công
+                    isResolvingVote = false;
                 }
-
-                // Dọn dẹp trạng thái biểu quyết cũ
-                finalUpdates[`rooms/${Net.roomId}/trial`] = {
-                    stage: "none",
-                    accusedId: null,
-                    accusedText: "",
-                    decisionText: ""
-                };
-                finalUpdates[`rooms/${Net.roomId}/votes`] = null;
-                finalUpdates[`rooms/${Net.roomId}/nominations`] = null;
-
-                await update(ref(db), finalUpdates);
-                
-                // Mở khóa phân giải cho lượt tiếp theo
-                isResolvingVote = false;
-
-                // Kiểm tra điều kiện thắng sau phán quyết treo cổ
-                await StateMachine.checkVictoryConditions();
             });
 
         } catch (error) {
@@ -255,7 +274,7 @@ export const StateMachine = {
         }
     },
 
-    // 6. KIỂM TRÁ ĐIỀU KIỆN THẮNG TRẬN (VICTORY CHECK CONDITIONS)
+    // 6. KIỂM TRA ĐIỀU KIỆN THẮNG TRẬN (VICTORY CHECK CONDITIONS)
     async checkVictoryConditions() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
