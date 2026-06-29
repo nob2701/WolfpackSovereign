@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ma Sói Online - Esport Edition</title>
+    <title>Wolfpack Sovereign</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&family=Dancing+Script:wght@400;700&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
     <!-- MÀN HÌNH CHỜ CHỐNG TREO -->
     <div id="splash-screen">
         <img src="assets/images/logo.png" alt="Logo Game" id="splash-logo" onerror="this.style.display='none'"> 
-        <div class="typewriter-text">Ma Sói Online</div>
+        <div class="typewriter-text">Wolfpack Sovereign</div>
         <div class="splash-hint">Đang chuẩn bị kết nối... Chạm để tiếp tục!</div>
     </div>
 
@@ -47,10 +47,10 @@
          ========================================== -->
     <div id="lobby-screen" class="app-screen">
         <div class="lobby-container">
-            <h1 class="game-logo-title">🐺 MA SÓI ONLINE</h1>
-            <p class="game-subtitle">Esport Edition v46.0 (Cloud Sync)</p>
+            <h1 class="game-logo-title">🐺 WOLFPACK SOVEREIGN</h1>
+            <p class="game-subtitle">Chương trình đồng bộ hóa ván đấu v46.0 (Cloud Sync)</p>
             
-            <!-- PHẦN 1: GIAO DIỆN MỚI VÀO (INITIAL LOGIN VIEW) -->
+            <!-- PHẦN 1: GIAO DIỆN ĐĂNG NHẬP (INITIAL LOGIN VIEW) -->
             <div id="login-form-panel">
                 <div class="lobby-form-group">
                     <label for="player-name-input" data-i18n="t_enter_name">Nhập tên của bạn:</label>
@@ -81,7 +81,7 @@
                 </div>
             </div>
 
-            <!-- PHẦN 2: GIAO DIỆN PHÒNG CHỜ TRONG PHÒNG (ROOM LOBBY VIEW) -->
+            <!-- PHẦN 2: GIAO DIỆN PHÒNG CHỜ (ROOM LOBBY VIEW) -->
             <div class="room-info-card hidden" id="lobby-room-status">
                 <h3>ID PHÒNG: <span id="current-room-display" style="color:var(--accent); font-weight: bold;">-</span> 
                     <button id="btn-copy-room-id" class="btn-suggest btn-small" style="margin-left:8px; padding: 2px 8px;">Copy</button>
@@ -140,13 +140,12 @@
 
                 <!-- Danh sách thư -->
                 <div id="mailbox-list" style="flex: 1; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-                    <!-- Tin nhắn rỗng mặc định -->
                     <p class="empty-mailbox-hint" style="text-align: center; font-size:13px; opacity:0.5; margin-top:20px;">Hòm thư trống</p>
                 </div>
             </div>
         </div>
 
-        <!-- CỘT 2: CẤU HÌNH VAI TRÒ & NÚT GM CHỨC NĂNG (Bảng GM chuyên biệt để ánh xạ Tab di động) -->
+        <!-- CỘT 2: CẤU HÌNH VAI TRÒ & NÚT GM CHỨC NĂNG -->
         <div id="col-roles-container" class="panel col-roles">
             <div id="roles-config-panel-wrapper" style="display: flex; flex-direction: column; height: 100%;">
                 <h3><span data-i18n="t_role_config">⚙️ CẤU HÌNH ROLE</span> (<span id="role-count" style="color:var(--accent)">0</span>/<span id="role-player-total">0</span>)</h3>
@@ -171,13 +170,13 @@
 
                 <!-- Ô tìm kiếm vai trò tối ưu -->
                 <div class="search-role-box" style="position: relative; margin-bottom: 8px;">
-                    <input type="text" id="role-search" data-i18n-ph="t_search_role" placeholder="Tìm kiếm role..." style="width: 100%; padding-right: 30px;">
+                    <input type="text" id="role-search" data-i18n-ph="t_search_role" placeholder="Tìm kiếm vai trò..." style="width: 100%; padding-right: 30px;">
                 </div>
                 
                 <!-- Danh sách vai trò phân trang -->
                 <div id="role-config-list-wrapper" style="flex: 1; overflow-y: auto; background: var(--bg-main); padding: 5px; border-radius: 6px; margin-bottom: 5px; border: 1px solid var(--border-color);">
                     <div id="role-config-list">
-                        <!-- Sẽ được thêm bằng JS động -->
+                        <!-- Chèn bằng JS động -->
                     </div>
                 </div>
                 
@@ -237,12 +236,11 @@
                 <p style="color: var(--text-main); opacity: 0.8; margin: 4px 0;"><span>Trưởng Làng:</span> <b id="mayor-name" style="color:var(--accent)" data-i18n="t_no_mayor">Chưa có</b></p>
                 <div id="sovereign-status" style="display:none; color: var(--success); font-weight:bold; font-size:14px; margin-bottom: 10px;"></div>
                 
-                <!-- Văn bản hướng dẫn diễn biến hoặc lời thoại/lời biện hộ -->
-                <div id="script-text" data-i18n="t_setup_guide">Đang đợi chủ phòng phân phối vai trò chơi...</div>
+                <!-- Văn bản hướng dẫn diễn biến -->
+                <div id="script-text" data-i18n="t_setup_guide">Đang đợi quản trò phân phối vai trò chơi...</div>
                 
                 <!-- Hàng biểu quyết 4 bước: Bộ chỉ báo và Đài Biện Hộ tích hợp -->
                 <div id="trial-stage-container" class="hidden">
-                    <!-- Step Indicator -->
                     <div class="trial-steps-bar">
                         <div class="step-indicator" id="step-ind-1">1. Tố giác</div>
                         <div class="step-indicator" id="step-ind-2">2. Biện hộ</div>
@@ -251,18 +249,17 @@
                     </div>
                 </div>
 
-                <!-- Khu vực điều khiển hành động động và nút bấm chức năng -->
+                <!-- Khu vực điều khiển hành động động và các nút xác nhận -->
                 <div id="controls"></div>
             </div>
         </div>
 
         <!-- CỘT 4 (PHẢI): Chat Động (Bình thường / Kênh chat đêm) -->
         <div id="col-right-container" class="panel col-history">
-            <!-- PHÂN HỆ 1: KÊNH CHAT ĐỘNG (DYNAMIC CHAT PANEL) -->
             <div id="chat-subpanel" style="display: flex; flex-direction: column; height: 100%;">
                 <h3 style="margin-bottom: 10px;">💬 HỘP CHAT TRẬN ĐẤU</h3>
                 
-                <!-- Danh sách các kênh chat ban đêm được trang trí đặc trưng -->
+                <!-- Danh sách các kênh chat ban đêm -->
                 <div class="chat-channels-bar">
                     <button class="channel-tab active" id="chan-public">Làng 🌾</button>
                     <button class="channel-tab hidden" id="chan-wolf" style="background: #3a0000; color: #ff5555; border-color: #ff0000;">Sói 🐺</button>
@@ -377,26 +374,26 @@
         </div>
     </div>
 
-    <!-- PHẦN 5: Modal Lật Lá Bài / Xem Vai Trò Bảo Mật (Card Flip Modal Overlay) -->
+    <!-- Modal Lật Thẻ Xem Vai Trò Bảo Mật -->
     <div class="custom-modal-overlay" id="flashcard-modal">
         <div class="custom-modal-card-wrapper">
             <div class="fc-container">
                 <div class="fc-card" id="fc-card">
                     <div class="fc-face fc-front">
                         <h2 id="fc-player-name">Tên của bạn</h2>
-                        <p data-i18n="ui_tap_to_flip">👆 Chạm để xem vai trò</p>
+                        <p data-i18n="ui_tap_to_flip">👆 Chạm để lật bài nhận vai trò</p>
                     </div>
                     <div class="fc-face fc-back">
                         <h2 id="fc-role-name">Tên Vai Trò</h2>
-                        <p id="fc-role-desc">Mô tả kỹ năng vai trò...</p>
-                        <p data-i18n="ui_tap_to_next">👆 Chạm để đóng lại</p>
+                        <p id="fc-role-desc">Mô tả chi tiết kỹ năng của vai trò...</p>
+                        <p data-i18n="ui_tap_to_next">👆 Chạm để đóng thẻ an toàn</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- PHẦN 1: Modal Chi tiết Hòm thư Parchment (Parchment Modal Popup) -->
+    <!-- Modal Xem Thư Parchment Cổ Điển -->
     <div class="custom-modal-overlay" id="mailbox-parchment-modal">
         <div class="parchment-scroll-container">
             <button class="parchment-close-btn" id="btn-close-parchment">✕</button>
@@ -411,7 +408,7 @@
         </div>
     </div>
 
-    <!-- BƯỚC 3 & 4: Modal Biểu Quyết Biện Hộ / Sống Chết (Split Screen Voting Modal) -->
+    <!-- Modal Biểu Quyết Treo Cổ Chia Đôi -->
     <div class="custom-modal-overlay" id="vote-modal">
         <div class="custom-modal" id="vote-modal-content" style="max-width: 800px; width: 95%;">
             <h3 id="vote-modal-title">BIỂU QUYẾT SỐ PHẬN</h3>
@@ -437,14 +434,25 @@
         </div>
     </div>
 
-    <!-- Modal Chọn Mục Tiêu (Kỹ Năng Đêm có phân bổ chế độ hành động động) -->
+    <!-- Modal Chọn Mục Tiêu Linh Hoạt -->
     <div class="custom-modal-overlay" id="target-modal">
         <div class="custom-modal" id="target-modal-content">
             <h3 id="target-modal-title">CHỌN MỤC TIÊU</h3>
             
-            <!-- Hộp lựa chọn bổ sung của vai trò (Ví dụ: Thấu Thị / Khai Nhãn cho Tiên Tri, Độc / Cứu cho Phù Thủy) -->
-            <div id="target-action-modifiers" class="hidden" style="margin: 10px 0; display: flex; gap: 8px; justify-content: center;"></div>
+            <!-- Hướng dẫn đa mục tiêu cho các kỹ năng ghép đôi hoặc đánh tráo -->
+            <p id="target-modal-instruction" style="font-size: 13px; text-align: center; color: var(--log-text); margin-bottom: 10px; display: none;">
+                Vui lòng chọn các đối tượng phù hợp theo yêu cầu.
+            </p>
+
+            <!-- Hộp lựa chọn bộ bổ trợ kỹ năng cho vai trò (Ví dụ: Thấu Thị/Khai Nhãn, Cứu/Độc, Ám ảnh/Gây mê/Phán quyết,...) -->
+            <div id="target-action-modifiers" class="hidden" style="margin: 10px 0; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;"></div>
             
+            <!-- Khung nhập liệu văn bản phụ trợ dành riêng cho Vẹt (Parrot) -->
+            <div id="target-text-input-container" class="hidden" style="margin: 10px 0; width: 100%;">
+                <input type="text" id="target-phrase-input" placeholder="Nhập câu thoại muốn ép đối tượng phát ngôn..." style="width: 100%;" maxlength="50">
+            </div>
+
+            <!-- Grid hiển thị danh sách người chơi sống để chọn -->
             <div class="target-grid" id="target-grid-container"></div>
             
             <div class="target-action-footer">
@@ -454,21 +462,21 @@
         </div>
     </div>
 
-    <!-- PHẦN 2: Màn Hình Chuyển Cảnh Chiến Thắng & Bảng Vinh Danh MVP (VICTORY & STATS SCREEN) -->
+    <!-- Màn Hình Chuyển Cảnh Chiến Thắng & Bảng Vinh Danh MVP -->
     <div class="custom-modal-overlay" id="victory-screen-modal">
         <div class="victory-layout-container">
             
-            <!-- 2.1 Màn hình chuyển cảnh chiến thắng (Victory Splash Screen) -->
+            <!-- Màn hình chuyển cảnh Victory Splash Screen -->
             <div id="victory-splash-panel" class="victory-splash-card">
                 <div class="victory-halo"></div>
                 <h1 id="victory-faction-title">PHE THẮNG CUỘC</h1>
                 <div class="victory-visual-container" id="victory-visual-art">
-                    <!-- Art hoặc hoạt ảnh lớn sẽ chèn tại đây -->
+                    <!-- Art hoặc hoạt ảnh lớn được chèn tại đây -->
                 </div>
                 <button id="btn-show-stats-board" class="btn-success" style="padding: 15px 30px; font-size:18px;">XEM THỐNG KÊ TRẬN ĐẤU</button>
             </div>
 
-            <!-- 2.2 Bảng Vinh Danh Hiệu Năng & Thống Kê Chi Tiết (MVP & Stats Board) -->
+            <!-- Bảng Vinh Danh Hiệu Năng & Thống Kê Chi Tiết -->
             <div id="victory-stats-panel" class="victory-stats-card hidden">
                 <div class="stats-tabs">
                     <button class="stats-tab active" data-stats-tab="mvp">🏆 MVP</button>
@@ -493,7 +501,6 @@
                     <!-- Tab Bản đồ vai trò Content -->
                     <div id="stats-content-map" class="stats-tab-panel hidden" style="position: relative;">
                         <p style="font-size:12px; opacity:0.6; text-align:center; margin: 0 0 10px 0;">Sơ đồ quan hệ & kỹ năng được sử dụng trong suốt trận đấu</p>
-                        <!-- Container vẽ kết nối hành động đêm (Cupid, Bảo vệ, Sói cắn) -->
                         <div class="unmasked-relations-grid" id="stats-unmasked-grid"></div>
                         <svg class="svg-connection-canvas" id="svg-relations-canvas"></svg>
                     </div>
@@ -511,7 +518,7 @@
         </div>
     </div>
 
-    <!-- Hoạt ảnh Búa Tòa Án (The Gavel Strike Animation Overlay) -->
+    <!-- Hoạt ảnh Búa Tòa Án -->
     <div class="gavel-overlay hidden" id="gavel-animation-overlay">
         <div class="gavel-container">
             <div class="gavel-hammer" id="gavel-hammer-element">🔨</div>
@@ -521,7 +528,7 @@
         </div>
     </div>
 
-    <!-- Minigame Cuộc Đi Săn Cuối Cùng (The Last Hunt) -->
+    <!-- Minigame Cuộc Đi Săn Cuối Cùng -->
     <div class="custom-modal-overlay" id="last-hunt-modal">
         <div class="custom-modal last-hunt-box">
             <h3 id="last-hunt-title">CUỘC ĐI SĂN CUỐI CÙNG</h3>
@@ -534,7 +541,7 @@
     <!-- Bệnh Án Người Chơi (Bottom Sheet hiển thị nhanh thông tin trạng thái) -->
     <div class="bottom-sheet-overlay" id="player-sheet-overlay">
         <div class="bottom-sheet" id="player-sheet-modal">
-            <!-- Dữ liệu trạng thái người chơi tiêm tự động bằng JS -->
+            <!-- Dữ liệu trạng thái người chơi chèn tự động bằng JS -->
         </div>
     </div>
 

@@ -16,7 +16,7 @@ export const StateMachine = {
 
             const nextDay = (roomData.meta.day || 0) + 1;
             
-            // Khởi tạo/Xóa sạch dữ liệu tạm của pha cũ trên server
+            // Khởi tạo và xóa sạch dữ liệu tạm của pha cũ trên server
             const updates = {
                 "rooms/current_gavel_decision": null,
                 [`rooms/${Net.roomId}/meta/phase`]: "night",
@@ -30,28 +30,53 @@ export const StateMachine = {
                 }
             };
 
-            // Reset trạng thái chọn mục tiêu của tất cả người chơi cho đêm mới
+            // Thiết lập lại trạng thái chọn mục tiêu và kết thúc lượt của mọi người chơi cho đêm mới
             Object.keys(roomData.players || {}).forEach(playerId => {
                 updates[`rooms/${Net.roomId}/players/${playerId}/targetSelection`] = null;
+                updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = false; // Thiết lập lại nút xác nhận lượt
             });
 
             await update(ref(db), updates);
-            await Engine_Module.logMsg(`🌙 Bóng đêm bao phủ ngôi làng. Đêm thứ ${nextDay} bắt đầu!`, "sys");
+            await Engine_Module.logMsg(`🌙 Bóng đêm bao phủ vương quốc Wolfpack. Đêm thứ ${nextDay} bắt đầu!`, "sys");
         } catch (error) {
             console.error("Lỗi khi chuyển sang pha đêm:", error);
         }
     },
 
-    // 2. CHUYỂN SANG PHA NGÀY (DAY TRANSITION)
+    // 2. TỰ ĐỘNG KIỂM TRA VÀ CHUYỂN NGÀY KHI TẤT CẢ KẾT THÚC LƯỢT
+    async checkAndAutoTransitionToDay() {
+        if (!Net.isHost) return;
+
+        const playersRef = ref(db, `rooms/${Net.roomId}/players`);
+        try {
+            const snap = await get(playersRef);
+            if (!snap.exists()) return;
+            
+            const players = Object.values(snap.val() || {});
+            const alivePlayers = players.filter(p => p.alive);
+
+            // Kiểm tra xem tất cả người chơi còn sống đã nhấn "Xác nhận kết thúc lượt" hay chưa
+            const allTurnsEnded = alivePlayers.every(p => p.turnEnded === true);
+
+            if (allTurnsEnded) {
+                await Engine_Module.logMsg("⚡ Tất cả thần dân và thế lực bóng đêm đã hoàn thành lượt. Bình minh đang hé rạng...", "sys");
+                await StateMachine.transitionToDay();
+            }
+        } catch (error) {
+            console.error("Lỗi kiểm tra trạng thái kết thúc lượt của người chơi:", error);
+        }
+    },
+
+    // 3. CHUYỂN SANG PHA NGÀY (DAY TRANSITION)
     // Tự động giải quyết xung đột chức năng đêm thông qua TickEngine trước khi mặt trời mọc
     async transitionToDay() {
         if (!Net.isHost) return;
 
         try {
-            // 2.1 Chạy công cụ phân giải độ ưu tiên hành động đêm (Tick Engine)
+            // 3.1 Chạy công cụ phân giải độ ưu tiên hành động đêm (Tick Engine)
             const resolutionOutcome = await TickEngine.resolveNightActions(Net.roomId);
 
-            // 2.2 Đóng gói cập nhật trạng thái sống/chết và gửi thông điệp mật vào Mailbox
+            // 3.2 Đóng gói cập nhật trạng thái sống/chết và gửi thông điệp mật vào Mailbox
             const updates = {};
             updates[`rooms/${Net.roomId}/meta/phase`] = "day";
 
@@ -97,7 +122,7 @@ export const StateMachine = {
         }
     },
 
-    // 3. XỬ LÝ PHÁN QUYẾT BỎ PHIẾU TREO CỔ (VOTING RESOLUTION)
+    // 4. XỬ LÝ PHÁN QUYẾT BỎ PHIẾU TREO CỔ (VOTING RESOLUTION)
     async resolveVotingOutcome() {
         if (!Net.isHost) return;
 
@@ -130,7 +155,7 @@ export const StateMachine = {
                 decisionText = `${accusedName.toUpperCase()} ĐÃ ĐƯỢC LÀNG THA BỔNG!`;
             }
 
-            // Gửi quyết định biểu quyết lên Server để kích hoạt animation đồng bộ
+            // Gửi quyết định biểu quyết lên Server để kích hoạt animation đồng bộ trên toàn bộ máy khách
             await update(ref(db, `rooms/${Net.roomId}/trial`), {
                 stage: "verdict",
                 decisionText: decisionText
@@ -166,7 +191,7 @@ export const StateMachine = {
         }
     },
 
-    // 4. KIỂM TRA ĐIỀU KIỆN THẮNG CUỘC (VICTORY CHECK)
+    // 5. KIỂM TRA ĐIỀU KIỆN THẮNG CUỘC (VICTORY CHECK)
     async checkVictoryConditions() {
         if (!Net.isHost) return;
 
@@ -197,7 +222,7 @@ export const StateMachine = {
             }
 
             if (winner) {
-                // Khởi tạo thông tin MVP giả định phục vụ trình diễn (Mô phỏng cơ chế tính điểm)
+                // Khởi tạo thông tin MVP phục vụ trình diễn tổng kết
                 const mvpData = {
                     name: alivePlayers[0]?.name || "Kẻ Vô Danh",
                     badge: "Người Sống Sót Cuối Cùng",
@@ -218,7 +243,7 @@ export const StateMachine = {
                     relations: relationLogs
                 });
 
-                await Engine_Module.logMsg(`🏆 TRẬN ĐẤU KẾT THÚC! Phe [${winner.toUpperCase()}] dành chiến thắng tuyệt đối!`, "info");
+                await Engine_Module.logMsg(`🏆 TRẬN ĐẤU KẾT THÚC! Phe [${winner.toUpperCase()}] dành chiến thắng tối cao!`, "info");
             }
 
         } catch (error) {

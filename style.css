@@ -15,7 +15,7 @@
     --input-text: #f8fafc;
     --modal-overlay: rgba(0, 0, 0, 0.85);
     
-    /* Biến bổ sung cho các cấu trúc mới */
+    /* Biến bổ sung cho các cấu trúc vai trò mới */
     --parchment-bg: #f4ecd8;
     --parchment-text: #2c1a04;
     --wolf-red: #991b1b;
@@ -179,7 +179,7 @@ body {
     to { opacity: 1; transform: translateY(0); } 
     from { opacity: 0; transform: translateY(20px); } 
 }
-@keyframes splashTyping { to { width: 15ch; } }
+@keyframes splashTyping { to { width: 18ch; } }
 @keyframes blinkCaret { 
     from, to { border-color: transparent; } 
     50% { border-color: var(--accent); } 
@@ -196,7 +196,7 @@ body {
     display: none !important;
 }
 
-/* === MÀN HÌNH 1: SẢNH CHỜ (LOBBY SCREEN) === */
+/* === SẢNH CHỜ (LOBBY SCREEN) === */
 #lobby-screen {
     background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
     display: flex;
@@ -351,7 +351,7 @@ body {
     50% { opacity: 0.3; }
 }
 
-/* === MÀN HÌNH 2: TRONG GAME === */
+/* === TRONG GAME - CÁC CỘT BỐ CỤC === */
 .panel { 
     padding: 15px; 
     display: flex; 
@@ -385,7 +385,7 @@ h2, h3 {
     font-size: 15px; 
 }
 
-/* Grid hiển thị thẻ người chơi trong game */
+/* Grid hiển thị thẻ người chơi */
 .players-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -394,7 +394,7 @@ h2, h3 {
     align-content: flex-start;
 }
 
-/* Ô Thẻ Người Chơi trong game */
+/* Ô Thẻ Người Chơi cơ bản */
 .player-grid-card {
     background: var(--bg-item);
     border: 2px solid var(--border-color);
@@ -403,7 +403,8 @@ h2, h3 {
     text-align: center;
     position: relative;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
 }
 .player-grid-card:hover {
     transform: translateY(-3px);
@@ -430,6 +431,7 @@ h2, h3 {
     top: 5px;
     right: 5px;
     font-size: 14px;
+    z-index: 5;
 }
 .player-grid-card .name {
     font-weight: bold;
@@ -437,11 +439,15 @@ h2, h3 {
     display: block;
     margin-bottom: 4px;
     word-break: break-all;
+    z-index: 2;
+    position: relative;
 }
 .player-grid-card .role-unmasked {
     font-size: 11px;
     color: var(--accent);
     opacity: 0.85;
+    z-index: 2;
+    position: relative;
 }
 .player-grid-card .status-dot {
     width: 8px;
@@ -451,9 +457,439 @@ h2, h3 {
     position: absolute;
     top: 8px;
     left: 8px;
+    z-index: 3;
 }
 .player-grid-card .status-dot.online { background-color: var(--success); }
 .player-grid-card .status-dot.offline { background-color: #64748b; }
+
+/* === NÂNG CẤP HIỆU ỨNG THỊ GIÁC VAI TRÒ (ROLES UPDATE 1) === */
+
+/* 1. Tiên Tri (Seer) - Viền LED Tím Dạ Quang & Biểu tượng Mắt Mở */
+.player-grid-card.seer-scanned {
+    border-color: #a855f7 !important;
+    box-shadow: 0 0 15px #a855f7, inset 0 0 8px rgba(168, 85, 247, 0.4) !important;
+}
+.player-grid-card.seer-scanned::before {
+    content: "👁️";
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    font-size: 12px;
+    animation: eyePulse 2s infinite alternate;
+    z-index: 4;
+}
+
+/* 2. Bảo Vệ (Guard) - Khiên thép ánh kim & Bị khóa chọn tiếp */
+.player-grid-card.guard-protected::before {
+    content: "🛡️";
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    font-size: 12px;
+    filter: drop-shadow(0 0 2px gold);
+    z-index: 4;
+}
+.player-grid-card.guard-blocked {
+    opacity: 0.45 !important;
+    background: #1e293b !important;
+    border-color: #475569 !important;
+    pointer-events: none !important;
+}
+.player-grid-card.guard-blocked::after {
+    content: "Không thể chọn liên tiếp";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.7);
+    color: #f8fafc;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    z-index: 5;
+}
+
+/* 3. Phù Thủy (Witch) - Bình hồi sinh & Khói độc dâng lên */
+.player-grid-card.witch-healed {
+    animation: witchHealFlash 1s ease-out 2;
+}
+.player-grid-card.witch-poisoned::before {
+    content: "";
+    position: absolute;
+    left: 0; bottom: 0; right: 0; top: 0;
+    background: linear-gradient(to top, rgba(168, 85, 247, 0.5), transparent);
+    z-index: 1;
+    pointer-events: none;
+    animation: poisonSmokeRise 3s infinite alternate ease-in-out;
+}
+
+/* 4. Thợ Săn (Hunter) - Hồng tâm Laser đỏ */
+.player-grid-card.hunter-marked::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 60px;
+    border: 2px dashed #f43f5e;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 3;
+    animation: laserSpin 6s linear infinite;
+}
+.player-grid-card.hunter-marked::before {
+    content: "🎯";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    color: #f43f5e;
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* 5. Cupid - Viền LED hồng cánh sen & tơ hồng liên kết */
+.player-grid-card.cupid-linked {
+    border-color: #f472b6 !important;
+    box-shadow: 0 0 12px #f472b6 !important;
+}
+
+/* 6. Thiên Sứ (Angel) - Vầng sáng tịnh hóa */
+.player-grid-card.angel-purified {
+    animation: purifiedGlow 3s ease-in-out forwards;
+}
+
+/* 8. Kẻ Khắc Tên (Carver) - Thẻ bị rạch nhẹ & Dấu Thập Đen */
+.player-grid-card.carver-blacklisted {
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(225, 29, 72, 0.1) 15px, rgba(225, 29, 72, 0.1) 16px);
+}
+.player-grid-card.carver-blacklisted::after {
+    content: "❌";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 12px;
+    filter: drop-shadow(0 0 4px #000);
+    z-index: 4;
+}
+
+/* 9. Người Bảo Lãnh (Guarantor) - Ruy băng rực rỡ */
+.player-grid-card.guarantor-sealed::after {
+    content: "🎗️";
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 14px;
+    filter: drop-shadow(0 0 3px gold);
+    z-index: 4;
+}
+
+/* 10. Kẻ Phản Chiếu (Reflector) - Khung gương bạc phản quang */
+.player-grid-card.reflector-mirrored {
+    border: 3px double #cbd5e1 !important;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2) !important;
+    animation: mirrorReflection 4s infinite linear;
+}
+
+/* 11. Kẻ Báo Thù (Avenger) - Gây mê ngủ xoáy / Phán quyết đẫm máu */
+.player-grid-card.avenger-asleep::before {
+    content: "🌀";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    opacity: 0.35;
+    animation: rotatingPortal 5s linear infinite;
+    z-index: 2;
+}
+.player-grid-card.avenger-executed {
+    border-color: #991b1b !important;
+    background: linear-gradient(135deg, #2d0000 0%, #110000 100%) !important;
+    animation: executionBloody 0.5s ease-in-out;
+}
+
+/* 12. Phe Sói - Vết cào rách rưới & Bầu chọn */
+.player-grid-card.wolf-targeted {
+    border-color: #ef4444 !important;
+}
+.player-grid-card.wolf-targeted::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url('assets/images/scratch.png'); /* Sẽ tự ẩn nếu không tải được */
+    background-size: cover;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 2;
+}
+.player-grid-card .wolf-votes {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 1px 4px;
+    border-radius: 4px;
+    z-index: 4;
+}
+
+/* 13. Sói Tuyết (Snow Wolf) - Đóng băng & Bông tuyết */
+.player-grid-card.snowwolf-frozen {
+    border-color: #38bdf8 !important;
+    background: rgba(56, 189, 248, 0.1) !important;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.5) !important;
+    backdrop-filter: blur(1px);
+}
+.player-grid-card.snowwolf-frozen::after {
+    content: "❄️";
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 13px;
+    color: #e0f2fe;
+    z-index: 4;
+}
+
+/* 14. Pháp Sư Sói (Wolf Mage) - Vòng tròn ma pháp quỷ */
+.player-grid-card.wolfmage-scanned::before {
+    content: "🧿";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 32px;
+    opacity: 0.25;
+    animation: rotatingPortal 8s linear infinite;
+    z-index: 2;
+}
+
+/* 15. Sói Ảo Ảnh (Phantom Wolf) - Mặt nạ đánh tráo */
+.player-grid-card.phantom-swapped::after {
+    content: "🎭";
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    font-size: 11px;
+    z-index: 4;
+}
+
+/* 16. Sói Câm Lặng (Silencer Wolf) - Khóa ổ mồm */
+.player-grid-card.silencer-muted::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 3;
+}
+.player-grid-card.silencer-muted::after {
+    content: "🤫🔒";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    z-index: 4;
+    filter: drop-shadow(0 2px 4px #000);
+}
+
+/* 17. Sói Tarot (Solitaire Wolf) - Bài Tarot bốc khói đen */
+.player-grid-card.solitaire-cursed::before {
+    content: "🃏";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 30px;
+    opacity: 0.4;
+    animation: tarotFloat 3s infinite alternate ease-in-out;
+    z-index: 2;
+}
+
+/* 18. Sói Hỗn Mang (Chaos Wolf) - Rung chấn màn hình */
+.chaoswolf-shaking {
+    animation: chaosScreenShake 0.4s infinite;
+}
+
+/* 19. Thám Tử Ác Ma (Demon Detective) - Lửa quỷ khác biệt */
+.player-grid-card.demon-hellfire {
+    box-shadow: 0 0 20px #ef4444, inset 0 0 10px rgba(239, 68, 68, 0.4) !important;
+    border-color: #ef4444 !important;
+    animation: hellfirePulse 1.5s infinite alternate;
+}
+
+/* 20. Nhà Truyền Giáo (Missionary) - Cây thánh giá vàng */
+.player-grid-card.missionary-converted::after {
+    content: "🕍";
+    position: absolute;
+    top: 5px;
+    left: 20px;
+    font-size: 12px;
+    filter: drop-shadow(0 0 2px gold);
+    z-index: 4;
+}
+
+/* 21. Ma Cà Rồng (Vampire) - Giọt máu pulsing */
+.player-grid-card.vampire-bitten::after {
+    content: "🩸";
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 12px;
+    animation: bloodPulse 1.2s infinite ease-in-out;
+    z-index: 4;
+}
+
+/* 22. Kẻ Phóng Hỏa (Arsonist) - Bể dầu tẩm xăng / Thiêu rụi */
+.player-grid-card.arsonist-petroled::after {
+    content: "🛢️";
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 12px;
+    z-index: 4;
+}
+.player-grid-card.arsonist-ignited {
+    animation: burningIgnite 1s infinite alternate;
+}
+
+/* 23. Kẻ Thanh Trừng (Eradicator) - Bẫy sắt thép gai */
+.player-grid-card.eradicator-trapped::before {
+    content: "⚔️";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 32px;
+    opacity: 0.3;
+    z-index: 2;
+}
+
+/* 24. Kẻ Thao Túng (The Manipulator) - Liên kết xoáy sáng */
+.player-grid-card.manipulator-manipulated {
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 10px #fbbf24 !important;
+}
+
+/* 25. Kẻ Mạo Danh (The Impostor) / Sát Nhân (Serial Killer) - Vết đâm loang lổ */
+.player-grid-card.lethal-slashed {
+    border-color: #991b1b !important;
+    background-image: radial-gradient(circle, rgba(153, 27, 27, 0.2) 0%, transparent 70%);
+}
+
+/* 26. Thần Chết Tập Sự (Apprentice Reaper) - Bóng ma xanh rêu */
+.player-grid-card.reaper-predicted::before {
+    content: "🪦";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 26px;
+    color: #4ade80;
+    opacity: 0.25;
+    z-index: 2;
+}
+
+/* 27. Chủ Thần (The Prime) - Tinh vân tối tăm */
+.player-grid-card.prime-nebula::after {
+    content: "🌌";
+    position: absolute;
+    top: 5px;
+    left: 20px;
+    font-size: 11px;
+    z-index: 4;
+}
+
+/* 28. Mèo (Cat) - Vuốt độc / Phong ấn chân mèo */
+.player-grid-card.cat-clawed {
+    background-image: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(22, 163, 74, 0.08) 10px, rgba(22, 163, 74, 0.08) 11px);
+}
+.player-grid-card.cat-sealed::after {
+    content: "🐾🔒";
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    font-size: 12px;
+    z-index: 4;
+}
+
+/* 29. Tử Thần (The Reaper) - Xác không hồn / Đầu lâu */
+.player-grid-card.reaper-corpse {
+    background: #334155 !important;
+    border-color: #1e293b !important;
+    opacity: 0.65 !important;
+}
+.player-grid-card.reaper-corpse::after {
+    content: "💀";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 13px;
+    z-index: 4;
+}
+
+/* === LỚP HOẠT ẢNH DÙNG CHUNG (ANIMATION KEYFRAMES) === */
+@keyframes eyePulse { 
+    0% { transform: scale(0.9); opacity: 0.6; } 
+    100% { transform: scale(1.1); opacity: 1; } 
+}
+@keyframes poisonSmokeRise {
+    0% { opacity: 0.2; }
+    100% { opacity: 0.6; }
+}
+@keyframes laserSpin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes witchHealFlash {
+    0% { border-color: var(--success); box-shadow: 0 0 5px var(--success); }
+    50% { border-color: #22c55e; box-shadow: 0 0 20px #22c55e; }
+    100% { border-color: var(--success); box-shadow: 0 0 5px var(--success); }
+}
+@keyframes purifiedGlow {
+    0% { border-color: var(--border-color); box-shadow: none; }
+    30% { border-color: gold; box-shadow: 0 0 20px gold; }
+    100% { border-color: var(--border-color); box-shadow: none; }
+}
+@keyframes mirrorReflection {
+    0% { border-color: #cbd5e1; }
+    50% { border-color: #e2e8f0; }
+    100% { border-color: #94a3b8; }
+}
+@keyframes rotatingPortal {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes tarotFloat {
+    0% { transform: translate(-50%, -46%); }
+    100% { transform: translate(-50%, -54%); }
+}
+@keyframes chaosScreenShake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(0px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(2px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(2px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+@keyframes hellfirePulse {
+    0% { box-shadow: 0 0 10px #ef4444; }
+    100% { box-shadow: 0 0 25px #ef4444; }
+}
+@keyframes bloodPulse {
+    0% { transform: scale(0.9); filter: brightness(0.8); }
+    50% { transform: scale(1.1); filter: brightness(1.2); }
+    100% { transform: scale(0.9); filter: brightness(0.8); }
+}
+@keyframes burningIgnite {
+    0% { border-color: #f97316; box-shadow: 0 0 10px #f97316; }
+    100% { border-color: #ef4444; box-shadow: 0 0 25px #ef4444; }
+}
+@keyframes executionBloody {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); filter: brightness(1.5); }
+    100% { transform: scale(1); }
+}
 
 /* Huy hiệu đề cử đài treo cổ */
 .player-grid-card .nomination-badge {
@@ -466,6 +902,7 @@ h2, h3 {
     font-weight: bold;
     padding: 2px 5px;
     border-radius: 8px;
+    z-index: 4;
 }
 
 /* Các cấu hình vai trò */
@@ -897,7 +1334,7 @@ body.ghostly-mist-active::before {
     100% { opacity: 0.45; }
 }
 
-/* Widget dự đoán tỉ lệ thắng */
+/* Widget dự đoán tỷ lệ thắng */
 #spectator-prediction-widget {
     background: var(--bg-panel);
     border: 1px solid var(--accent);
@@ -1644,7 +2081,7 @@ body.ghostly-mist-active::before {
     flex: 1;
 }
 
-/* === BẢNG BỎ PHIẾU (VOTE GRID) & CHỌN MỤC TIÊU (TARGET GRID) === */
+/* === BẢNG BỎ PHIẾU & CHỌN MỤC TIÊU === */
 #vote-modal-content, #target-modal-content {
     width: 95%; 
     max-width: 680px; 

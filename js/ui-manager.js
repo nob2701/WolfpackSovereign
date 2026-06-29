@@ -55,15 +55,38 @@ export const ModalManager = {
 
 // ==========================================
 // 2. KHỞI TẠO BẢNG CHỌN MỤC TIÊU ĐỘNG (DYNAMIC TARGET GRID)
+// Hỗ trợ bổ trợ kỹ năng, đa mục tiêu (Cupid, Sói Ảo Ảnh) và nhại tiếng (Vẹt)
 // ==========================================
-export function openTargetSelection(playersList, actionType, onConfirmCallback) {
+export function openTargetSelection(playersList, role, onConfirmCallback) {
     const grid = document.getElementById("target-grid-container");
-    if (!grid) return;
+    const modifiersBox = document.getElementById("target-action-modifiers");
+    const textInputBox = document.getElementById("target-text-input-container");
+    const instruction = document.getElementById("target-modal-instruction");
+    
+    if (!grid || !modifiersBox || !textInputBox || !instruction) return;
 
+    // Reset trạng thái ban đầu của Modal
     grid.innerHTML = "";
-    let selectedPlayerId = null;
+    modifiersBox.innerHTML = "";
+    modifiersBox.classList.add("hidden");
+    textInputBox.classList.add("hidden");
+    instruction.style.display = "none";
 
-    // Chỉ lọc những người chơi còn sống làm mục tiêu hợp lệ
+    let selectedPlayerIds = [];
+    let chosenModifier = null;
+    let extraPhrase = "";
+
+    // 2.1 Cấu hình Đa Mục Tiêu (Chọn tối đa 2 đối tượng cùng lúc)
+    const multiTargetRoles = ["cupid", "phantomWolf", "eradicator", "manipulator", "prime"];
+    const isMultiSelect = multiTargetRoles.includes(role);
+    const maxSelections = isMultiSelect ? 2 : 1;
+
+    if (isMultiSelect) {
+        instruction.style.display = "block";
+        instruction.innerText = `Kỹ năng yêu cầu chọn đủ ${maxSelections} mục tiêu khác nhau. Lượt chọn: 0/${maxSelections}`;
+    }
+
+    // Chỉ lọc những đối tượng còn sống làm mục tiêu hợp lệ
     const validTargets = playersList.filter(p => p.alive && p.id !== Net.playerId);
 
     if (validTargets.length === 0) {
@@ -71,30 +94,143 @@ export function openTargetSelection(playersList, actionType, onConfirmCallback) 
         return;
     }
 
+    // Render danh sách mục tiêu
     validTargets.forEach(p => {
         const targetBtn = document.createElement("div");
         targetBtn.className = "target-btn-box";
         targetBtn.innerHTML = `<span class="name">${p.name}</span>`;
         
         targetBtn.addEventListener("click", () => {
-            document.querySelectorAll(".target-btn-box").forEach(btn => btn.classList.remove("selected"));
-            targetBtn.classList.add("selected");
-            selectedPlayerId = p.id;
+            if (isMultiSelect) {
+                if (selectedPlayerIds.includes(p.id)) {
+                    // Nếu bấm lại mục tiêu đã chọn, hủy kích hoạt
+                    selectedPlayerIds = selectedPlayerIds.filter(id => id !== p.id);
+                    targetBtn.classList.remove("selected");
+                } else {
+                    if (selectedPlayerIds.length < maxSelections) {
+                        selectedPlayerIds.push(p.id);
+                        targetBtn.classList.add("selected");
+                    } else {
+                        // Vượt quá giới hạn, đẩy mục tiêu đầu tiên ra
+                        const removedId = selectedPlayerIds.shift();
+                        document.querySelectorAll(".target-btn-box").forEach(btn => {
+                            // Cập nhật lại UI bỏ highlight
+                            const nameEl = btn.querySelector(".name");
+                            const matchingPlayer = validTargets.find(pl => pl.id === removedId);
+                            if (matchingPlayer && nameEl && nameEl.innerText === matchingPlayer.name) {
+                                btn.classList.remove("selected");
+                            }
+                        });
+                        selectedPlayerIds.push(p.id);
+                        targetBtn.classList.add("selected");
+                    }
+                }
+                instruction.innerText = `Kỹ năng yêu cầu chọn đủ ${maxSelections} mục tiêu khác nhau. Lượt chọn: ${selectedPlayerIds.length}/${maxSelections}`;
+            } else {
+                // Thao tác chọn 1 mục tiêu duy nhất
+                document.querySelectorAll(".target-btn-box").forEach(btn => btn.classList.remove("selected"));
+                targetBtn.classList.add("selected");
+                selectedPlayerIds = [p.id];
+            }
         });
         
         grid.appendChild(targetBtn);
     });
+
+    // 2.2 Cấu hình Bổ Trợ Hành Động (Modifiers) cho các vai trò đặc thù
+    if (role === "seer") {
+        modifiersBox.classList.remove("hidden");
+        renderModifiersHTML([
+            { id: "seer_scan", label: "🔮 Thấu Thị" },
+            { id: "seer_open_eye", label: "👁️ Khai Nhãn" }
+        ]);
+    } else if (role === "witch") {
+        modifiersBox.classList.remove("hidden");
+        renderModifiersHTML([
+            { id: "heal", label: "🧪 Bình Cứu" },
+            { id: "poison", label: "☠️ Bình Độc" }
+        ]);
+    } else if (role === "avenger") {
+        modifiersBox.classList.remove("hidden");
+        renderModifiersHTML([
+            { id: "anesthetize", label: "💤 Gây Mê" },
+            { id: "execute", label: "⚔️ Phán Quyết" }
+        ]);
+    } else if (role === "arsonist") {
+        modifiersBox.classList.remove("hidden");
+        renderModifiersHTML([
+            { id: "pour_petrol", label: "🛢️ Tẩm Xăng" },
+            { id: "ignite", label: "🔥 Châm Lửa" }
+        ]);
+    } else if (role === "cat") {
+        modifiersBox.classList.remove("hidden");
+        renderModifiersHTML([
+            { id: "tear", label: "🐾 Xé Xác" },
+            { id: "seal", label: "🔒 Phong Ấn" }
+        ]);
+    } else if (role === "reaper") {
+        modifiersBox.classList.remove("hidden");
+        renderModifiersHTML([
+            { id: "harvest", label: "🪦 Gặt Xác" },
+            { id: "influence", label: "💀 Chỉ Đạo Vote" }
+        ]);
+    }
+
+    // Hàm render nút modifier động
+    function renderModifiersHTML(options) {
+        options.forEach((opt, idx) => {
+            const btn = document.createElement("button");
+            btn.className = "btn-suggest btn-small";
+            btn.innerText = opt.label;
+            if (idx === 0) {
+                btn.className = "btn-accent btn-small";
+                chosenModifier = opt.id;
+            }
+            btn.addEventListener("click", () => {
+                document.querySelectorAll("#target-action-modifiers button").forEach(b => b.className = "btn-suggest btn-small");
+                btn.className = "btn-accent btn-small";
+                chosenModifier = opt.id;
+            });
+            modifiersBox.appendChild(btn);
+        });
+    }
+
+    // 2.3 Cấu hình bổ trợ nhập liệu chữ dành riêng cho Vẹt (Parrot)
+    if (role === "parrot") {
+        textInputBox.classList.remove("hidden");
+        const phraseInput = document.getElementById("target-phrase-input");
+        if (phraseInput) phraseInput.value = ""; 
+    }
 
     // Ràng buộc sự kiện nút bấm xác nhận
     const submitBtn = document.getElementById("target-modal-submit");
     const cancelBtn = document.getElementById("target-modal-close");
 
     submitBtn.onclick = () => {
-        if (!selectedPlayerId) {
-            alert("Vui lòng chạm chọn một mục tiêu trước!");
+        if (selectedPlayerIds.length === 0) {
+            alert("Vui lòng chạm chọn mục tiêu trước!");
             return;
         }
-        onConfirmCallback(selectedPlayerId);
+        if (isMultiSelect && selectedPlayerIds.length < maxSelections) {
+            alert(`Vai trò này yêu cầu bạn phải chọn đúng đủ ${maxSelections} mục tiêu!`);
+            return;
+        }
+
+        // Lấy câu thoại của Parrot nếu có
+        if (role === "parrot") {
+            const phraseInput = document.getElementById("target-phrase-input");
+            extraPhrase = phraseInput ? phraseInput.value.trim() : "";
+            if (!extraPhrase) {
+                alert("Vui lòng nhập câu thoại bắt đối phương nói nhại!");
+                return;
+            }
+        }
+
+        // Thực thi gọi hàm callback và giải phóng modal
+        const finalTargetId = selectedPlayerIds[0];
+        const finalSecondaryId = isMultiSelect ? selectedPlayerIds[1] : null;
+
+        onConfirmCallback(finalTargetId, finalSecondaryId, chosenModifier, extraPhrase);
         ModalManager.closeCurrent();
     };
 
@@ -102,12 +238,12 @@ export function openTargetSelection(playersList, actionType, onConfirmCallback) 
         ModalManager.closeCurrent();
     };
 
-    // Gọi hiển thị bảng qua ModalManager an toàn
+    // Gọi hiển thị bảng qua ModalManager
     ModalManager.open("target-modal");
 }
 
 // ==========================================
-// 3. ĐỒNG BỘ 5 TABS ĐIỀU HƯỚNG TRÊN DI ĐỘNG (MOBILE LAYOUT SYNC)
+// 3. ĐỒNG BỘ TABS ĐIỀU HƯỚNG TRÊN DI ĐỘNG (MOBILE LAYOUT SYNC)
 // ==========================================
 export function initMobileTabSync() {
     const tabSelectors = ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"];
@@ -137,7 +273,7 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
     const sheet = document.getElementById("player-sheet-modal");
     if (!overlay || !sheet) return;
 
-    // Tiêm cấu trúc dữ liệu người chơi trực tiếp
+    // Tiêm cấu trúc dữ liệu người chơi trực tiếp vào bottom sheet
     sheet.innerHTML = `
         <div class="sheet-header">
             <div class="sheet-avatar">👤</div>
@@ -150,13 +286,13 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
         <div class="switch-row">
             <span class="switch-label">Tình Trạng Sinh Mệnh:</span>
             <span style="font-weight: bold; color: ${playerData.alive ? "var(--success)" : "var(--danger)"}">
-                ${playerData.alive ? "🟢 CÒN SỐNG" : "🪦 ĐÃ LOẠI"}
+                ${playerData.alive ? "🟢 CÒN SỐNG" : "🪦 ĐÃ LOẠI SỐ PHẬN"}
             </span>
         </div>
 
         ${isGM ? `
             <div class="switch-row" style="background: rgba(225, 29, 72, 0.05); padding: 10px; border-radius: 8px;">
-                <span class="switch-label" style="color: var(--danger)">Hành Động Quản Trò (GM Only):</span>
+                <span class="switch-label" style="color: var(--danger)">Hành Động Quản Trò (Host Only):</span>
                 <button class="btn-danger btn-small" onclick="UI_Module.executeDeath('${playerData.id}')">XỬ TỬ NGƯỜI CHƠI</button>
             </div>
         ` : ""}

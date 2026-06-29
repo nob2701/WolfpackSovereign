@@ -1,3 +1,5 @@
+Bỏ dòng chữ Esport Edition và thay thế "Ma sói online" thành "Wolfpack Sovereign"
+Nút cơ bản của tất cả các roles là nút xác nhận kết thúc lượt, khi tất cả người chơi kết thúc lượt của mình sẽ chuyển sang ban ngày
 KHỐI I: PHE DÂN LÀNG (🌾 VILLAGERS)
 1. Tiên Tri (Seer) 🔮
 Thao tác: Chọn người chơi trên Grid -> Chọn chế độ [Thấu Thị] hoặc [Khai Nhãn] -> Nhấn [XÁC NHẬN].

@@ -5,7 +5,7 @@ import { StateMachine } from "./state-machine.js";
 import { 
     openTargetSelection, ModalManager, initMobileTabSync, showPlayerBottomSheet, setupSoundSettings 
 } from "./ui-manager.js";
-import { ROLE_DB, ROLE_ICONS, FACTION_ICONS } from "./game-logic.js";
+import { ROLE_DB, ROLE_ICONS, FACTION_ICONS, getRoleName } from "./game-logic.js";
 
 // Trạng thái mạng và đồng bộ cục bộ của Client
 export const Net = {
@@ -98,12 +98,12 @@ function initLobbyEngine() {
     if (btnToggleReady) btnToggleReady.addEventListener("click", toggleReadyState);
     if (btnHostStartSetup) btnHostStartSetup.addEventListener("click", hostStartSetup);
 
-    // Chuyển tab cấu hình role/chat phía bên phải (Dành cho PC)
+    // Chuyển tab cấu hình subpanel phía bên phải (Dành cho PC)
     document.getElementById("tab-btn-chat")?.addEventListener("click", () => switchRightSubPanel("chat"));
     document.getElementById("tab-btn-roles-config")?.addEventListener("click", () => switchRightSubPanel("config"));
 }
 
-// Logic dịch chuyển con trỏ 6 ô nhập mã phòng
+// Logic dịch chuyển con trỏ tự động 6 ô nhập mã phòng
 function setupCodeInputNavigation() {
     const inputs = document.querySelectorAll(".code-input");
     inputs.forEach((input, index) => {
@@ -152,7 +152,8 @@ async function createRoom() {
         isConnected: true,
         alive: true,
         role: "villager",
-        realFaction: "villager"
+        realFaction: "villager",
+        turnEnded: false
     };
 
     const initialRoomState = {
@@ -219,7 +220,8 @@ async function joinRoom(roomId, name) {
             isConnected: true,
             alive: true,
             role: "villager",
-            realFaction: "villager"
+            realFaction: "villager",
+            turnEnded: false
         };
 
         await set(playerRef, playerData);
@@ -319,6 +321,11 @@ function listenToRoom() {
             syncGameStateWithEngine(data);
             syncLayoutBasedOnRoleAndStatus(data);
             syncTrialPhases(data);
+
+            // Host tự động lắng nghe để chuyển pha ngày khi tất cả xác nhận kết thúc lượt
+            if (Net.isHost && data.meta.phase === "night") {
+                StateMachine.checkAndAutoTransitionToDay();
+            }
         }
     });
 }
@@ -376,9 +383,50 @@ function transitionToGameScreen(roomData) {
         document.getElementById("player-mailbox-container").classList.remove("hidden");
     }
 
-    // Bắt đầu kích hoạt lắng nghe Hòm thư mật nếu là người chơi thường
+    // Kích hoạt hiển thị lật thẻ nhận vai trò an toàn nếu là dân thường
     if (!Net.isHost) {
+        triggerCardFlipModal(Net.players[Net.playerId]);
         listenToMailbox();
+    }
+}
+
+// BỘ LẬT THẺ NHẬN BẢN ÁN VAI TRÒ BẢO MẬT (CARD FLIP OVERLAY)
+function triggerCardFlipModal(mySelf) {
+    if (!mySelf) return;
+
+    const modal = document.getElementById("flashcard-modal");
+    const card = document.getElementById("fc-card");
+    const pName = document.getElementById("fc-player-name");
+    const rName = document.getElementById("fc-role-name");
+    const rDesc = document.getElementById("fc-role-desc");
+
+    if (!modal || !card || !pName || !rName || !rDesc) return;
+
+    pName.innerText = mySelf.name;
+    rName.innerText = getRoleName(mySelf.role);
+    rDesc.innerText = `Lực lượng thuộc phe: ${ROLE_DB[mySelf.role]?.faction?.toUpperCase()}. Bạn hãy bấm để mở ra và ghi nhớ kỹ năng bí mật của mình.`;
+    
+    // Gỡ bỏ class cũ nếu có
+    card.classList.remove("is-flipped");
+    modal.style.display = "flex";
+
+    const flipCard = () => {
+        card.classList.add("is-flipped");
+    };
+
+    const closeCard = (e) => {
+        e.stopPropagation();
+        modal.style.display = "none";
+        card.removeEventListener("click", flipCard);
+        document.getElementById("fc-card").removeEventListener("click", closeCard);
+    };
+
+    card.addEventListener("click", flipCard);
+    
+    // Chạm mặt sau để tắt
+    const backFace = card.querySelector(".fc-back");
+    if (backFace) {
+        backFace.addEventListener("click", closeCard);
     }
 }
 
@@ -426,48 +474,63 @@ function renderDynamicActionControls(roomData, mySelf) {
 
     if (phase === "night") {
         if (!mySelf.alive) {
-            controlPanel.innerHTML = `<p style="color:var(--log-text); font-style:italic;">Bạn đã chết. Đang theo dõi với tư cách linh hồn...</p>`;
+            controlPanel.innerHTML = `<p style="color:var(--log-text); font-style:italic;">Bạn đã gục ngã. Đang theo dõi ván đấu dưới dạng linh hồn...</p>`;
             return;
         }
 
-        if (mySelf.targetSelection) {
-            controlPanel.innerHTML = `<p style="color:var(--success); font-weight:bold;">Đã ghi nhận hành động đêm của bạn! Đang chờ làng...</p>`;
+        // Nếu đã nhấn nút "Xác nhận kết thúc lượt" đêm nay
+        if (mySelf.turnEnded) {
+            controlPanel.innerHTML = `<p style="color:var(--success); font-weight:bold; animation: blinker 1.5s infinite;">Đã xác nhận kết thúc lượt! Đang ngủ say chờ làng dậy...</p>`;
             return;
         }
 
-        // Định dạng nút dựa vào Role cụ thể
-        let buttonHTML = "";
-        if (ROLE_DB[mySelf.role]) {
-            const rIcon = ROLE_ICONS[mySelf.role] || "🔮";
-            buttonHTML = `<button id="btn-use-skill" class="btn-accent w-100">${rIcon} SỬ DỤNG CHỨC NĂNG ĐÊM</button>`;
-        } else {
-            buttonHTML = `<p style="color:var(--log-text);">Bạn là dân làng bình thường. Đang ngủ say...</p>`;
-        }
+        // Kiểm tra xem vai trò có kỹ năng kích hoạt đêm không (Villager thường không có)
+        const hasSkill = mySelf.role !== "villager";
+        const rIcon = ROLE_ICONS[mySelf.role] || "🔮";
+
+        let buttonHTML = `
+            <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+                ${hasSkill ? `<button id="btn-use-skill" class="btn-accent w-100">${rIcon} KÍCH HOẠT KỸ NĂNG ĐÊM</button>` : `<p style="color:var(--log-text);">Bạn là Dân Làng bình thường. Đang ngủ say...</p>`}
+                <button id="btn-end-turn" class="btn-success w-100">💤 XÁC NHẬN KẾT THÚC LƯỢT</button>
+            </div>
+        `;
 
         controlPanel.innerHTML = buttonHTML;
 
+        // Xử lý mở bảng chọn mục tiêu động tương ứng với vai trò
         document.getElementById("btn-use-skill")?.addEventListener("click", () => {
-            // Mở bảng chọn mục tiêu động
-            openTargetSelection(Object.values(Net.players), mySelf.role, (targetPlayerId) => {
+            openTargetSelection(Object.values(Net.players), mySelf.role, (targetPlayerId, secondaryId, chosenModifier, phrase) => {
                 // Đẩy mục tiêu chọn lên Firebase
                 set(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/targetSelection`), {
-                    actionType: mySelf.role + "_scan", // Gán mã hành động
+                    actionType: chosenModifier || (mySelf.role + "_action"), 
                     targetId: targetPlayerId,
+                    secondaryId: secondaryId,
+                    phrase: phrase,
                     timestamp: Date.now()
                 });
+                alert("Đã ghi nhận mục tiêu hành động đêm của bạn!");
             });
         });
+
+        // Xử lý xác nhận kết thúc lượt (Đi ngủ hoàn tất)
+        document.getElementById("btn-end-turn")?.addEventListener("click", async () => {
+            try {
+                await set(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/turnEnded`), true);
+            } catch (err) {
+                console.error("Lỗi xác nhận kết thúc lượt:", err);
+            }
+        });
+
     } else if (phase === "day") {
-        // Pha thảo luận ban ngày: Hiển thị nút biểu quyết treo cổ tự do
+        // Pha thảo luận ban ngày: Hiển thị nút đề cử treo cổ tự do
         controlPanel.innerHTML = `
             <div style="display:flex; gap:10px; width:100%;">
-                <button id="btn-nominate-vote" class="btn-danger w-100">⚖️ ĐỀ CỬ TREO CỔ</button>
+                <button id="btn-nominate-vote" class="btn-danger w-100">⚖️ ĐỀ CỬ LÊN ĐÀI BIỆN HỘ</button>
             </div>
         `;
 
         document.getElementById("btn-nominate-vote")?.addEventListener("click", () => {
             openTargetSelection(Object.values(Net.players), "nominate", (targetId) => {
-                // Tố giác người chơi lên đài biện hộ
                 window.Engine_Module.accusePlayer(targetId);
             });
         });
@@ -530,7 +593,7 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
     if (isAccused) {
         controlPanel.innerHTML = `
             <div style="background:var(--bg-item); padding:15px; border-radius:10px; border:2px solid var(--accent)">
-                <textarea id="defense-typing-area" placeholder="Nhập lời biện hộ của bạn tại đây..." style="width:100%; height:80px; background:var(--bg-main); color:white; border-radius:6px; padding:8px; border:1px solid var(--border-color);"></textarea>
+                <textarea id="defense-typing-area" placeholder="Nhập lời biện hộ cứu rỗi bản thân của bạn tại đây..." style="width:100%; height:80px; background:var(--bg-main); color:white; border-radius:6px; padding:8px; border:1px solid var(--border-color);"></textarea>
                 <button id="btn-submit-defense-speech" class="btn-success w-100" style="margin-top:10px;">Gửi Lời Biện Hộ</button>
             </div>
         `;
@@ -826,7 +889,7 @@ function setupSpectatorWinPoll() {
         document.getElementById(btn.id)?.addEventListener("click", async () => {
             const mySelf = Net.players[Net.playerId];
             if (mySelf && mySelf.alive) {
-                alert("Bạn còn sống, không thể tham gia dự đoán linh hồn!");
+                alert("Bạn còn sống, không thể tham gia dự đoán!");
                 return;
             }
             await set(ref(db, `rooms/${Net.roomId}/prediction_poll/${Net.playerId}`), btn.faction);
@@ -857,7 +920,51 @@ function setupSpectatorWinPoll() {
 
 // ==========================================
 // 7. HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (PLAYER GRID RENDERERS)
+// Đồng bộ toàn bộ các lớp trang trí đặc trưng của nâng cấp vai trò mới
 // ==========================================
+function applyDecorativeClasses(p, card) {
+    if (p.isSeerScanned) card.classList.add("seer-scanned");
+    if (p.isProtected) card.classList.add("guard-protected");
+    if (p.isGuardBlocked) card.classList.add("guard-blocked");
+    if (p.isWitchHealed) card.classList.add("witch-healed");
+    if (p.isWitchPoisoned) card.classList.add("witch-poisoned");
+    if (p.isHunterMarked) card.classList.add("hunter-marked");
+    if (p.isCupidLinked) card.classList.add("cupid-linked");
+    if (p.isAngelPurified) card.classList.add("angel-purified");
+    if (p.isCarverBlacklisted) card.classList.add("carver-blacklisted");
+    if (p.isGuarantorSealed) card.classList.add("guarantor-sealed");
+    if (p.isReflectorMirrored) card.classList.add("reflector-mirrored");
+    if (p.isAvengerAsleep) card.classList.add("avenger-asleep");
+    if (p.isAvengerExecuted) card.classList.add("avenger-executed");
+    if (p.isWolfTargeted) card.classList.add("wolf-targeted");
+    if (p.isSnowWolfFrozen) card.classList.add("snowwolf-frozen");
+    if (p.isWolfMageScanned) card.classList.add("wolfmage-scanned");
+    if (p.isPhantomSwapped) card.classList.add("phantom-swapped");
+    if (p.isSilencerMuted) card.classList.add("silencer-muted");
+    if (p.isSolitaireCursed) card.classList.add("solitaire-cursed");
+    if (p.isDemonHellfire) card.classList.add("demon-hellfire");
+    if (p.isMissionaryConverted) card.classList.add("missionary-converted");
+    if (p.isVampireBitten) card.classList.add("vampire-bitten");
+    if (p.isArsonistPetroled) card.classList.add("arsonist-petroled");
+    if (p.isArsonistIgnited) card.classList.add("arsonist-ignited");
+    if (p.isEradicatorTrapped) card.classList.add("eradicator-trapped");
+    if (p.isManipulatorManipulated) card.classList.add("manipulator-manipulated");
+    if (p.isLethalSlashed) card.classList.add("lethal-slashed");
+    if (p.isReaperPredicted) card.classList.add("reaper-predicted");
+    if (p.isPrimeNebula) card.classList.add("prime-nebula");
+    if (p.isCatClawed) card.classList.add("cat-clawed");
+    if (p.isCatSealed) card.classList.add("cat-sealed");
+    if (p.isReaperCorpse) card.classList.add("reaper-corpse");
+
+    // Hiển thị phiếu bầu của Sói nếu có dữ liệu
+    if (p.wolfVotesCount && p.wolfVotesCount > 0) {
+        const badge = document.createElement("span");
+        badge.className = "wolf-votes";
+        badge.innerText = `🐺 x${p.wolfVotesCount}`;
+        card.appendChild(badge);
+    }
+}
+
 function renderUnmaskedSpectatorGrid() {
     const grid = document.getElementById("game-players-grid");
     if (!grid) return;
@@ -876,13 +983,16 @@ function renderUnmaskedSpectatorGrid() {
 
         const roleUnmasked = document.createElement("span");
         roleUnmasked.className = "role-unmasked";
-        roleUnmasked.innerText = p.alive ? `👁️ (${p.role.toUpperCase()})` : `(${p.role.toUpperCase()})`;
+        roleUnmasked.innerText = p.alive ? `👁️ (${getRoleName(p.role)})` : `(${getRoleName(p.role)})`;
         
         card.appendChild(dot);
         card.appendChild(name);
         card.appendChild(roleUnmasked);
 
-        // Cho phép bấm thẻ người chơi để xem lý lịch chi tiết bottom-sheet
+        // Áp dụng phong cách trang trí tùy biến vai trò
+        applyDecorativeClasses(p, card);
+
+        // Chạm để xem lý lịch chi tiết bottom-sheet
         card.addEventListener("click", () => {
             showPlayerBottomSheet(p, Net.isHost);
         });
@@ -909,6 +1019,9 @@ function renderNormalPlayerGrid() {
 
         card.appendChild(dot);
         card.appendChild(name);
+
+        // Áp dụng phong cách trang trí tùy biến vai trò
+        applyDecorativeClasses(p, card);
 
         card.addEventListener("click", () => {
             showPlayerBottomSheet(p, Net.isHost);
@@ -939,7 +1052,7 @@ function copyRoomId() {
 
 function switchRightSubPanel(target) {
     const chatPanel = document.getElementById("chat-subpanel");
-    const rolesPanel = document.getElementById("roles-config-subpanel") || document.getElementById("roles-config-panel-wrapper");
+    const rolesPanel = document.getElementById("roles-config-panel-wrapper");
     const tabChat = document.getElementById("tab-btn-chat");
     const tabConfig = document.getElementById("tab-btn-roles-config");
 
@@ -965,7 +1078,7 @@ function hostStartSetup() {
 }
 
 function handleRoomTerminated() {
-    alert("Phòng chơi đã giải tán hoặc không thể tìm thấy dữ liệu đồng bộ!");
+    alert("Phòng chơi đã giải tán hoặc không tìm thấy dữ liệu đồng bộ trên máy chủ!");
     location.reload();
 }
 
@@ -974,7 +1087,7 @@ function syncGameStateWithEngine(roomData) {
     window.G.day = roomData.meta.day || 0;
     window.G.phase = roomData.meta.phase || "setup";
     window.G.players = Object.values(roomData.players || {});
-    window.G.roleCounts = roomData.roleCounts || {}; // <--- ĐỒNG BỘ THÊM DÒNG NÀY
+    window.G.roleCounts = roomData.roleCounts || {}; 
 
     // Nếu là Quản trò, cập nhật giao diện cấu hình trực quan khi có thay đổi dữ liệu
     if (Net.isHost) {
@@ -982,7 +1095,6 @@ function syncGameStateWithEngine(roomData) {
         window.UI_Module.updateBalanceUI();
         window.UI_Module.updateActiveRolesSummary();
         
-        // Cập nhật số người chơi kết nối vào hiển thị tổng
         const totalRoleAllocated = Object.values(window.G.roleCounts).reduce((a, b) => a + b, 0);
         const roleCountEl = document.getElementById("role-count");
         const totalEl = document.getElementById("role-player-total");

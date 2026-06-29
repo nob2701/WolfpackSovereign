@@ -36,15 +36,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ==========================================
 // 2. TỪ ĐIỂN ĐA NGÔN NGỮ (I18N DICTIONARY)
+// Cập nhật tên thương hiệu Wolfpack Sovereign và các vai trò mới
 // ==========================================
 export const DICT = {
     vi: {
         tab1: "Thành viên", tab2: "Vai Trò", tab3: "Bàn Chơi", tab4: "Lịch Sử", tab5: "Cài đặt",
         t_players: "👥 NGƯỜI CHƠI", t_add_ph: "Nhập tên...", t_add_btn: "Thêm",
-        t_role_config: "⚙️ CẤU HÌNH ROLE", t_btn_dist: "🎲 Trộn & Phát Role", t_search_role: "Tìm kiếm role...", t_active_roles: "Role sử dụng: ",
+        t_role_config: "⚙️ CẤU HÌNH ROLE", t_btn_dist: "🎲 Trộn & Phát Role", t_search_role: "Tìm kiếm vai trò...", t_active_roles: "Vai trò sử dụng: ",
         t_preset_title: "CHẾ ĐỘ CHƠI:", t_mode_classic: "Classic Mode", t_mode_lonewolf: "A Waltz Among Wolves",
         t_balance_meter: "CÁN CÂN TRẬN ĐẤU:", balance_wolf: "Sói Áp Đảo (Game Nhanh)", balance_village: "Làng Thắng Thế", balance_third: "Phe Thứ 3 Nguy Hiểm", balance_neutral: "Cân Bằng",
-        t_board: "🎮 BÀN ĐIỀU KHIỂN", t_setup_phase: "ĐANG SET UP GAME", t_mayor: "Trưởng Làng:", t_no_mayor: "Chưa có", t_start_game: "🚀 BẮT ĐẦU", t_setup_guide: "Đang chờ chủ phòng thiết lập vai trò trực tuyến...",
+        t_board: "🎮 BÀN ĐIỀU KHIỂN", t_setup_phase: "ĐANG THIẾT LẬP", t_mayor: "Trưởng Làng:", t_no_mayor: "Chưa có", t_start_game: "🚀 BẮT ĐẦU", t_setup_guide: "Đang chờ chủ phòng thiết lập vai trò...",
         t_secrets: "🕵️ BÍ MẬT & PHE PHÁI", t_villagers: "🌾 DÂN LÀNG", t_wolves: "🐺 MA SÓI", t_thirds: "🧛 PHE THỨ 3", t_empty: "<i>Trống</i>",
         t_log: "📜 LỊCH SỬ SỰ KIỆN", t_settings: "⚙️ CÀI ĐẶT HỆ THỐNG", t_close: "Đóng", t_theme: "🎨 GIAO DIỆN MÀU SẮC", t_time: "⏱️ THỜI GIAN THẢO LUẬN BAN NGÀY", t_lang: "🌐 NGÔN NGỮ", t_font: "🔤 PHÔNG CHỮ",
         r_villager: 'Dân Làng', r_seer: 'Tiên Tri', r_guard: 'Bảo Vệ', r_witch: 'Phù Thủy', r_hunter: 'Thợ Săn', r_cupid: 'Cupid', r_halfWolf: 'Bán Sói', r_headlessKnight: 'Hiệp Sĩ Không Đầu', r_apprenticeSeer: 'Tiên Tri Tập Sự', r_ghost: 'Con Ma', r_doppelganger: 'Song Trùng', r_avenger: 'Kẻ Báo Thù', r_paradox: 'Kẻ Nghịch Hành', r_lostChild: 'Đứa Con Thất Lạc', r_carver: 'Kẻ Khắc Tên', r_guarantor: 'Người Bảo Lãnh', r_reflector: 'Kẻ Phản Chiếu', r_thief: 'Tên Trộm', r_fugitive: 'Kẻ Đào Tẩu', r_cryptoMiner: 'Kẻ Đào Coin', r_reverser: 'Người Đảo Ngược', r_glitch: 'Bản Sao Lỗi', r_police: 'Cảnh Sát Trưởng', r_spy: 'Gián Điệp', r_angel: 'Thiên Sứ', r_sovereign: 'Kẻ Độc Tôn', r_demonologist: 'Nhà Ngoại Cảm', r_parrot: 'Vẹt', r_ember: 'Kẻ Độc Hành',
@@ -52,10 +53,10 @@ export const DICT = {
         r_demonDetective: 'Thám Tử Ác Ma', r_missionary: 'Nhà Truyền Giáo', r_vampire: 'Ma Cà Rồng', r_arsonist: 'Kẻ Phóng Hỏa', r_eradicator: 'Kẻ Thanh Trừng', r_clown: 'Gã Hề', r_manipulator: 'Kẻ Thao Túng', r_impostor: 'Kẻ Mạo Danh', r_bountyHunter: 'Thợ Săn Tiền Thưởng', r_shark: 'Cá Mập Tài Chính', r_apprenticeReaper: 'Thần Chết Tập Sự', r_serialKiller: 'Sát Nhân', r_prime: 'Chủ Thần',
         r_ashenKnight: 'Kỵ Sĩ Tro Tàn', r_cat: 'Mèo', r_reaper: 'Tử Thần',
         alert_btn: "Đã Hiểu",
-        msg_need_3: "Cần tối thiểu 3 người kết nối trực tuyến!",
-        msg_game_start: "🚀 TRẬN ĐẤU CHÍNH THỨC BẮT ĐẦU!",
+        msg_need_3: "Cần tối thiểu 3 người kết nối để bắt đầu ván chơi!",
+        msg_game_start: "🚀 WOLF PACK SOVEREIGN: TRẬN ĐẤU BẮT ĐẦU!",
         phase_night: "🌙 ĐÊM SỐ {0}", phase_day: "☀️ BAN NGÀY SỐ {0}",
-        ui_dead_count: "Đêm qua có {0} người tử vong", ui_dead_names: "Nạn nhân xấu số: {0}"
+        ui_dead_count: "Đêm qua có {0} người tử vong", ui_dead_names: "Danh sách: {0}"
     },
     en: {
         tab1: "Players", tab2: "Roles", tab3: "Board", tab4: "Log", tab5: "Settings",
@@ -65,7 +66,7 @@ export const DICT = {
         t_preset_title: "GAME MODES:", t_mode_classic: "Classic Mode", t_mode_lonewolf: "A Waltz Among Wolves",
         t_balance_meter: "BALANCE METER:", balance_wolf: "🐺 Wolf-Favored", balance_village: "🌾 Village-Favored", balance_third: "3rd Party", balance_neutral: "⚖️ Balanced",
         t_board: "🎮 BOARD", t_setup_phase: "GAME SETUP", t_mayor: "Mayor:", t_no_mayor: "None", t_start_game: "🚀 START", t_setup_guide: "Waiting for host to setup roles...",
-        t_secrets: "🕵️ SECRETS & FACTIONS", t_villagers: "🌾 VILLAGERS", t_wolves: "🐺 WOLVES", t_thirds: "🧛 3RD PARTY", t_empty: "<i>Empty</i>",
+        t_secrets: "🕵️ SECRETS & FACTIONS", t_villagers: "🌾 VILLAGERS", t_wolves: "WOLVES", t_thirds: "🧛 3RD PARTY", t_empty: "<i>Empty</i>",
         t_log: "📜 EVENT LOG", t_settings: "⚙️ SYSTEM SETTINGS", t_close: "Close", t_theme: "🎨 UI THEME", t_time: "⏱️ DAY DISCUSSION TIME", t_lang: "🌐 LANGUAGE", t_font: "🔤 FONT",
         r_villager: 'Villager', r_seer: 'Seer', r_guard: 'Guard', r_witch: 'Witch', r_hunter: 'Hunter', r_cupid: 'Cupid', r_halfWolf: 'Half Wolf', r_headlessKnight: 'Headless Knight', r_apprenticeSeer: 'Apprentice Seer', r_ghost: 'Ghost', r_doppelganger: 'Doppelganger', r_avenger: 'The Avenger', r_paradox: 'The Paradox', r_lostChild: 'The Lost Child', r_carver: 'The Carver', r_guarantor: 'The Guarantor', r_reflector: 'The Reflector', r_thief: 'Thief', r_fugitive: 'Fugitive', r_cryptoMiner: 'Crypto Miner', r_reverser: 'The Reverser', r_glitch: 'The Glitch', r_police: 'Sheriff', r_spy: 'Spy', r_angel: 'Angel', r_sovereign: 'The Sovereign', r_demonologist: 'Demonologist', r_parrot: 'Parrot', r_ember: 'The Soloist',
         r_wolf: 'Werewolf', r_wolfBoss: 'Wolf Boss', r_wolfSnow: 'Snow Wolf', r_wolfMage: 'Wolf Mage', r_traitor: 'Traitor', r_blackDeath: 'Black Death', r_phantomWolf: 'Phantom Wolf', r_clairvoyantWolf: 'Clairvoyant Wolf', r_mirrorWolf: 'Mirror Wolf', r_resonanceWolf: 'Resonance Wolf', r_silencerWolf: 'Silencer Wolf', r_loneWolf: 'Lone Wolf', r_solitaireWolf: 'Solitaire Wolf', r_chaosWolf: 'Chaos Wolf', r_bloodline: 'Elder Wolf',
@@ -73,7 +74,7 @@ export const DICT = {
         r_ashenKnight: 'Ashen Knight', r_cat: 'Cat', r_reaper: 'The Reaper',
         alert_btn: "Got it",
         msg_need_3: "Need at least 3 players connected online!",
-        msg_game_start: "🚀 GAME HAS BEGUN!",
+        msg_game_start: "🚀 WELCOME TO WOLFPACK SOVEREIGN!",
         phase_night: "Night {0}", phase_day: "Day {0}",
         ui_dead_count: "{0} players died last night", ui_dead_names: "Victims: {0}"
     }
@@ -87,7 +88,7 @@ export const t = (key, ...args) => {
 };
 
 // ==========================================
-// 3. ĐỊNH NGHĨA PHÂN PHE VÀ THUỘC TÍNH
+// 3. ĐỊNH NGHĨA PHÂN PHE VÀ THUỘC TÍNH (FACTIONS DB)
 // ==========================================
 export const ROLE_DB = {
     villager: { faction: 'villager', flags: { isEvil: false } }, 
@@ -154,7 +155,7 @@ export const ROLE_DB = {
 
 export const ROLE_ICONS = {
     villager: '🌾', seer: '🔮', guard: '🛡️', witch: '🧪', hunter: '🏹', cupid: '💘', halfWolf: '🐺', headlessKnight: '🎃', apprenticeSeer: '👁️', ghost: '👻', thief: '🦹', doppelganger: '🎭', avenger: '⚔️', paradox: '⏳', lostChild: '👶', carver: '🔪', guarantor: '🤝', reflector: '🪞', fugitive: '🏃', cryptoMiner: '⛏️', reverser: '🔄', glitch: '👾', police: '🔫', spy: '🕵️', angel: '👼', sovereign: '👑', demonologist: '🧿', parrot: '🦜', ember: '🔥',
-    wolf: '🐺', wolfBoss: '👑', wolfSnow: '❄️', wolfMage: '👁️', traitor: '🕵️', blackDeath: '🦠', phantomWolf: '🐺', clairvoyantWolf: '👁️', mirrorWolf: '🪞', resonanceWolf: '🐺', silencerWolf: '🤫', loneWolf: '🐺', solitaireWolf: '🃏', chaosWolf: '🌪️', bloodline: '🩸',
+    wolf: '🐺', wolfBoss: '👑', wolfSnow: '❄️', wolfMage: '👁️‍🗨️', traitor: '🕵️', blackDeath: '🦠', phantomWolf: '🎭', clairvoyantWolf: '👁️', mirrorWolf: '🪞', resonanceWolf: '🐺', silencerWolf: '🤫', loneWolf: '🐺', solitaireWolf: '🃏', chaosWolf: '🌪️', bloodline: '🩸',
     demonDetective: '🦇', missionary: '🕍', vampire: '🧛', arsonist: '🔥', eradicator: '⚔️', clown: '🤡', manipulator: '🪄', impostor: '🥸', bountyHunter: '🎯', shark: '🦈', apprenticeReaper: '🪦', serialKiller: '🔪', prime: '👑', ashenKnight: '⚔️', cat: '🐈', reaper: '💀'
 };
 
@@ -196,11 +197,13 @@ export const Engine_Module = {
             const assignedRole = rolePool[idx];
             updates[`rooms/${Net.roomId}/players/${p.id}/role`] = assignedRole;
             updates[`rooms/${Net.roomId}/players/${p.id}/realFaction`] = ROLE_DB[assignedRole].faction;
+            // Khởi tạo trạng thái nút Xác nhận lượt
+            updates[`rooms/${Net.roomId}/players/${p.id}/turnEnded`] = false;
         });
 
         try {
             await update(ref(db), updates);
-            alert("Trộn và phát vai trò trực tuyến thành công!");
+            alert("Trộn và phát vai trò trực tuyến cho thần dân thành công!");
             document.getElementById("btn-gm-start-night")?.classList.remove("hidden");
         } catch (error) {
             alert("Có lỗi xảy ra khi phát vai trò!");
@@ -252,7 +255,7 @@ export const Engine_Module = {
                 Engine_Module.logMsg(`${Net.playerName} rút lại đề cử treo cổ.`, "sys");
             } else {
                 await set(currentNomRef, targetId);
-                Engine_Module.logMsg(`${Net.playerName} tố giác treo cổ đối tượng: ${Net.players[targetId]?.name}`, "sys");
+                Engine_Module.logMsg(`${Net.playerName} tố giác đối tượng đài biện hộ: ${Net.players[targetId]?.name}`, "sys");
                 checkMajorityNominationTrigger();
             }
         } catch (error) {
@@ -261,7 +264,7 @@ export const Engine_Module = {
     }
 };
 
-// Kiểm tra quá bán đề cử
+// Kiểm tra quá bán đề cử treo cổ
 async function checkMajorityNominationTrigger() {
     const nomRef = ref(db, `rooms/${Net.roomId}/nominations`);
     try {
@@ -285,7 +288,7 @@ async function checkMajorityNominationTrigger() {
                     }
                 };
                 await update(ref(db), trialUpdates);
-                Engine_Module.logMsg(`[${Net.players[targetId]?.name}] nhận quá bán đề cử. Chuyển sang pha biện hộ!`, "info");
+                Engine_Module.logMsg(`[${Net.players[targetId]?.name}] nhận quá bán đề cử treo cổ. Chuyển sang pha biện hộ!`, "info");
                 break;
             }
         }
