@@ -36,37 +36,20 @@
 }
 
 body[data-theme="light"] { 
-    --bg-main: #f8fafc; 
+    --bg-main: #f1f5f9; 
     --bg-panel: #ffffff; 
-    --bg-item: #f1f5f9; 
+    --bg-item: #e2e8f0; 
     --text-main: #0f172a; 
     --accent: #2563eb; 
     --danger: #dc2626; 
     --success: #16a34a; 
     --log-bg: #f8fafc; 
-    --log-text: #334155; 
+    --log-text: #475569; 
     --border-color: #cbd5e1; 
     --btn-text: #ffffff; 
-    --input-bg: #ffffff; 
+    --input-bg: #f1f5f9; 
     --input-text: #0f172a; 
-    --modal-overlay: rgba(255, 255, 255, 0.85); 
-}
-
-body[data-theme="dark"] { 
-    --bg-main: #121214; 
-    --bg-panel: #1a1a1e; 
-    --bg-item: #26262b; 
-    --text-main: #f8fafc; 
-    --accent: #eab308; 
-    --danger: #ef4444; 
-    --success: #22c55e; 
-    --log-bg: #0a0a0c; 
-    --log-text: #94a3b8; 
-    --border-color: #3f3f46; 
-    --btn-text: #0a0a0c; 
-    --input-bg: #0a0a0c; 
-    --input-text: #f8fafc; 
-    --modal-overlay: rgba(10, 10, 12, 0.94); 
+    --modal-overlay: rgba(255, 255, 255, 0.92); 
 }
 
 body[data-theme="hacker"] { 
@@ -83,7 +66,7 @@ body[data-theme="hacker"] {
     --btn-text: #000000; 
     --input-bg: #000000; 
     --input-text: #00ff00; 
-    --modal-overlay: rgba(0, 0, 0, 0.9); 
+    --modal-overlay: rgba(0, 0, 0, 0.95); 
     font-family: 'Courier New', Courier, monospace !important; 
 }
 
@@ -97,12 +80,13 @@ body[data-font="comfortaa"] { font-family: 'Comfortaa', sans-serif; }
 /* === BỐ CỤC CHUNG & SCROLLBAR === */
 * {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body {
     background: var(--bg-main);
     color: var(--text-main);
-    margin: 0;
     display: flex;
     flex-direction: row;
     height: 100vh;
@@ -528,8 +512,9 @@ h2, h3 {
     text-align: center;
     position: relative;
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s, box-shadow 0.2s;
     overflow: hidden;
+    will-change: transform, border-color, box-shadow;
 }
 .player-grid-card:hover {
     transform: translateY(-3px);
@@ -541,7 +526,7 @@ h2, h3 {
     box-shadow: 0 0 10px var(--danger);
 }
 .player-grid-card.dead {
-    opacity: 0.4;
+    opacity: 0.45;
     background: #0d0d0e;
     border-color: #27272a;
     cursor: not-allowed;
@@ -585,7 +570,7 @@ h2, h3 {
     z-index: 3;
 }
 .player-grid-card .status-dot.online { background-color: var(--success); }
-.player-grid-card .status-dot.offline { background-color: #3f3f46; }
+.player-grid-card .status-dot.offline { background-color: #4b5563; }
 
 /* === NÂNG CẤP HIỆU ỨNG THỊ GIÁC VAI TRÒ === */
 
@@ -624,7 +609,7 @@ h2, h3 {
     content: "Không thể chọn liên tiếp";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(18, 18, 20, 0.8);
+    background: rgba(18, 18, 20, 0.85);
     color: var(--text-main);
     font-size: 10px;
     display: flex;
@@ -683,7 +668,7 @@ h2, h3 {
     animation: purifiedGlow 3s ease-in-out forwards;
 }
 
-/* 8. Kẻ Khắc Tên (Carver) */
+/* Kẻ Khắc Tên (Carver) */
 .player-grid-card.carver-blacklisted {
     background-image: repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(239, 68, 68, 0.15) 15px, rgba(239, 68, 68, 0.15) 16px);
 }
@@ -697,7 +682,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 9. Người Bảo Lãnh (Guarantor) */
+/* Người Bảo Lãnh (Guarantor) */
 .player-grid-card.guarantor-sealed::after {
     content: "🎗️";
     position: absolute;
@@ -708,14 +693,14 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 10. Kẻ Phản Chiếu (Reflector) */
+/* Kẻ Phản Chiếu (Reflector) */
 .player-grid-card.reflector-mirrored {
     border: 3px double #cbd5e1 !important;
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2) !important;
     animation: mirrorReflection 4s infinite linear;
 }
 
-/* 11. Kẻ Báo Thù (Avenger) */
+/* Kẻ Báo Thù (Avenger) */
 .player-grid-card.avenger-asleep::before {
     content: "🌀";
     position: absolute;
@@ -732,7 +717,7 @@ h2, h3 {
     animation: executionBloody 0.5s ease-in-out;
 }
 
-/* 12. Phe Sói */
+/* Phe Sói */
 .player-grid-card.wolf-targeted {
     border-color: var(--danger) !important;
 }
@@ -759,7 +744,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 13. Sói Tuyết (Snow Wolf) */
+/* Sói Tuyết (Snow Wolf) */
 .player-grid-card.snowwolf-frozen {
     border-color: #38bdf8 !important;
     background: rgba(56, 189, 248, 0.1) !important;
@@ -776,7 +761,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 14. Pháp Sư Sói (Wolf Mage) */
+/* Pháp Sư Sói (Wolf Mage) */
 .player-grid-card.wolfmage-scanned::before {
     content: "🧿";
     position: absolute;
@@ -788,7 +773,7 @@ h2, h3 {
     z-index: 2;
 }
 
-/* 15. Sói Ảo Ảnh (Phantom Wolf) */
+/* Sói Ảo Ảnh (Phantom Wolf) */
 .player-grid-card.phantom-swapped::after {
     content: "🎭";
     position: absolute;
@@ -798,12 +783,12 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 16. Sói Câm Lặng (Silencer Wolf) */
+/* Sói Câm Lặng (Silencer Wolf) */
 .player-grid-card.silencer-muted::before {
     content: "";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(0, 0, 0, 0.7);
     z-index: 3;
 }
 .player-grid-card.silencer-muted::after {
@@ -816,7 +801,7 @@ h2, h3 {
     filter: drop-shadow(0 2px 4px #000);
 }
 
-/* 17. Sói Tarot (Solitaire Wolf) */
+/* Sói Tarot (Solitaire Wolf) */
 .player-grid-card.solitaire-cursed::before {
     content: "🃏";
     position: absolute;
@@ -828,19 +813,14 @@ h2, h3 {
     z-index: 2;
 }
 
-/* 18. Sói Hỗn Mang (Chaos Wolf) */
-.chaoswolf-shaking {
-    animation: chaosScreenShake 0.4s infinite;
-}
-
-/* 19. Thám Tử Ác Ma (Demon Detective) */
+/* Thám Tử Ác Ma (Demon Detective) */
 .player-grid-card.demon-hellfire {
     box-shadow: 0 0 20px var(--danger), inset 0 0 10px rgba(239, 68, 68, 0.4) !important;
     border-color: var(--danger) !important;
     animation: hellfirePulse 1.5s infinite alternate;
 }
 
-/* 20. Nhà Truyền Giáo (Missionary) */
+/* Nhà Truyền Giáo (Missionary) */
 .player-grid-card.missionary-converted::after {
     content: "🕍";
     position: absolute;
@@ -851,7 +831,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 21. Ma Cà Rồng (Vampire) */
+/* Ma Cà Rồng (Vampire) */
 .player-grid-card.vampire-bitten::after {
     content: "🩸";
     position: absolute;
@@ -862,7 +842,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 22. Kẻ Phóng Hỏa (Arsonist) */
+/* Kẻ Phóng Hỏa (Arsonist) */
 .player-grid-card.arsonist-petroled::after {
     content: "🛢️";
     position: absolute;
@@ -875,7 +855,7 @@ h2, h3 {
     animation: burningIgnite 1s infinite alternate;
 }
 
-/* 23. Kẻ Thanh Trừng (Eradicator) */
+/* Kẻ Thanh Trừng (Eradicator) */
 .player-grid-card.eradicator-trapped::before {
     content: "⚔️";
     position: absolute;
@@ -886,19 +866,19 @@ h2, h3 {
     z-index: 2;
 }
 
-/* 24. Kẻ Thao Túng (The Manipulator) */
+/* Kẻ Thao Túng (The Manipulator) */
 .player-grid-card.manipulator-manipulated {
     border-color: #fbbf24 !important;
     box-shadow: 0 0 10px #fbbf24 !important;
 }
 
-/* 25. Kẻ Mạo Danh (The Impostor) */
+/* Kẻ Mạo Danh (The Impostor) */
 .player-grid-card.lethal-slashed {
     border-color: #991b1b !important;
     background-image: radial-gradient(circle, rgba(153, 27, 27, 0.25) 0%, transparent 70%);
 }
 
-/* 26. Thần Chết Tập Sự (Apprentice Reaper) */
+/* Thần Chết Tập Sự (Apprentice Reaper) */
 .player-grid-card.reaper-predicted::before {
     content: "🪦";
     position: absolute;
@@ -910,7 +890,7 @@ h2, h3 {
     z-index: 2;
 }
 
-/* 27. Chủ Thần (The Prime) */
+/* Chủ Thần (The Prime) */
 .player-grid-card.prime-nebula::after {
     content: "🌌";
     position: absolute;
@@ -920,7 +900,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 28. Mèo (Cat) */
+/* Mèo (Cat) */
 .player-grid-card.cat-clawed {
     background-image: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(22, 163, 74, 0.08) 10px, rgba(22, 163, 74, 0.08) 11px);
 }
@@ -933,7 +913,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* 29. Tử Thần (The Reaper) */
+/* Tử Thần (The Reaper) */
 .player-grid-card.reaper-corpse {
     background: #18181b !important;
     border-color: #27272a !important;

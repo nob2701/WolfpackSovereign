@@ -1,10 +1,12 @@
-import { Net, runGavelStrikeAnimation } from "./app.js";
-import { db, ref, set, get, update } from "./firebase-config.js";
+import { db, ref, get, update } from "./firebase-config.js";
 import { Engine_Module, ROLE_DB } from "./game-logic.js";
 import { TickEngine } from "./tick-engine.js";
+import { runGavelStrikeAnimation, showToast } from "./ui-manager.js";
 
-// Danh sách các vai trò hoàn toàn không có kỹ năng chủ động ban đêm (Passive Roles)
-// Dùng để tự động gán turnEnded = true nhằm chống nghẽn pha đêm vô thời hạn
+// Khóa trạng thái (Mutex Lock) chống lặp phân giải biểu quyết dồn dập khi nhận sự kiện onValue liên tục
+let isResolvingVote = false;
+
+// Danh sách vai trò thụ động ban đêm đồng bộ 100% với Client
 const PASSIVE_NIGHT_ROLES = [
     "villager", 
     "clown", 
@@ -19,7 +21,8 @@ const PASSIVE_NIGHT_ROLES = [
 export const StateMachine = {
     // 1. CHUYỂN SANG PHA ĐÊM (NIGHT TRANSITION)
     async transitionToNight() {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
 
         const roomRef = ref(db, `rooms/${Net.roomId}`);
         try {
@@ -29,9 +32,8 @@ export const StateMachine = {
 
             const nextDay = (roomData.meta.day || 0) + 1;
             
-            // Khởi tạo trạng thái và dọn dẹp các luồng biểu quyết cũ trên máy chủ
+            // Khởi tạo trạng thái đêm mới và dọn dẹp biểu quyết cũ
             const updates = {
-                "rooms/current_gavel_decision": null,
                 [`rooms/${Net.roomId}/meta/phase`]: "night",
                 [`rooms/${Net.roomId}/meta/day`]: nextDay,
                 [`rooms/${Net.roomId}/votes`]: null,
@@ -39,22 +41,23 @@ export const StateMachine = {
                 [`rooms/${Net.roomId}/trial`]: {
                     stage: "none",
                     accusedId: null,
-                    accusedText: ""
+                    accusedText: "",
+                    decisionText: ""
                 }
             };
 
-            // Thiết lập trạng thái hành động đêm cho từng người chơi sống
+            // Thiết lập trạng thái hành động đêm cho từng người chơi
             Object.entries(roomData.players || {}).forEach(([playerId, player]) => {
                 updates[`rooms/${Net.roomId}/players/${playerId}/targetSelection`] = null;
                 
                 if (!player.alive) {
-                    // Người chết mặc định đã xong lượt
+                    // Người chết mặc định đã hoàn thành lượt
                     updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = true;
                 } else if (PASSIVE_NIGHT_ROLES.includes(player.role)) {
-                    // SỬA LỖI 5: Tự động hoàn thành lượt cho vai trò không có kỹ năng đêm chủ động
+                    // Đồng bộ vai trò thụ động không cần bấm nút hành động
                     updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = true;
                 } else {
-                    // Các vai trò có kỹ năng đêm chủ động cần phải bấm nút để xong lượt
+                    // Vai trò chủ động bắt đầu pha đêm với trạng thái chưa hoàn thành
                     updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = false;
                 }
             });
@@ -63,12 +66,14 @@ export const StateMachine = {
             await Engine_Module.logMsg(`🌙 Bóng đêm bao phủ vương quốc Wolfpack. Đêm thứ ${nextDay} bắt đầu!`, "sys");
         } catch (error) {
             console.error("Gặp sự cố khi chuyển đổi sang pha đêm:", error);
+            showToast("Không thể đồng bộ pha đêm sang máy chủ!", "danger");
         }
     },
 
     // 2. KIỂM TRA ĐỒNG BỘ TỰ ĐỘNG CHUYỂN NGÀY (AUTO-TRANSITION DAY CHECK)
     async checkAndAutoTransitionToDay() {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
 
         const playersRef = ref(db, `rooms/${Net.roomId}/players`);
         try {
@@ -78,7 +83,7 @@ export const StateMachine = {
             const players = Object.values(snap.val() || {});
             const alivePlayers = players.filter(p => p.alive);
 
-            // Kiểm tra xem tất cả người chơi còn sống đã hoàn thành lượt đêm nay chưa
+            // Kiểm tra xem tất cả người sống đã hoàn thành lượt chưa
             const allTurnsEnded = alivePlayers.every(p => p.turnEnded === true);
 
             if (allTurnsEnded) {
@@ -90,10 +95,10 @@ export const StateMachine = {
         }
     },
 
-    // 3. CƯỠNG CHẾ CHUYỂN NGÀY DÀNH CHO GM (FORCE DAY TRANSITION)
-    // SỬA LỖI 5: Giúp Quản trò bỏ qua những người phản hồi chậm/AFK treo máy để tiếp tục trận đấu
+    // 3. CƯỠNG CHẾ CHUYỂN NGÀY CỦA QUẢN TRÒ (FORCE DAY TRANSITION)
     async forceTransitionToDay() {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
         
         try {
             await Engine_Module.logMsg("⚠️ Quản trò đã cưỡng chế kết thúc đêm đen sớm để duy trì nhịp độ trận đấu!", "kill");
@@ -105,21 +110,22 @@ export const StateMachine = {
 
     // 4. CHUYỂN SANG PHA NGÀY (DAY TRANSITION)
     async transitionToDay() {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
 
         try {
-            // Giải quyết xung đột ưu tiên bằng Tick Engine
+            // Phân giải các hành động đêm đồng thời bằng Tick Engine chuyên dụng
             const resolutionOutcome = await TickEngine.resolveNightActions(Net.roomId);
 
             const updates = {};
             updates[`rooms/${Net.roomId}/meta/phase`] = "day";
 
-            // Ghi nhận trạng thái tử vong từ kết quả của đêm
+            // Cập nhật trạng thái sinh mệnh
             resolutionOutcome.deaths.forEach(deadPlayerId => {
                 updates[`rooms/${Net.roomId}/players/${deadPlayerId}/alive`] = false;
             });
 
-            // Phân phối mật thư từ kết quả đêm vào Mailbox cá nhân của từng người chơi
+            // Phân phối kết quả đêm vào Mailbox cá nhân của từng người chơi
             for (const [playerId, mails] of Object.entries(resolutionOutcome.mailboxDeliveries)) {
                 for (const mail of mails) {
                     const mailId = "mail_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
@@ -134,10 +140,10 @@ export const StateMachine = {
                 }
             }
 
-            // Đồng bộ toàn bộ trạng thái mới lên server Firebase
+            // Đồng bộ toàn bộ dữ liệu trạng thái mới lên server Firebase
             await update(ref(db), updates);
 
-            // Ghi nhật ký công khai cho dân làng nắm bắt thông tin sinh mệnh
+            // Ghi nhật ký công khai cho toàn làng
             let announcement = "";
             if (resolutionOutcome.deaths.length === 0) {
                 announcement = "☀️ Bình minh rạng rỡ! Một đêm yên bình trôi qua, không có ai bị hạ sát trong bóng tối.";
@@ -153,22 +159,34 @@ export const StateMachine = {
 
         } catch (error) {
             console.error("Lỗi tiến trình phân giải đêm đen:", error);
+            showToast("Có lỗi xảy ra khi tính toán kết quả đêm!", "danger");
         }
     },
 
     // 5. PHÂN GIẢI PHÁN QUYẾT BỎ PHIẾU TREO CỔ (VOTING RESOLUTION)
     async resolveVotingOutcome() {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
+
+        // Tránh thực thi trùng lặp khi nhận onValue phản hồi dồn dập
+        if (isResolvingVote) return;
+        isResolvingVote = true;
 
         const roomRef = ref(db, `rooms/${Net.roomId}`);
         try {
             const snapshot = await get(roomRef);
-            if (!snapshot.exists()) return;
+            if (!snapshot.exists()) {
+                isResolvingVote = false;
+                return;
+            }
             const roomData = snapshot.val();
             const trial = roomData.trial || { accusedId: null };
             const votes = roomData.votes || {};
 
-            if (!trial.accusedId) return;
+            if (!trial.accusedId) {
+                isResolvingVote = false;
+                return;
+            }
 
             let countAcquit = 0;
             let countExecute = 0;
@@ -195,7 +213,7 @@ export const StateMachine = {
                 decisionText: decisionText
             });
 
-            // Kích hoạt hoạt ảnh búa gõ phán quyết
+            // Kích hoạt hoạt ảnh búa gõ phán quyết đồng nhất cho tất cả Client
             runGavelStrikeAnimation(decisionText, async () => {
                 const finalUpdates = {};
                 if (executeTarget) {
@@ -205,29 +223,35 @@ export const StateMachine = {
                     await Engine_Module.logMsg(`⚖️ Dân làng đã phán quyết tha bổng hoàn toàn cho [${accusedName}].`, "sys");
                 }
 
-                // Dọn dẹp trạng thái để trở về luồng thảo luận tự do hoặc chuyển đêm mới
+                // Dọn dẹp trạng thái biểu quyết cũ
                 finalUpdates[`rooms/${Net.roomId}/trial`] = {
                     stage: "none",
                     accusedId: null,
-                    accusedText: ""
+                    accusedText: "",
+                    decisionText: ""
                 };
                 finalUpdates[`rooms/${Net.roomId}/votes`] = null;
                 finalUpdates[`rooms/${Net.roomId}/nominations`] = null;
 
                 await update(ref(db), finalUpdates);
                 
+                // Mở khóa phân giải cho lượt tiếp theo
+                isResolvingVote = false;
+
                 // Kiểm tra điều kiện thắng sau phán quyết treo cổ
                 await StateMachine.checkVictoryConditions();
             });
 
         } catch (error) {
             console.error("Gặp sự cố khi phân giải phiếu biểu quyết:", error);
+            isResolvingVote = false;
         }
     },
 
     // 6. KIỂM TRA ĐIỀU KIỆN THẮNG TRẬN (VICTORY CHECK CONDITIONS)
     async checkVictoryConditions() {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
 
         const playersRef = ref(db, `rooms/${Net.roomId}/players`);
         try {
@@ -242,21 +266,21 @@ export const StateMachine = {
 
             let winner = null;
 
-            // Kịch bản 1: Phe Sói quét sạch lực lượng Dân Làng và Phe Thứ Ba
+            // Kịch bản 1: Phe Sói chiếm ưu thế tuyệt đối
             if (wolvesAlive >= villagersAlive + thirdsAlive) {
                 winner = "wolf";
             }
-            // Kịch bản 2: Ma Sói bị tiêu diệt sạch sẽ
+            // Kịch bản 2: Toàn bộ Ma Sói và phe thứ 3 nguy hại bị quét sạch
             else if (wolvesAlive === 0 && thirdsAlive === 0) {
                 winner = "villager";
             }
-            // Kịch bản 3: Phe Thứ Ba áp đảo hoặc cô lập hoàn toàn các phe phái chính
+            // Kịch bản 3: Phe Thứ Ba áp đảo và loại bỏ hai phe chính diện
             else if (thirdsAlive > 0 && villagersAlive === 0 && wolvesAlive === 0) {
                 winner = "third";
             }
 
             if (winner) {
-                // Khởi tạo gói dữ liệu thống kê tổng kết MVP
+                // Khởi tạo gói dữ liệu thống kê tổng kết MVP mẫu
                 const mvpCandidate = alivePlayers[0] || { name: "Kẻ vô danh", id: "none" };
                 const mvpData = {
                     name: mvpCandidate.name,
@@ -268,7 +292,6 @@ export const StateMachine = {
                 };
 
                 const relationLogs = [];
-                // Quét thông tin tình trường Cupid để vẽ bản đồ quan hệ
                 const couplePlayers = players.filter(p => p.inCouple);
                 if (couplePlayers.length >= 2) {
                     relationLogs.push({
@@ -293,11 +316,3 @@ export const StateMachine = {
         }
     }
 };
-
-// Lắng nghe đồng bộ kết quả biểu quyết từ máy Host để vẽ búa tòa án cho máy Client
-export function syncRealtimeTrialStages(roomData) {
-    const trial = roomData.trial || { stage: "none", decisionText: "" };
-    if (trial.stage === "verdict" && trial.decisionText) {
-        runGavelStrikeAnimation(trial.decisionText);
-    }
-}

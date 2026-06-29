@@ -19,6 +19,9 @@ export const Net = {
     mailCategory: "all"
 };
 
+// Đăng ký toàn cục để các mô-đun độc lập truy cập không bị lỗi phụ thuộc vòng
+window.Net = Net;
+
 // Theo dõi danh sách mật thư để hỗ trợ điều hướng đọc liên tục
 let openedMailsList = [];
 let currentMailIndex = -1;
@@ -34,6 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
     setupMailboxCategoryFilters();
     setupParchmentNavigation();
     dismissSplashScreen();
+    
+    // Tự động kích hoạt luồng phục hồi phiên chơi cũ nếu gặp sự cố rớt mạng/F5
+    attemptSessionReconnection();
 });
 
 // Gỡ bỏ màn hình chờ
@@ -44,7 +50,7 @@ function dismissSplashScreen() {
             splash.classList.add("hidden");
         };
         splash.addEventListener("click", dismiss);
-        setTimeout(dismiss, 1500);
+        setTimeout(dismiss, 1200);
     }
 }
 
@@ -102,7 +108,7 @@ function initLobbyEngine() {
     if (btnToggleReady) btnToggleReady.addEventListener("click", toggleReadyState);
     if (btnHostStartSetup) btnHostStartSetup.addEventListener("click", hostStartSetup);
 
-    // Sự kiện cưỡng chế sang ngày của GM (Force Day Transition Click Handler)
+    // Sự kiện cưỡng chế sang ngày của GM (Force Day Transition)
     document.getElementById("btn-gm-force-day")?.addEventListener("click", () => {
         askConfirm("Bạn có chắc chắn muốn cưỡng chế chuyển sang BAN NGÀY lập tức? Mọi hành động chưa thực hiện của người chơi đêm nay sẽ bị bỏ qua!", () => {
             StateMachine.forceTransitionToDay();
@@ -158,6 +164,10 @@ async function createRoom() {
     Net.roomId = roomId;
     Net.playerId = "host_" + Date.now();
     Net.isHost = true;
+
+    // Lưu trữ thông tin phục hồi phiên chơi
+    localStorage.setItem("reconnect_room_id", roomId);
+    localStorage.setItem("reconnect_player_id", Net.playerId);
 
     const roomRef = ref(db, `rooms/${roomId}`);
     const hostData = {
@@ -228,6 +238,10 @@ async function joinRoom(roomId, name) {
         Net.playerId = "player_" + Date.now();
         Net.isHost = false;
 
+        // Lưu dữ liệu khôi phục kết nối
+        localStorage.setItem("reconnect_room_id", roomId);
+        localStorage.setItem("reconnect_player_id", Net.playerId);
+
         const playerRef = ref(db, `rooms/${roomId}/players/${Net.playerId}`);
         const playerData = {
             id: Net.playerId,
@@ -277,6 +291,56 @@ function setupActivePlayersPresence() {
     onDisconnect(connectionRef).set(false);
 }
 
+// SỬA LỖI 2: Quy trình tự động khôi phục kết nối khi người chơi bị rớt mạng/F5
+async function attemptSessionReconnection() {
+    const savedRoomId = localStorage.getItem("reconnect_room_id");
+    const savedPlayerId = localStorage.getItem("reconnect_player_id");
+
+    if (savedRoomId && savedPlayerId) {
+        const overlay = document.getElementById("reconnect-overlay");
+        if (overlay) overlay.style.display = "flex";
+
+        try {
+            const roomRef = ref(db, `rooms/${savedRoomId}`);
+            const snapshot = await get(roomRef);
+
+            if (snapshot.exists()) {
+                const roomData = snapshot.val();
+                // Xác minh slot định danh người chơi cũ có còn tồn tại trên server hay không
+                if (roomData.players && roomData.players[savedPlayerId]) {
+                    Net.roomId = savedRoomId;
+                    Net.playerId = savedPlayerId;
+                    Net.playerName = roomData.players[savedPlayerId].name;
+                    Net.isHost = roomData.players[savedPlayerId].isHost;
+
+                    enterLobbyMode();
+                    
+                    if (roomData.meta.started) {
+                        transitionToGameScreen(roomData);
+                    }
+                    
+                    listenToRoom();
+                    showToast("Khôi phục phiên kết nối cũ thành công!", "success");
+                } else {
+                    cleanSessionStorage();
+                }
+            } else {
+                cleanSessionStorage();
+            }
+        } catch (err) {
+            console.error("Lỗi phục hồi kết nối tự động:", err);
+            cleanSessionStorage();
+        } finally {
+            if (overlay) overlay.style.display = "none";
+        }
+    }
+}
+
+function cleanSessionStorage() {
+    localStorage.removeItem("reconnect_room_id");
+    localStorage.removeItem("reconnect_player_id");
+}
+
 // ==========================================
 // 3. ĐỒNG BỘ THỜI GIAN THỰC TỪ FIREBASE
 // ==========================================
@@ -297,12 +361,8 @@ function listenToRoom() {
 
         const mySelf = Net.players[Net.playerId];
 
-        // ĐỒNG BỘ GM & SPECTATOR: GM nhìn thấy vai trò của tất cả người chơi
-        if (Net.isHost) {
-            renderUnmaskedSpectatorGrid();
-        } else {
-            renderNormalPlayerGrid();
-        }
+        // Vẽ lưới người chơi tránh Flicker nhấp nháy giao diện
+        renderPlayersGridSmartly();
 
         // Cập nhật số lượng người kết nối trong lobby
         const connectedCount = window.G.players.filter(p => p.isConnected).length;
@@ -313,7 +373,6 @@ function listenToRoom() {
         if (!roomData.meta.started) {
             renderLobbyPlayersList();
             
-            // Host chỉ có thể bắt đầu khi tất cả người chơi khác đã READY
             if (Net.isHost) {
                 const otherPlayers = window.G.players.filter(p => p.id !== Net.playerId);
                 const allReady = otherPlayers.length > 0 && otherPlayers.every(p => p.isReady);
@@ -325,20 +384,32 @@ function listenToRoom() {
                 transitionToGameScreen(roomData);
             }
 
-            // SỬA LỖI 3 & 4: Xử lý xem bài & reconnect cho người chơi chưa xác nhận xem role
+            // Xử lý xem bài & reconnect cho người chơi chưa xác nhận xem role
             if (mySelf && mySelf.hasSeenRole === false) {
                 triggerCardFlipModal(mySelf);
+            }
+
+            // Kích hoạt giao diện chiến thắng tự động
+            if (roomData.meta.phase === "victory" && roomData.meta.winner) {
+                window.UI_Module.showVictoryScreen(roomData.meta.winner, roomData.meta.mvp, roomData.meta.relations);
             }
 
             syncLayoutBasedOnRoleAndStatus(roomData);
             syncTrialPhases(roomData);
             updateSovereignStatusAndGuide(roomData);
+            
+            // Host tự động tính toán pha đêm và kết thúc bỏ phiếu khi đủ người
+            if (Net.isHost) {
+                if (roomData.meta.phase === "night") {
+                    StateMachine.checkAndAutoTransitionToDay();
+                }
+            }
         }
 
         updateBalanceAndCountsUI();
     });
 
-    // Lắng nghe hộp thư Mailbox trực tiếp
+    // Lắng nghe hộp thư Mailbox trực tiếp của người chơi thường
     if (!Net.isHost) {
         const mailboxRef = ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/mailbox`);
         onValue(mailboxRef, (snap) => {
@@ -347,7 +418,7 @@ function listenToRoom() {
         });
     }
 
-    // Lắng nghe dòng nhật ký GM
+    // Lắng nghe dòng nhật ký GM dành cho Quản Trò
     if (Net.isHost) {
         const logsRef = ref(db, `rooms/${Net.roomId}/logs`);
         onValue(logsRef, (snap) => {
@@ -393,15 +464,13 @@ function transitionToGameScreen(roomData) {
     if (Net.isHost) {
         document.getElementById("gm-timeline-container").classList.remove("hidden");
         document.getElementById("player-mailbox-container").classList.add("hidden");
-        document.getElementById("tab-btn-roles-config")?.classList.remove("hidden");
     } else {
         document.getElementById("gm-timeline-container").classList.add("hidden");
         document.getElementById("player-mailbox-container").classList.remove("hidden");
-        document.getElementById("tab-btn-roles-config")?.classList.add("hidden");
     }
 }
 
-// BỘ LẬT THẺ TRÁNH RACE CONDITION
+// BỘ LẬT THẺ CHỌN VAI TRÒ BAN ĐẦU
 function triggerCardFlipModal(mySelf) {
     const modal = document.getElementById("flashcard-modal");
     const card = document.getElementById("fc-card");
@@ -427,7 +496,6 @@ function triggerCardFlipModal(mySelf) {
         modal.style.display = "none";
         card.removeEventListener("click", flipCard);
         
-        // SỬA LỖI 3 & 4: Ghi đè hasSeenRole lên Firebase để không bao giờ hiển thị lại sau khi đã đóng
         try {
             await update(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}`), {
                 hasSeenRole: true
@@ -452,18 +520,14 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
     const mySelf = Net.players[Net.playerId];
     const phase = roomData.meta?.phase || "setup";
     
-    // Đóng băng toàn bộ giao diện màn hình sương mù Đêm Đen nếu không phải GM
+    // Đóng băng toàn bộ màn hình sương mù Đêm Đen đối với người chơi ngủ say
     const sleepOverlay = document.getElementById("night-sleep-overlay");
-    if (phase === "night" && !Net.isHost) {
-        if (mySelf && mySelf.alive && !mySelf.turnEnded) {
-            // Đến lượt hành động -> Mở mờ màn hình
-            sleepOverlay.classList.add("hidden");
-        } else {
-            // Chưa đến lượt hoặc đã ngủ -> Che màn hình tối tuyệt đối
+    if (sleepOverlay) {
+        if (phase === "night" && mySelf && mySelf.alive && mySelf.turnEnded) {
             sleepOverlay.classList.remove("hidden");
+        } else {
+            sleepOverlay.classList.add("hidden");
         }
-    } else {
-        sleepOverlay.classList.add("hidden");
     }
 
     // ĐỒNG BỘ CHAT ĐA PHE PHÁI BAN ĐÊM & ĐÓNG BĂNG KÊNH LÀNG BAN ĐÊM
@@ -471,7 +535,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
     const chatSendBtn = document.getElementById("btn-chat-send");
 
     if (phase === "night") {
-        // Đêm xuống: Khóa kênh chat công khai Làng
         if (Net.currentChannel === "public") {
             if (chatInputField) {
                 chatInputField.disabled = true;
@@ -486,7 +549,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             if (chatSendBtn) chatSendBtn.disabled = false;
         }
 
-        // Kích hoạt hiển thị động các kênh chat phe cánh tương ứng nếu còn sống
         if (mySelf && mySelf.alive) {
             if (mySelf.role === "wolf" || mySelf.realFaction === "wolf") {
                 document.getElementById("chan-wolf")?.classList.remove("hidden");
@@ -500,16 +562,13 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             if (mySelf.vampireFactionId) {
                 document.getElementById("chan-vampire")?.classList.remove("hidden");
             }
-            // Tử Thần faction chat
             if (mySelf.role === "reaper" || mySelf.role === "apprenticeReaper") {
                 document.getElementById("chan-reaper")?.classList.remove("hidden");
             }
         }
     } else {
-        // Ban ngày: Mở lại kênh chat Làng cho người sống
         if (mySelf && mySelf.alive) {
             if (mySelf.isSilencerMuted) {
-                // SỬA LỖI: Bị câm lặng thì không thể nhắn tin công khai ban ngày
                 if (chatInputField) {
                     chatInputField.disabled = true;
                     chatInputField.placeholder = "Bạn đang bị câm lặng (Muted) hôm nay... Im lặng!";
@@ -523,7 +582,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
                 if (chatSendBtn) chatSendBtn.disabled = false;
             }
         } else {
-            // Linh hồn chỉ được chat ở kênh Graveyard
             if (Net.currentChannel === "graveyard") {
                 if (chatInputField) {
                     chatInputField.disabled = false;
@@ -539,7 +597,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             }
         }
 
-        // Đêm đã qua: Các kênh chat phe chuyển về trạng thái Chỉ đọc (Read-only)
         if (Net.currentChannel !== "public" && Net.currentChannel !== "graveyard") {
             if (chatInputField) {
                 chatInputField.disabled = true;
@@ -549,7 +606,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
         }
     }
 
-    // Hiển thị nút Cưỡng chế chuyển ngày cho Quản Trò khi đêm buông xuống
     const forceDayBtn = document.getElementById("btn-gm-force-day");
     if (Net.isHost && phase === "night") {
         forceDayBtn?.classList.remove("hidden");
@@ -557,13 +613,10 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
         forceDayBtn?.classList.add("hidden");
     }
 
-    // Cập nhật Căn Cước hiển thị cố định của Người chơi
     updatePlayerIdentityCard(mySelf);
-
     renderDynamicActionControls(roomData, mySelf);
 }
 
-// Cập nhật widget "Thẻ Căn Cước" (Identity Widget) ở góc màn hình của Người chơi
 function updatePlayerIdentityCard(mySelf) {
     const idCard = document.getElementById("player-identity-card");
     const idRoleVal = document.getElementById("id-role-val");
@@ -573,7 +626,6 @@ function updatePlayerIdentityCard(mySelf) {
     if (!idCard || !mySelf) return;
 
     if (Net.isHost) {
-        // Quản trò không cần xem thẻ căn cước cá nhân
         idCard.classList.add("hidden");
         return;
     }
@@ -582,8 +634,7 @@ function updatePlayerIdentityCard(mySelf) {
     idRoleVal.innerText = getRoleName(mySelf.role).toUpperCase();
     idFactionVal.innerText = mySelf.realFaction.toUpperCase();
 
-    // Liệt kê tóm tắt mô tả kỹ năng
-    const skills = ROLE_DB[mySelf.role]?.faction === "wolf" ? "Phe phái Ma Sói: Đồng tâm cắn phá vào ban đêm." : "Phe Làng: Tìm kiếm thông tin sơ hở để treo cổ Sói ban ngày.";
+    const skills = ROLE_DB[mySelf.role]?.faction === "wolf" ? "Phe phái Ma Sói: Đồng tâm cắn phá vào ban đêm." : "Phe Làng: Thảo luận tìm kiếm Ma Sói ban ngày.";
     idSkillsSummary.innerText = skills;
 }
 
@@ -628,7 +679,7 @@ function renderDynamicActionControls(roomData, mySelf) {
 
         let buttonHTML = `
             <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
-                ${hasSkill ? `<button id="btn-use-skill" class="btn-accent w-100">${rIcon} KÍCH HOẠT KỸ NĂNG ĐÊM</button>` : `<p style="color:var(--log-text);">Bạn là Dân Làng thụ động. Hãy yên lặng đi ngủ.</p>`}
+                ${hasSkill ? `<button id="btn-use-skill" class="btn-accent w-100">${rIcon} KÍCH HOẠT KỸ NĂNG ĐÊM</button>` : `<p style="color:var(--log-text);">Bạn là vai trò thụ động. Hãy yên lặng đi ngủ.</p>`}
                 <button id="btn-end-turn" class="btn-success w-100">💤 XÁC NHẬN KẾT THÚC LƯỢT</button>
             </div>
         `;
@@ -674,7 +725,7 @@ function renderDynamicActionControls(roomData, mySelf) {
 }
 
 function PASSIVE_NIGHT_ROLES_CHECK(role) {
-    return ["villager", "clown", "idiot", "ghost", "halfWolf", "apprenticeSeer", "doppelganger"].includes(role);
+    return ["villager", "clown", "idiot", "ghost", "halfWolf", "apprenticeSeer", "doppelganger", "lostChild"].includes(role);
 }
 
 // ==========================================
@@ -797,7 +848,6 @@ function openSplitScreenVoteModal(accusedId, roomData) {
     document.getElementById("count-acquit").innerText = countAcquit;
     document.getElementById("count-execute").innerText = countExecute;
 
-    // Cập nhật thanh tiến trình biểu quyết treo cổ (UX Progress Bar Indicator)
     const progressWrapper = document.getElementById("trial-vote-progress-wrapper");
     const progressFill = document.getElementById("trial-vote-progress-fill");
     const progressRatio = document.getElementById("trial-vote-ratio");
@@ -820,36 +870,13 @@ function openSplitScreenVoteModal(accusedId, roomData) {
         set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "EXECUTE");
     };
 
-    // GM tự kiểm duyệt phán quyết khi đủ đa số phiếu
     if (Net.isHost) {
         const totalVotes = countAcquit + countExecute;
         const totalAlive = window.G.players.filter(p => p.alive).length;
-        if (totalVotes >= totalAlive) {
+        if (totalVotes >= totalAlive && totalAlive > 0) {
             StateMachine.resolveVotingOutcome();
         }
     }
-}
-
-// Hoạt ảnh búa phán quyết của tòa án
-export function runGavelStrikeAnimation(decisionText, callback) {
-    const overlay = document.getElementById("gavel-animation-overlay");
-    const flash = document.getElementById("gavel-flash-element");
-    const announcement = document.getElementById("gavel-verdict-announcement");
-
-    if (!overlay) return;
-
-    announcement.innerText = decisionText;
-    overlay.classList.remove("hidden");
-
-    setTimeout(() => {
-        if (flash) flash.classList.add("flash-active");
-    }, 500);
-
-    setTimeout(() => {
-        overlay.classList.add("hidden");
-        if (flash) flash.classList.remove("flash-active");
-        if (callback) callback();
-    }, 2500);
 }
 
 // ==========================================
@@ -863,7 +890,6 @@ function renderMailbox(mails) {
     const mailArray = Object.entries(mails).map(([id, data]) => ({ id, ...data }));
     mailArray.sort((a, b) => b.timestamp - a.timestamp);
 
-    // Đồng bộ số lượng thư chưa đọc lên Badge tab mobile
     const unreadCount = mailArray.filter(m => !m.isRead).length;
     const badge = document.getElementById("mail-badge");
     if (badge) {
@@ -880,7 +906,6 @@ function renderMailbox(mails) {
         return m.category === Net.mailCategory;
     });
 
-    // Lưu trữ danh sách thư lọc hiện tại phục vụ điều hướng Parchment
     openedMailsList = filteredMails;
 
     if (filteredMails.length === 0) {
@@ -927,7 +952,6 @@ function openParchmentMail(mail) {
     pText.innerText = mail.content;
     modal.style.display = "flex";
 
-    // Đánh dấu đã đọc mượt mà lên Firebase
     update(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/mailbox/${mail.id}`), {
         isRead: true
     });
@@ -937,7 +961,6 @@ function openParchmentMail(mail) {
     };
 }
 
-// Thiết lập điều hướng nhanh bằng các nút "Thư trước / Thư sau" trong Parchment Modal
 function setupParchmentNavigation() {
     const btnPrev = document.getElementById("btn-prev-parchment");
     const btnNext = document.getElementById("btn-next-parchment");
@@ -1012,7 +1035,6 @@ function setupChatEngine() {
         });
     }
 
-    // Luồng lắng nghe sự kiện tab chuyển kênh chat động
     const channels = ["chan-public", "chan-wolf", "chan-couple", "chan-prime", "chan-vampire", "chan-reaper", "chan-graveyard"];
     channels.forEach(ch => {
         document.getElementById(ch)?.addEventListener("click", (e) => {
@@ -1022,12 +1044,11 @@ function setupChatEngine() {
             const chanName = ch.replace("chan-", "");
             Net.currentChannel = chanName;
 
-            // ĐỒNG BỘ AN TOÀN CHAT KEY chống đọc trộm qua F12 Console
             let mappedFirebasePath = chanName;
             const mySelf = Net.players[Net.playerId];
 
             if (chanName === "couple" && mySelf && mySelf.coupleId) {
-                mappedFirebasePath = mySelf.coupleId; // Lắng nghe đường dẫn hash riêng
+                mappedFirebasePath = mySelf.coupleId;
             } else if (chanName === "prime" && mySelf && mySelf.primeCovenantId) {
                 mappedFirebasePath = mySelf.primeCovenantId;
             } else if (chanName === "vampire" && mySelf && mySelf.vampireFactionId) {
@@ -1047,7 +1068,6 @@ async function sendChatMessage() {
     const msg = input.value.trim();
     if (!msg) return;
 
-    // ĐỒNG BỘ AN TOÀN CHAT KEY khi gửi lên DB
     let mappedFirebasePath = Net.currentChannel;
     const mySelf = Net.players[Net.playerId];
 
@@ -1136,8 +1156,82 @@ function setupSpectatorWinPoll() {
 }
 
 // ==========================================
-// 8. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI
+// 8. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING - CHỐNG FLICKER)
+// SỬA LỖI 8: Chỉ cập nhật trạng thái động, tuyệt đối không triệt hạ toàn bộ lưới
 // ==========================================
+function renderPlayersGridSmartly() {
+    const grid = document.getElementById("game-players-grid");
+    if (!grid) return;
+
+    const currentPlayers = Object.values(Net.players);
+    const existingCardsMap = {};
+
+    // Quét thu thập các thẻ HTML người chơi hiện tại đang dựng
+    grid.querySelectorAll(".player-grid-card").forEach(card => {
+        const id = card.getAttribute("data-id");
+        if (id) existingCardsMap[id] = card;
+    });
+
+    currentPlayers.forEach(p => {
+        let card = existingCardsMap[p.id];
+
+        // Nếu thẻ chưa tồn tại -> Khởi tạo mới thẻ đó
+        if (!card) {
+            card = document.createElement("div");
+            card.className = "player-grid-card";
+            card.setAttribute("data-id", p.id);
+            
+            const dot = document.createElement("span");
+            dot.className = "status-dot";
+            card.appendChild(dot);
+
+            const name = document.createElement("span");
+            name.className = "name";
+            card.appendChild(name);
+
+            const roleUnmasked = document.createElement("span");
+            roleUnmasked.className = "role-unmasked";
+            card.appendChild(roleUnmasked);
+
+            card.addEventListener("click", () => {
+                showPlayerBottomSheet(p, Net.isHost);
+            });
+
+            grid.appendChild(card);
+        }
+
+        // Cập nhật nội dung văn bản mà không làm mất trạng thái cuộn
+        const nameEl = card.querySelector(".name");
+        if (nameEl && nameEl.innerText !== p.name) nameEl.innerText = p.name;
+
+        // GM hiển thị trực tiếp vai trò của toàn bộ thành viên
+        const roleUnmaskedEl = card.querySelector(".role-unmasked");
+        if (roleUnmaskedEl) {
+            const roleText = Net.isHost ? `[${getRoleName(p.role)}]` : "";
+            if (roleUnmaskedEl.innerText !== roleText) roleUnmaskedEl.innerText = roleText;
+        }
+
+        // Cập nhật trạng thái kết nối mạng
+        const dotEl = card.querySelector(".status-dot");
+        if (dotEl) {
+            const expectedClass = `status-dot ${p.isConnected ? "online" : "offline"}`;
+            if (dotEl.className !== expectedClass) dotEl.className = expectedClass;
+        }
+
+        // Thiết lập lại danh sách lớp trang trí linh hoạt theo bùa chú
+        card.className = `player-grid-card ${p.alive ? "" : "dead"}`;
+        
+        // Dọn dẹp huy hiệu cũ trước khi gán mới
+        card.querySelectorAll(".wolf-votes").forEach(el => el.remove());
+        
+        applyDecorativeClasses(p, card);
+        delete existingCardsMap[p.id];
+    });
+
+    // Triệt tiêu các thẻ dư thừa của người chơi đã thoát khỏi phòng
+    Object.values(existingCardsMap).forEach(card => card.remove());
+}
+
 function applyDecorativeClasses(p, card) {
     if (p.isSeerScanned) card.classList.add("seer-scanned");
     if (p.isProtected) card.classList.add("guard-protected");
@@ -1180,70 +1274,6 @@ function applyDecorativeClasses(p, card) {
     }
 }
 
-// SỬA LỖI 1: GM nhìn thấy vai trò của tất cả người chơi ngay dưới tên ở Grid chính suốt trận đấu
-function renderUnmaskedSpectatorGrid() {
-    const grid = document.getElementById("game-players-grid");
-    if (!grid) return;
-    grid.innerHTML = "";
-
-    Object.values(Net.players).forEach(p => {
-        const card = document.createElement("div");
-        card.className = `player-grid-card ${p.alive ? "" : "dead"}`;
-        
-        const dot = document.createElement("span");
-        dot.className = `status-dot ${p.isConnected ? "online" : "offline"}`;
-        
-        const name = document.createElement("span");
-        name.className = "name";
-        name.innerText = p.name;
-
-        const roleUnmasked = document.createElement("span");
-        roleUnmasked.className = "role-unmasked";
-        roleUnmasked.innerText = `[${getRoleName(p.role)}]`;
-        
-        card.appendChild(dot);
-        card.appendChild(name);
-        card.appendChild(roleUnmasked);
-
-        applyDecorativeClasses(p, card);
-
-        card.addEventListener("click", () => {
-            showPlayerBottomSheet(p, Net.isHost);
-        });
-
-        grid.appendChild(card);
-    });
-}
-
-function renderNormalPlayerGrid() {
-    const grid = document.getElementById("game-players-grid");
-    if (!grid) return;
-    grid.innerHTML = "";
-
-    Object.values(Net.players).forEach(p => {
-        const card = document.createElement("div");
-        card.className = `player-grid-card ${p.alive ? "" : "dead"}`;
-        
-        const dot = document.createElement("span");
-        dot.className = `status-dot ${p.isConnected ? "online" : "offline"}`;
-        
-        const name = document.createElement("span");
-        name.className = "name";
-        name.innerText = p.name;
-
-        card.appendChild(dot);
-        card.appendChild(name);
-
-        applyDecorativeClasses(p, card);
-
-        card.addEventListener("click", () => {
-            showPlayerBottomSheet(p, Net.isHost);
-        });
-
-        grid.appendChild(card);
-    });
-}
-
 function renderGMLogs(logs) {
     const logBox = document.getElementById("gm-timeline-log");
     if (!logBox) return;
@@ -1261,7 +1291,7 @@ function renderGMLogs(logs) {
 }
 
 // ==========================================
-// 9. CÁC TIỆN ÍCH KHÁC
+// 9. CÁC TIỆN ÍCH HOẠT ĐỘNG KHÁC
 // ==========================================
 function copyRoomId() {
     if (!Net.roomId) return;
@@ -1286,4 +1316,31 @@ function updateBalanceAndCountsUI() {
 
     window.UI_Module.updateBalanceUI();
     window.UI_Module.updateActiveRolesSummary();
+}
+
+async function toggleReadyState() {
+    const mySelf = Net.players[Net.playerId];
+    if (!mySelf) return;
+
+    try {
+        await update(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}`), {
+            isReady: !mySelf.isReady
+        });
+    } catch (err) {
+        console.error("Lỗi thay đổi trạng thái sẵn sàng:", err);
+    }
+}
+
+async function hostStartSetup() {
+    if (!Net.isHost) return;
+    
+    try {
+        await update(ref(db, `rooms/${Net.roomId}/meta`), {
+            phase: "day",
+            day: 0
+        });
+        showToast("Thiết lập phòng hoàn tất! Hãy tiến hành phân phát vai trò.", "success");
+    } catch (err) {
+        console.error("Lỗi đồng bộ hóa GM bắt đầu:", err);
+    }
 }

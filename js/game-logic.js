@@ -1,8 +1,7 @@
-import { Net } from "./app.js";
 import { db, ref, set, get, update, push } from "./firebase-config.js";
 
 // ==========================================
-// 1. TRẠNG THÁI TOÀN CỤC (GLOBAL STATE - G)
+// 1. TRẠNG THÁI TOÀN CỤC CỤC BỘ (GLOBAL STATE)
 // ==========================================
 window.G = {
     lang: 'vi',
@@ -74,6 +73,9 @@ export const t = (key, ...args) => {
     args.forEach((arg, i) => { text = text.replace(`{${i}}`, arg); });
     return text;
 };
+
+// Gán quyền truy xuất sang phạm vi toàn cục để phục vụ các tệp bổ trợ
+window.getRoleName = getRoleName;
 
 // ==========================================
 // 3. ĐỊNH NGHĨA PHÂN PHE VÀ THUỘC TÍNH (FACTIONS DB)
@@ -163,7 +165,8 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==========================================
 export const Engine_Module = {
     distributeRoles: async () => {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
         
         const activePlayers = Object.values(Net.players).filter(p => p.isConnected);
         const playerCount = activePlayers.length;
@@ -173,14 +176,14 @@ export const Engine_Module = {
             return;
         }
 
-        // SỬA LỖI 2: Tính toán chính xác tổng cấu hình vai trò của GM
+        // Tính toán tổng số lượng vai trò được định cấu hình trên máy chủ
         let configuredRoleCount = 0;
         const currentCounts = window.G.roleCounts || {};
         for (let key in currentCounts) {
             configuredRoleCount += currentCounts[key] || 0;
         }
 
-        // Xác thực nghiêm ngặt 100% khớp số lượng người chơi
+        // Đảm bảo số lượng phân phát khớp tuyệt đối 100% với số người chơi kết nối
         if (configuredRoleCount !== playerCount) {
             const difference = playerCount - configuredRoleCount;
             if (difference > 0) {
@@ -191,7 +194,7 @@ export const Engine_Module = {
             return;
         }
 
-        // Gom các vai trò hợp lệ vào bể trộn
+        // Thu gom vai trò hợp lệ vào bể trộn ngẫu nhiên
         let rolePool = [];
         for (let key in ROLE_DB) {
             let count = currentCounts[key] || 0;
@@ -200,7 +203,7 @@ export const Engine_Module = {
             }
         }
 
-        // Trộn ngẫu nhiên (Fisher-Yates)
+        // Trộn ngẫu nhiên cơ học Fisher-Yates
         for (let i = rolePool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [rolePool[i], rolePool[j]] = [rolePool[j], rolePool[i]];
@@ -212,7 +215,7 @@ export const Engine_Module = {
             updates[`rooms/${Net.roomId}/players/${p.id}/role`] = assignedRole;
             updates[`rooms/${Net.roomId}/players/${p.id}/realFaction`] = ROLE_DB[assignedRole].faction;
             updates[`rooms/${Net.roomId}/players/${p.id}/turnEnded`] = false;
-            updates[`rooms/${Net.roomId}/players/${p.id}/hasSeenRole`] = false; // Phục vụ xử lý mất kết nối
+            updates[`rooms/${Net.roomId}/players/${p.id}/hasSeenRole`] = false; 
         });
 
         try {
@@ -225,7 +228,8 @@ export const Engine_Module = {
     },
 
     startGame: async () => {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
 
         const updates = {
             [`rooms/${Net.roomId}/meta/started`]: true,
@@ -242,7 +246,9 @@ export const Engine_Module = {
     },
 
     logMsg: async (msg, type = "sys") => {
-        if (!Net.roomId) return;
+        const Net = window.Net;
+        if (!Net || !Net.roomId) return;
+        
         const logRef = ref(db, `rooms/${Net.roomId}/logs`);
         const logItem = {
             day: window.G.day,
@@ -259,6 +265,9 @@ export const Engine_Module = {
     },
 
     accusePlayer: async (targetId) => {
+        const Net = window.Net;
+        if (!Net) return;
+        
         const selfId = Net.playerId;
         const currentNomRef = ref(db, `rooms/${Net.roomId}/nominations/${selfId}`);
         try {
@@ -277,8 +286,11 @@ export const Engine_Module = {
     }
 };
 
-// Kiểm tra quá bán phiếu tố cáo để tự động đưa lên đài treo cổ
+// Kiểm tra đa số phiếu đề cử treo cổ tự động đưa bị cáo lên đài
 async function checkMajorityNominationTrigger() {
+    const Net = window.Net;
+    if (!Net) return;
+    
     const nomRef = ref(db, `rooms/${Net.roomId}/nominations`);
     try {
         const snap = await get(nomRef);
@@ -311,7 +323,7 @@ async function checkMajorityNominationTrigger() {
 }
 
 // ==========================================
-// 5. HIỂN THỊ GIAO DIỆN (UI MODULE)
+// 5. HIỂN THỊ GIAO DIỆN CHUNG (UI MODULE)
 // ==========================================
 export const UI_Module = {
     switchTab: (idx) => {
@@ -373,7 +385,9 @@ export const UI_Module = {
     },
 
     changeRoleQty: (key, delta) => {
-        if (!Net.isHost) return;
+        const Net = window.Net;
+        if (!Net || !Net.isHost) return;
+        
         const currentQty = window.G.roleCounts[key] || 0;
         const newQty = Math.max(0, currentQty + delta);
         
@@ -383,6 +397,9 @@ export const UI_Module = {
     },
 
     executeDeath: async (playerId) => {
+        const Net = window.Net;
+        if (!Net) return;
+
         const playerRef = ref(db, `rooms/${Net.roomId}/players/${playerId}`);
         try {
             await update(playerRef, { alive: false });
@@ -540,7 +557,9 @@ function initRoleSetupListeners() {
 }
 
 function applyPreset(preset) {
-    if (!Net.isHost) return;
+    const Net = window.Net;
+    if (!Net || !Net.isHost) return;
+    
     const updates = {};
     for (let key in ROLE_DB) {
         updates[`rooms/${Net.roomId}/roleCounts/${key}`] = preset[key] || 0;
@@ -644,6 +663,6 @@ function initVictoryTabsListeners() {
     });
 }
 
-// Xuất các Module ra môi trường bên ngoài để HTML và app.js liên kết
+// Xuất các Module sang tệp app.js
 window.UI_Module = UI_Module;
 window.Engine_Module = Engine_Module;

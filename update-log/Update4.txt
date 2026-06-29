@@ -1,0 +1,47 @@
+PHẦN I: CÁC LỖI NGHIÊM TRỌNG GÂY TREO GAME & KHÓA LUỒNG (CRITICAL FREEZING BUGS)
+1. Lặp kích hoạt phán quyết vô hạn tại máy Host (Infinite Event Loop on Voting Resolution)
+Hiện trạng: Trong tệp app.js, tại hàm openSplitScreenVoteModal(), hệ thống tự động kiểm tra số lượng phiếu bầu của phòng:
+code
+JavaScript
+if (Net.isHost) {
+    const totalVotes = countAcquit + countExecute;
+    const totalAlive = window.G.players.filter(p => p.alive).length;
+    if (totalVotes >= totalAlive) {
+        StateMachine.resolveVotingOutcome();
+    }
+}
+Nguyên nhân gây treo: Hàm openSplitScreenVoteModal() được gọi trực tiếp bên trong tiến trình lắng nghe dữ liệu thời gian thực onValue(roomRef). Khi đủ số phiếu bầu, máy Host sẽ kích hoạt StateMachine.resolveVotingOutcome(). Hàm này tiến hành cập nhật trạng thái trial/stage = "verdict".
+Tuy nhiên, dữ liệu danh sách phiếu bầu (votes) trên Firebase vẫn chưa được xóa cho tới khi hoạt ảnh búa gõ tòa án kéo dài 2.5 giây kết thúc. Trong suốt khoảng thời gian 2.5 giây này, bất kỳ thay đổi nhỏ nào trên cơ sở dữ liệu đều kích hoạt lại tiến trình onValue(), hệ thống thấy số phiếu vẫn đang đạt mức đa số và tiếp tục gọi dồn dập resolveVotingOutcome() chồng chéo lên nhau. Điều này tạo ra một vòng lặp bất đồng bộ vô hạn, flood ghi dữ liệu lên Firebase và khóa cứng luồng xử lý của trình duyệt.
+2. Lỗi mất khả năng tái kết nối phiên chơi (Broken Reconnection Architecture)
+Hiện trạng: Hệ thống có cơ chếPresence nhằm cập nhật trạng thái kết nối isConnected. Tuy nhiên, định danh phòng (Net.roomId) và định danh cá nhân (Net.playerId) chỉ được lưu trữ tạm thời trong bộ nhớ RAM của Client.
+Nguyên nhân gây treo: Khi người chơi gặp sự cố mạng, lỡ tay nhấn F5 (Refresh) hoặc tải lại trang, toàn bộ thông tin về phòng chơi và ID người chơi cũ của họ bị xóa sạch khỏi bộ nhớ RAM. Lúc này, hệ thống đưa họ trở lại màn hình đăng nhập mặc định vì localStorage chỉ lưu giữ mỗi tên hiển thị.
+Nếu người chơi cố gắng nhập lại mã phòng cũ, hệ thống sẽ cấp cho họ một Net.playerId hoàn toàn mới. Slot người chơi cũ (vẫn được ghi nhận là còn sống trên Firebase) sẽ vĩnh viễn rơi vào trạng thái ngoại tuyến (isConnected = false nhưng alive = true). Vì slot cũ này không bao giờ có thể thao tác nhấn nút xong lượt, trò chơi sẽ bị nghẽn vô thời hạn.
+3. Nghẽn pha đêm vĩnh viễn khi có người chơi chức năng mất kết nối (AFK / Disconnected Night Stall)
+Hiện trạng: Pha đêm chỉ tự động chuyển sang ngày khi toàn bộ người chơi còn sống có trạng thái turnEnded = true.
+Nguyên nhân gây treo: Dù hệ thống đã tự động gán turnEnded = true cho các vai trò thụ động (PASSIVE_NIGHT_ROLES), các vai trò có kỹ năng chủ động (như Tiên Tri, Bảo Vệ, Phù Thủy) vẫn bắt buộc phải tương tác thủ công. Nếu một người chơi giữ chức năng chủ động ban đêm bị rớt mạng hoặc cố tình AFK không bấm xác nhận, biến allTurnsEnded trong state-machine.js không bao giờ đạt giá trị true, khiến phòng đấu bị đóng băng vĩnh viễn ở pha đêm.
+PHẦN II: CÁC LỖI LOGIC ĐỒNG BỘ & ĐUA TRẠNG THÁI (LOGIC & RACE CONDITIONS)
+4. Phụ thuộc vòng giữa các tệp tin khởi chạy (Circular Module Dependency)
+Hiện trạng:
+Tệp app.js thực hiện nạp các thành phần từ game-logic.js (ROLE_DB, ROLE_ICONS, v.v.).
+Ngược lại, tệp game-logic.js cũng thực hiện nạp biến cấu trúc Net từ app.js (import { Net } from "./app.js").
+Hệ quả: Đây là lỗi phụ thuộc vòng cấu trúc (Circular Dependency) trong chuẩn ES6 Module. Khi ứng dụng tải tệp app.js đầu tiên, thực thể Net có thể chưa kịp khởi tạo hoàn tất đã bị tệp game-logic.js gọi tham chiếu. Lỗi này dẫn đến việc phát sinh giá trị undefined hoặc lỗi khởi chạy tại thời điểm nạp trang, làm tê liệt các tiến trình gán sự kiện ban đầu.
+5. Mâu thuẫn danh sách vai trò thụ động giữa Client và Server (Passive Night Roles Mismatch)
+Hiện trạng:
+Tệp state-machine.js định nghĩa danh sách vai trò thụ động gồm:
+["villager", "clown", "idiot", "ghost", "halfWolf", "apprenticeSeer", "doppelganger", "lostChild"].
+Tệp app.js định nghĩa hàm kiểm tra thụ động:
+["villager", "clown", "idiot", "ghost", "halfWolf", "apprenticeSeer", "doppelganger"] (Thiếu mất "lostChild").
+Hệ quả: Đối với những vai trò bị lệch pha nằm ở khoảng trống này (ví dụ: lostChild), khi pha đêm bắt đầu, hệ thống phía máy chủ tự động gán turnEnded = true cho họ. Tuy nhiên, phía Client vẫn đánh giá họ có kỹ năng hoạt động và hiển thị nút kích hoạt. Khi người chơi nhấn nút kích hoạt, giao diện sẽ lập tức khóa lại và hiển thị thông báo "Đã xác nhận kết thúc lượt" một cách bất thường, tước đoạt quyền thực thi kỹ năng của họ.
+6. Đồng bộ kênh chat động ban đêm bị bỏ lỡ (Dynamic Chat Channel Subscription Desync)
+Hiện trạng: Trong hàm setupChatEngine(), việc lắng nghe và thay đổi đường dẫn Firebase động cho các kênh ẩn danh (như coupleId, primeCovenantId, vampireFactionId) chỉ được thực hiện một lần duy nhất khi người dùng click trực tiếp vào các tab kênh chat tương ứng.
+Hệ quả: Nếu người chơi đang mở sẵn tab chat ẩn danh ban đêm, và tại thời điểm đó cơ sở dữ liệu từ xa mới cập nhật mã khóa kênh chat cho họ (ví dụ: Cupid vừa se duyên thành công, hoặc Chủ Thần vừa liên kết Thân Cận), Client của họ sẽ không hề tự động lắng nghe đường dẫn mới này cho đến khi họ thực hiện thao tác click chuyển tab thủ công qua lại. Người chơi sẽ gặp tình trạng không nhận được tin nhắn thời gian thực của đồng đội.
+7. Lỗi Crash giải quyết dữ liệu đêm khi mục tiêu biến mất (Null-Pointer Exception in Tick Engine)
+Hiện trạng: Thuật toán phân giải hành động đêm trong tick-engine.js thực hiện bẻ hướng mục tiêu qua kính phản chiếu (getRoutedTarget). Nếu mục tiêu rơi vào trạng thái không xác định hoặc người chơi đích rời trận, giá trị mục tiêu có thể trả về chuỗi "neutralized_by_void" hoặc một khóa không hợp lệ.
+Hệ quả: Khi xử lý kỹ năng soi của Tiên Tri, hệ thống cố gắng truy xuất thuộc tính tên của đối tượng: playersMap[originalTarget]?.name. Nếu originalTarget là một giá trị rỗng hoặc không tồn tại trong cấu trúc dữ liệu người chơi, nó sẽ ném ra lỗi ngoại lệ, làm gián đoạn tiến trình thi hành của Tick Engine, khiến pha đêm không thể phân giải để chuyển sang ngày.
+PHẦN III: BẤT CẬP GIAO DIỆN & TRẢI NGHIỆM NGƯỜI DÙNG (UI/UX BUGS)
+8. Lỗi giật lag và cuộn trang do dựng lại toàn bộ DOM (DOM Destruction & Flicker Bug)
+Hiện trạng: Mỗi khi có bất kỳ sự thay đổi nhỏ nào trên cơ sở dữ liệu Firebase (chẳng hạn như một người chơi thay đổi lựa chọn mục tiêu hoặc trạng thái kết nối biến động), hàm lắng nghe sự kiện onValue() đều gọi lại hàm renderNormalPlayerGrid() hoặc renderUnmaskedSpectatorGrid().
+Bất cập UX: Các hàm này sử dụng lệnh triệt hạ thô bạo grid.innerHTML = "" và dựng lại toàn bộ thẻ người chơi từ đầu. Việc này gây ra hiện tượng màn hình bị nhấp nháy (flicker) liên tục, cuộn trang bị nhảy ngược về đầu, và ngắt quãng các tương tác vuốt chạm hoặc bấm giữ của người dùng trên thiết bị di động.
+9. Lỗi tích lũy và ghi đè sự kiện của Modal xác nhận dùng chung (Event Overwriting on Confirm Modal)
+Hiện trạng: Hệ thống sử dụng một Modal xác nhận chung duy nhất (#confirm-modal) cho tất cả các quyết định khẩn cấp (như Quản trò thực thi hành quyết thủ công hoặc phát lệnh trộn lại vai trò).
+Bất cập UX: Mỗi khi gọi hàm askConfirm(), hệ thống sẽ ghi đè thuộc tính .onclick trực tiếp lên hai nút tĩnh confirm-modal-submit và confirm-modal-cancel. Nếu có hai tiến trình xác nhận xuất hiện đồng thời hoặc tiệm cận nhau, tiến trình sau sẽ ghi đè hoàn toàn sự kiện của tiến trình trước. Khi người dùng bấm nút, hành động xác nhận sẽ bị gán sai mục tiêu hoặc thực thi nhầm lệnh của luồng dữ liệu trước đó.

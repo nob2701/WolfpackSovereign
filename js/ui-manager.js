@@ -1,8 +1,5 @@
-import { Net } from "./app.js";
-import { getRoleName, ROLE_DB } from "./game-logic.js";
-
 // ==========================================
-// 1. QUẢN LÝ TRÌNH TỰ MODALS (MODAL QUEUE MANAGER)
+// QUẢN LÝ TRÌNH TỰ MODALS (MODAL QUEUE MANAGER)
 // ==========================================
 export const ModalManager = {
     currentModalId: null,
@@ -49,7 +46,7 @@ export const ModalManager = {
 };
 
 // ==========================================
-// 2. HỆ THỐNG TOAST THAY THẾ ALERT MẶC ĐỊNH
+// HỆ THỐNG TOAST THAY THẾ ALERT MẶC ĐỊNH
 // ==========================================
 export function showToast(message, type = "info") {
     const container = document.getElementById("toast-container");
@@ -71,11 +68,12 @@ export function showToast(message, type = "info") {
     }, 3200);
 }
 
-// Thay thế hàm alert toàn cục để đồng bộ trải nghiệm
+// Ghi đè phương thức alert truyền thống tránh khóa luồng UI
 window.alert = (msg) => showToast(msg, "info");
 
 // ==========================================
-// 3. HỘP THOẠI XÁC NHẬN AN TOÀN (DOUBLE CONFIRMATION)
+// HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG CHỒNG CHÉO SỰ KIỆN (DOUBLE CONFIRMATION)
+// SỬA LỖI 9: Sử dụng cơ chế CloneNode xóa sạch Event Listeners tích lũy
 // ==========================================
 export function askConfirm(message, onConfirm, onCancel = null) {
     const modal = document.getElementById("confirm-modal");
@@ -87,30 +85,36 @@ export function askConfirm(message, onConfirm, onCancel = null) {
     const btnSubmit = document.getElementById("confirm-modal-submit");
     const btnCancel = document.getElementById("confirm-modal-cancel");
 
+    // Tạo bản sao mới hoàn chỉnh để dọn dẹp các sự kiện .onclick cũ dồn tích
+    const newSubmitBtn = btnSubmit.cloneNode(true);
+    const newCancelBtn = btnCancel.cloneNode(true);
+
+    btnSubmit.parentNode.replaceChild(newSubmitBtn, btnSubmit);
+    btnCancel.parentNode.replaceChild(newCancelBtn, btnCancel);
+
     const cleanup = () => {
         modal.style.display = "none";
     };
 
-    btnSubmit.onclick = () => {
+    newSubmitBtn.onclick = () => {
         cleanup();
         if (onConfirm) onConfirm();
     };
 
-    btnCancel.onclick = () => {
+    newCancelBtn.onclick = () => {
         cleanup();
         if (onCancel) onCancel();
     };
 }
 
-// Thay thế hàm confirm toàn cục
+// Ghi đè confirm trình duyệt bằng cơ chế an toàn bất đồng bộ
 window.confirm = (msg) => {
-    // Lưu ý: confirm gốc đồng bộ chặn luồng, phiên bản này bất đồng bộ qua askConfirm
     askConfirm(msg, () => {});
     return false; 
 };
 
 // ==========================================
-// 4. BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
+// BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
 // ==========================================
 export function setupPasteCodeHandler() {
     const wrapper = document.getElementById("join-code-panel");
@@ -134,16 +138,16 @@ export function setupPasteCodeHandler() {
 }
 
 // ==========================================
-// 5. BẢNG CHỌN MỤC TIÊU ĐỘNG (DYNAMIC TARGET GRID)
-// Sửa lỗi rò rỉ bộ nhớ chồng lấp Event Listeners
+// BẢNG CHỌN MỤC TIÊU ĐỘNG (DYNAMIC TARGET GRID)
 // ==========================================
 export function openTargetSelection(playersList, role, onConfirmCallback) {
+    const Net = window.Net;
     const grid = document.getElementById("target-grid-container");
     const modifiersBox = document.getElementById("target-action-modifiers");
     const textInputBox = document.getElementById("target-text-input-container");
     const instruction = document.getElementById("target-modal-instruction");
     
-    if (!grid || !modifiersBox || !textInputBox || !instruction) return;
+    if (!grid || !modifiersBox || !textInputBox || !instruction || !Net) return;
 
     grid.innerHTML = "";
     modifiersBox.innerHTML = "";
@@ -265,7 +269,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         if (phraseInput) phraseInput.value = ""; 
     }
 
-    // SỬA LỖI 8: Cloning để phá vỡ và xóa sạch liên kết sự kiện tích lũy trước đó
+    // Nhân bản làm sạch nút Submit và Cancel
     const submitBtn = document.getElementById("target-modal-submit");
     const cancelBtn = document.getElementById("target-modal-close");
 
@@ -306,7 +310,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 }
 
 // ==========================================
-// 6. ĐỒNG BỘ TABS DI ĐỘNG (MOBILE TABS NAV)
+// ĐỒNG BỘ TABS DI ĐỘNG (MOBILE TABS NAV)
 // ==========================================
 export function initMobileTabSync() {
     const tabSelectors = ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"];
@@ -328,15 +332,14 @@ export function initMobileTabSync() {
 }
 
 // ==========================================
-// 7. BỆNH ÁN CHI TIẾT NGƯỜI CHƠI (PLAYER BOTTOM SHEET)
-// SỬA LỖI 1: Đồng bộ hóa quyền xem vai trò cho GM, khi tự xem bản thân hoặc khi đã chết
+// BỆNH ÁN CHI TIẾT NGƯỜI CHƠI (PLAYER BOTTOM SHEET)
 // ==========================================
 export function showPlayerBottomSheet(playerData, isGM = false) {
+    const Net = window.Net;
     const overlay = document.getElementById("player-sheet-overlay");
     const sheet = document.getElementById("player-sheet-modal");
-    if (!overlay || !sheet) return;
+    if (!overlay || !sheet || !Net) return;
 
-    // Điều kiện xem thông tin vai trò bảo mật hợp pháp
     const hasRightToSeeRole = isGM || !playerData.alive || playerData.id === Net.playerId;
 
     sheet.innerHTML = `
@@ -358,7 +361,7 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
         <div class="switch-row">
             <span class="switch-label">Vai Trò Ghi Nhận:</span>
             <span style="font-weight: bold; color: var(--accent);">
-                ${hasRightToSeeRole ? getRoleName(playerData.role).toUpperCase() : "❓ ĐANG ẨN GIẤU"}
+                ${hasRightToSeeRole ? window.getRoleName(playerData.role).toUpperCase() : "❓ ĐANG ẨN GIẤU"}
             </span>
         </div>
 
@@ -393,7 +396,6 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
         }, 200);
     };
 
-    // Gán sự kiện xử tử GM an toàn qua hộp Confirm nội bộ
     const killBtn = document.getElementById("btn-sheet-kill-trigger");
     if (killBtn) {
         killBtn.onclick = () => {
@@ -409,7 +411,6 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
         if (e.target === overlay) closeSheet();
     };
 
-    // Tích hợp cử chỉ vuốt di động để tắt nhanh Bottom Sheet
     setupBottomSheetSwipeGesture(sheet, overlay, closeSheet);
 }
 
@@ -445,7 +446,32 @@ function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
 }
 
 // ==========================================
-// 8. QUẢN LÝ THIẾT LẬP ÂM THANH
+// HOẠT ẢNH BÚA PHÁN QUYẾT TÒA ÁN ĐỒNG BỘ
+// SỬA LỖI VÒNG LẶP SỰ KIỆN: Chuyển hoàn toàn sang ui-manager để tránh Circular ES6 Imports
+// ==========================================
+export function runGavelStrikeAnimation(decisionText, callback) {
+    const overlay = document.getElementById("gavel-animation-overlay");
+    const flash = document.getElementById("gavel-flash-element");
+    const announcement = document.getElementById("gavel-verdict-announcement");
+
+    if (!overlay) return;
+
+    announcement.innerText = decisionText;
+    overlay.classList.remove("hidden");
+
+    setTimeout(() => {
+        if (flash) flash.classList.add("flash-active");
+    }, 500);
+
+    setTimeout(() => {
+        overlay.classList.add("hidden");
+        if (flash) flash.classList.remove("flash-active");
+        if (callback) callback();
+    }, 2500);
+}
+
+// ==========================================
+// QUẢN LÝ THIẾT LẬP ÂM THANH
 // ==========================================
 export function setupSoundSettings() {
     const bgmPlayer = document.getElementById("bgm-player");
