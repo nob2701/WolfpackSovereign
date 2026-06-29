@@ -30,7 +30,7 @@ const firebaseConfig = {
 // Khởi tạo thực thể Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Khởi tạo dịch vụ phân tích dữ liệu (Analytics) một cách an toàn đề phòng bị chặn bởi trình duyệt
+// Khởi tạo dịch vụ phân tích dữ liệu (Analytics) đề phòng bị chặn bởi trình duyệt hoặc chạy trên localhost
 let analytics = null;
 try {
     analytics = getAnalytics(app);
@@ -41,7 +41,7 @@ try {
 // Khởi tạo thực thể Realtime Database để đồng bộ hóa trò chơi trực tuyến
 const db = getDatabase(app);
 
-// Xuất các thực thể và hàm ra ngoài để hệ thống app.js và game-logic.js sử dụng trực tiếp
+// Xuất các thực thể và hàm ra ngoài để hệ thống sử dụng đồng bộ
 export {
     app,
     db,

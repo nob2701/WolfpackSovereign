@@ -291,7 +291,7 @@ function setupActivePlayersPresence() {
     onDisconnect(connectionRef).set(false);
 }
 
-// SỬA LỖI 2: Quy trình tự động khôi phục kết nối khi người chơi bị rớt mạng/F5
+// LUỒNG PHỤC HỒI KẾT NỐI KHI F5/MẤT MẠNG ĐỘT NGỘT
 async function attemptSessionReconnection() {
     const savedRoomId = localStorage.getItem("reconnect_room_id");
     const savedPlayerId = localStorage.getItem("reconnect_player_id");
@@ -384,11 +384,6 @@ function listenToRoom() {
                 transitionToGameScreen(roomData);
             }
 
-            // Xử lý xem bài & reconnect cho người chơi chưa xác nhận xem role
-            if (mySelf && mySelf.hasSeenRole === false) {
-                triggerCardFlipModal(mySelf);
-            }
-
             // Kích hoạt giao diện chiến thắng tự động
             if (roomData.meta.phase === "victory" && roomData.meta.winner) {
                 window.UI_Module.showVictoryScreen(roomData.meta.winner, roomData.meta.mvp, roomData.meta.relations);
@@ -467,49 +462,6 @@ function transitionToGameScreen(roomData) {
     } else {
         document.getElementById("gm-timeline-container").classList.add("hidden");
         document.getElementById("player-mailbox-container").classList.remove("hidden");
-    }
-}
-
-// BỘ LẬT THẺ CHỌN VAI TRÒ BAN ĐẦU
-function triggerCardFlipModal(mySelf) {
-    const modal = document.getElementById("flashcard-modal");
-    const card = document.getElementById("fc-card");
-    const pName = document.getElementById("fc-player-name");
-    const rName = document.getElementById("fc-role-name");
-    const rDesc = document.getElementById("fc-role-desc");
-
-    if (!modal || !card || !pName || !rName || !rDesc) return;
-
-    pName.innerText = mySelf.name;
-    rName.innerText = getRoleName(mySelf.role);
-    rDesc.innerText = `Lực lượng thuộc phe: ${ROLE_DB[mySelf.role]?.faction?.toUpperCase()}. Ghi nhớ kỹ năng tối mật của bạn và phối hợp cùng đồng đội.`;
-    
-    card.classList.remove("is-flipped");
-    modal.style.display = "flex";
-
-    const flipCard = () => {
-        card.classList.add("is-flipped");
-    };
-
-    const closeCard = async (e) => {
-        e.stopPropagation();
-        modal.style.display = "none";
-        card.removeEventListener("click", flipCard);
-        
-        try {
-            await update(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}`), {
-                hasSeenRole: true
-            });
-        } catch (err) {
-            console.error("Lỗi đồng bộ hóa trạng thái lật bài:", err);
-        }
-    };
-
-    card.addEventListener("click", flipCard);
-    
-    const backFace = card.querySelector(".fc-back");
-    if (backFace) {
-        backFace.onclick = closeCard;
     }
 }
 
@@ -1156,7 +1108,7 @@ function setupSpectatorWinPoll() {
 }
 
 // ==========================================
-// 8. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING - CHỐNG FLICKER)
+// 8. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING - CHỐNG FLICKER LẬP TRÌNH)
 // SỬA LỖI 8: Chỉ cập nhật trạng thái động, tuyệt đối không triệt hạ toàn bộ lưới
 // ==========================================
 function renderPlayersGridSmartly() {

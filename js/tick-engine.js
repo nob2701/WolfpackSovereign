@@ -31,14 +31,14 @@ export const TickEngine = {
             }
         });
 
-        // CHỐNG CRASH HỆ THỐNG: Loại bỏ mọi hành động nhắm vào mục tiêu không còn tồn tại trong phòng
+        // CHỐNG CRASH HỆ THỐNG: Loại bỏ hành động nhắm vào mục tiêu không tồn tại
         actionBuffer = actionBuffer.filter(act => {
             if (act.targetId && !playersMap[act.targetId]) return false;
             if (act.secondaryId && !playersMap[act.secondaryId]) return false;
             return true;
         });
 
-        // Khởi tạo các cấu trúc lưu trữ trạng thái kết quả cuối cùng
+        // Khởi tạo cấu trúc lưu trữ kết quả cuối cùng
         const deathsSet = new Set();
         const mailboxDeliveries = {}; // Cấu trúc: { [playerId]: [ {title, content, category} ] }
         const playerStateUpdates = {}; // Lưu thay đổi thuộc tính người chơi để ghi đè lên Firebase
@@ -395,7 +395,7 @@ export const TickEngine = {
         damageQueue.forEach(dmg => {
             const { targetId, sourceRole } = dmg;
 
-            // Đồng cứu mạng của Phù Thủy
+            // Được cứu mạng của Phù Thủy
             if (targetId === witchHealTarget) return;
 
             // Lá chắn tuần tra của Bảo Vệ (Bỏ qua nếu là sát thương thiêu rụi từ Arsonist)

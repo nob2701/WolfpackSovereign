@@ -6,7 +6,7 @@ import { runGavelStrikeAnimation, showToast } from "./ui-manager.js";
 // Khóa trạng thái (Mutex Lock) chống lặp phân giải biểu quyết dồn dập khi nhận sự kiện onValue liên tục
 let isResolvingVote = false;
 
-// Danh sách vai trò thụ động ban đêm đồng bộ 100% với Client
+// Danh sách vai trò thụ động ban đêm đồng bộ với thiết lập hệ thống
 const PASSIVE_NIGHT_ROLES = [
     "villager", 
     "clown", 
@@ -32,7 +32,7 @@ export const StateMachine = {
 
             const nextDay = (roomData.meta.day || 0) + 1;
             
-            // Khởi tạo trạng thái đêm mới và dọn dẹp biểu quyết cũ
+            // Khởi tạo trạng thái đêm mới và dọn dẹp dữ liệu biểu quyết cũ trên Firebase
             const updates = {
                 [`rooms/${Net.roomId}/meta/phase`]: "night",
                 [`rooms/${Net.roomId}/meta/day`]: nextDay,
@@ -51,10 +51,10 @@ export const StateMachine = {
                 updates[`rooms/${Net.roomId}/players/${playerId}/targetSelection`] = null;
                 
                 if (!player.alive) {
-                    // Người chết mặc định đã hoàn thành lượt
+                    // Người chết mặc định đã hoàn thành lượt hành động
                     updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = true;
                 } else if (PASSIVE_NIGHT_ROLES.includes(player.role)) {
-                    // Đồng bộ vai trò thụ động không cần bấm nút hành động
+                    // Vai trò thụ động không có kỹ năng chủ động ban đêm -> Mặc định xong lượt
                     updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = true;
                 } else {
                     // Vai trò chủ động bắt đầu pha đêm với trạng thái chưa hoàn thành
@@ -63,7 +63,7 @@ export const StateMachine = {
             });
 
             await update(ref(db), updates);
-            await Engine_Module.logMsg(`🌙 Bóng đêm bao phủ vương quốc Wolfpack. Đêm thứ ${nextDay} bắt đầu!`, "sys");
+            await Engine_Module.logMsg(`🌙 Bóng đêm bao phủ vương quốc. Đêm thứ ${nextDay} bắt đầu!`, "sys");
         } catch (error) {
             console.error("Gặp sự cố khi chuyển đổi sang pha đêm:", error);
             showToast("Không thể đồng bộ pha đêm sang máy chủ!", "danger");
@@ -87,7 +87,7 @@ export const StateMachine = {
             const allTurnsEnded = alivePlayers.every(p => p.turnEnded === true);
 
             if (allTurnsEnded) {
-                await Engine_Module.logMsg("⚡ Toàn bộ thần dân có chức năng đã hoàn thành lượt hành động. Bình minh đang đến...", "sys");
+                await Engine_Module.logMsg("⚡ Toàn bộ thần dân có chức năng chủ động đã hoàn thành lượt hành động. Bình minh đang đến...", "sys");
                 await StateMachine.transitionToDay();
             }
         } catch (error) {
@@ -108,7 +108,7 @@ export const StateMachine = {
         }
     },
 
-    // 4. CHUYỂN SANG PHA NGÀY (DAY TRANSITION)
+    // 4. CHUYỂN SANG PHA NGÀY (DAY TRANSITION - PHÂN GIẢI KỸ NĂNG ĐÊM)
     async transitionToDay() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
@@ -120,10 +120,17 @@ export const StateMachine = {
             const updates = {};
             updates[`rooms/${Net.roomId}/meta/phase`] = "day";
 
-            // Cập nhật trạng thái sinh mệnh
+            // Cập nhật trạng thái sinh mệnh của người chơi tử vong trong đêm
             resolutionOutcome.deaths.forEach(deadPlayerId => {
                 updates[`rooms/${Net.roomId}/players/${deadPlayerId}/alive`] = false;
             });
+
+            // Ghi nhận và lưu các bùa chú bổ trợ hoặc thay đổi sinh mệnh đêm từ Tick Engine
+            for (const [playerId, fields] of Object.entries(resolutionOutcome.playerStateUpdates)) {
+                for (const [fieldKey, val] of Object.entries(fields)) {
+                    updates[`rooms/${Net.roomId}/players/${playerId}/${fieldKey}`] = val;
+                }
+            }
 
             // Phân phối kết quả đêm vào Mailbox cá nhân của từng người chơi
             for (const [playerId, mails] of Object.entries(resolutionOutcome.mailboxDeliveries)) {
@@ -143,7 +150,7 @@ export const StateMachine = {
             // Đồng bộ toàn bộ dữ liệu trạng thái mới lên server Firebase
             await update(ref(db), updates);
 
-            // Ghi nhật ký công khai cho toàn làng
+            // Ghi nhật ký công khai cho toàn làng hiển thị tại Log Box công cộng
             let announcement = "";
             if (resolutionOutcome.deaths.length === 0) {
                 announcement = "☀️ Bình minh rạng rỡ! Một đêm yên bình trôi qua, không có ai bị hạ sát trong bóng tối.";
@@ -154,7 +161,7 @@ export const StateMachine = {
 
             await Engine_Module.logMsg(announcement, "info");
 
-            // Kiểm tra điều kiện thắng trận
+            // Kiểm tra điều kiện thắng trận ngay sau khi bình minh hé rạng
             await StateMachine.checkVictoryConditions();
 
         } catch (error) {
@@ -248,7 +255,7 @@ export const StateMachine = {
         }
     },
 
-    // 6. KIỂM TRA ĐIỀU KIỆN THẮNG TRẬN (VICTORY CHECK CONDITIONS)
+    // 6. KIỂM TRÁ ĐIỀU KIỆN THẮNG TRẬN (VICTORY CHECK CONDITIONS)
     async checkVictoryConditions() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;

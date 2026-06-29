@@ -58,7 +58,7 @@ export function showToast(message, type = "info") {
 
     container.appendChild(toast);
 
-    // Kích hoạt tự biến mất sau 3 giây
+    // Tự động biến mất sau 3.2 giây
     setTimeout(() => {
         toast.style.opacity = "0";
         toast.style.transform = "translateY(-15px)";
@@ -72,8 +72,8 @@ export function showToast(message, type = "info") {
 window.alert = (msg) => showToast(msg, "info");
 
 // ==========================================
-// HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG CHỒNG CHÉO SỰ KIỆN (DOUBLE CONFIRMATION)
-// SỬA LỖI 9: Sử dụng cơ chế CloneNode xóa sạch Event Listeners tích lũy
+// HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG TRÙNG SỰ KIỆN (DOUBLE CONFIRMATION)
+// SỬA LỖI EVENT PILEUP BẰNG CLONENODE VÀ DỌN DẸP SỰ KIỆN CŨ
 // ==========================================
 export function askConfirm(message, onConfirm, onCancel = null) {
     const modal = document.getElementById("confirm-modal");
@@ -85,7 +85,7 @@ export function askConfirm(message, onConfirm, onCancel = null) {
     const btnSubmit = document.getElementById("confirm-modal-submit");
     const btnCancel = document.getElementById("confirm-modal-cancel");
 
-    // Tạo bản sao mới hoàn chỉnh để dọn dẹp các sự kiện .onclick cũ dồn tích
+    // Tạo bản sao mới hoàn chỉnh để dọn dẹp các sự kiện dồn tích cũ
     const newSubmitBtn = btnSubmit.cloneNode(true);
     const newCancelBtn = btnCancel.cloneNode(true);
 
@@ -107,7 +107,7 @@ export function askConfirm(message, onConfirm, onCancel = null) {
     };
 }
 
-// Ghi đè confirm trình duyệt bằng cơ chế an toàn bất đồng bộ
+// Ghi đè confirm mặc định của trình duyệt bằng cơ chế an toàn
 window.confirm = (msg) => {
     askConfirm(msg, () => {});
     return false; 
@@ -212,7 +212,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         grid.appendChild(targetBtn);
     });
 
-    // Cấu hình Modifiers cho từng vai trò đặc thù
+    // Cấu hình Modifiers cho từng vai trò đặc biệt
     if (role === "seer") {
         modifiersBox.classList.remove("hidden");
         renderModifiers([
@@ -269,7 +269,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         if (phraseInput) phraseInput.value = ""; 
     }
 
-    // Nhân bản làm sạch nút Submit và Cancel
+    // Nhân bản làm sạch nút Xác Nhận và Hủy
     const submitBtn = document.getElementById("target-modal-submit");
     const cancelBtn = document.getElementById("target-modal-close");
 
@@ -293,7 +293,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
             const phraseInput = document.getElementById("target-phrase-input");
             extraPhrase = phraseInput ? phraseInput.value.trim() : "";
             if (!extraPhrase) {
-                showToast("Vui lòng nhập câu thoại bắt đối phương nói nhại!", "warning");
+                showToast("Vui lòng nhập câu thoại bắt đối phương nói nhái!", "warning");
                 return;
             }
         }
@@ -329,10 +329,61 @@ export function initMobileTabSync() {
     });
 
     setupPasteCodeHandler();
+    setupIdentityCardHoldGesture();
 }
 
 // ==========================================
-// BỆNH ÁN CHI TIẾT NGƯỜI CHƠI (PLAYER BOTTOM SHEET)
+// CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT (HOLD TO REVEAL)
+// SỬA LỖI RÒ RỈ HOẶC LỖI TƯƠNG TÁC KHI DUY TRÌ BẢN MỜ CĂN CƯỚC
+// ==========================================
+export function setupIdentityCardHoldGesture() {
+    const idCard = document.getElementById("player-identity-card");
+    const idRoleVal = document.getElementById("id-role-val");
+    const idFactionVal = document.getElementById("id-faction-val");
+
+    if (!idCard || !idRoleVal || !idFactionVal) return;
+
+    let holdTimer = null;
+    let isHolding = false;
+
+    const startHold = (e) => {
+        if (e.type === "touchstart") {
+            // Ngăn chặn hành vi cuộn phóng to ngoài ý muốn trên trình duyệt di động
+            e.stopPropagation();
+        }
+        isHolding = true;
+        holdTimer = setTimeout(() => {
+            if (isHolding) {
+                idRoleVal.style.filter = "none";
+                idFactionVal.style.filter = "none";
+                showToast("Đã giải mờ căn cước tạm thời!", "info");
+            }
+        }, 1500); // Trễ giữ 1.5 giây
+    };
+
+    const endHold = () => {
+        isHolding = false;
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+        }
+        idRoleVal.style.filter = "blur(5px)";
+        idFactionVal.style.filter = "blur(5px)";
+    };
+
+    // Sự kiện chuột máy tính
+    idCard.addEventListener("mousedown", startHold);
+    idCard.addEventListener("mouseup", endHold);
+    idCard.addEventListener("mouseleave", endHold);
+
+    // Sự kiện cảm ứng điện thoại di động
+    idCard.addEventListener("touchstart", startHold, { passive: false });
+    idCard.addEventListener("touchend", endHold, { passive: true });
+    idCard.addEventListener("touchcancel", endHold, { passive: true });
+}
+
+// ==========================================
+// BẢNG BỆNH ÁN CHI TIẾT NGƯỜI CHƠI (PLAYER BOTTOM SHEET)
 // ==========================================
 export function showPlayerBottomSheet(playerData, isGM = false) {
     const Net = window.Net;
@@ -375,7 +426,7 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
         ` : ""}
 
         ${isGM ? `
-            <div class="switch-row" style="background: rgba(239, 68, 68, 0.05); padding: 12px; border-radius: 8px; margin-top:10px;">
+            <div class="switch-row" style="background: rgba(220, 38, 38, 0.05); padding: 12px; border-radius: 8px; margin-top:10px;">
                 <span class="switch-label" style="color: var(--danger)">Hành Động Quản Trò:</span>
                 <button class="btn-danger btn-small" id="btn-sheet-kill-trigger">XỬ TỬ NGƯỜI CHƠI</button>
             </div>
@@ -447,7 +498,6 @@ function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
 
 // ==========================================
 // HOẠT ẢNH BÚA PHÁN QUYẾT TÒA ÁN ĐỒNG BỘ
-// SỬA LỖI VÒNG LẶP SỰ KIỆN: Chuyển hoàn toàn sang ui-manager để tránh Circular ES6 Imports
 // ==========================================
 export function runGavelStrikeAnimation(decisionText, callback) {
     const overlay = document.getElementById("gavel-animation-overlay");
