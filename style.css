@@ -1,19 +1,19 @@
-/* === HỆ THỐNG BIẾN CSS & THEMES === */
+/* === HỆ THỐNG BIẾN CSS & THEMES (PALETTE MỚI) === */
 :root {
-    --bg-main: #0f172a; 
-    --bg-panel: #1e293b; 
-    --bg-item: #334155;
-    --text-main: #e2e8f0; 
-    --accent: #38bdf8; 
+    --bg-main: #001C44;       /* Xanh hải quân đậm (Nền thế giới) */
+    --bg-panel: #0C5776;      /* Xanh teal trầm (Nền bảng điều khiển) */
+    --bg-item: #2D99AE;       /* Xanh đại dương (Thẻ người chơi & khối phụ) */
+    --text-main: #F8DAD0;     /* Hồng phấn nhạt (Độ tương phản chữ dịu mắt) */
+    --accent: #BCFEFE;        /* Xanh lơ sáng (Màu nhấn viền LED & Trạng thái hoạt động) */
     --danger: #e11d48; 
     --success: #16a34a;
-    --log-bg: #020617; 
+    --log-bg: #00112c;        /* Nền tối sâu của khối lịch sử */
     --log-text: #94a3b8; 
-    --border-color: #475569;
-    --btn-text: #ffffff; 
-    --input-bg: #1e293b; 
-    --input-text: #f8fafc;
-    --modal-overlay: rgba(0, 0, 0, 0.85);
+    --border-color: #2D99AE;
+    --btn-text: #001C44;      /* Màu chữ tối tương phản tốt trên nút sáng xanh lơ */
+    --input-bg: #00112c; 
+    --input-text: #BCFEFE;
+    --modal-overlay: rgba(0, 17, 44, 0.88);
     
     /* Biến bổ sung cho các cấu trúc vai trò mới */
     --parchment-bg: #f4ecd8;
@@ -23,7 +23,7 @@
     --couple-pink: #ec4899;
     --couple-bg: #2d132c;
     --ghost-blue: #475569;
-    --ghost-bg: #0f172a;
+    --ghost-bg: #001C44;
 
     /* Thang đo Z-index chuẩn hóa tránh va chạm chồng lấp */
     --z-nav: 1000; 
@@ -53,20 +53,20 @@ body[data-theme="light"] {
 }
 
 body[data-theme="dark"] { 
-    --bg-main: #121212; 
-    --bg-panel: #1e1e1e; 
-    --bg-item: #2d2d2d; 
-    --text-main: #e0e0e0; 
-    --accent: #bb86fc; 
+    --bg-main: #001C44; 
+    --bg-panel: #0C5776; 
+    --bg-item: rgba(45, 153, 174, 0.35); /* Xanh đại dương phủ trong suốt nhẹ */
+    --text-main: #F8DAD0; 
+    --accent: #BCFEFE; 
     --danger: #cf6679; 
     --success: #03dac6; 
-    --log-bg: #000000; 
-    --log-text: #aaaaaa; 
-    --border-color: #333333; 
-    --btn-text: #000000; 
-    --input-bg: #2d2d2d; 
-    --input-text: #e0e0e0; 
-    --modal-overlay: rgba(0, 0, 0, 0.85); 
+    --log-bg: #00112c; 
+    --log-text: #cbd5e1; 
+    --border-color: #2D99AE; 
+    --btn-text: #001C44; 
+    --input-bg: #00112c; 
+    --input-text: #BCFEFE; 
+    --modal-overlay: rgba(0, 17, 44, 0.88); 
 }
 
 body[data-theme="hacker"] { 
@@ -135,7 +135,7 @@ body {
     left: 0; 
     width: 100vw; 
     height: 100vh;
-    background: #1e293b; 
+    background: #001C44; 
     z-index: var(--z-splash); 
     display: flex; 
     flex-direction: column; 
@@ -198,7 +198,7 @@ body {
 
 /* === SẢNH CHỜ (LOBBY SCREEN) === */
 #lobby-screen {
-    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    background: radial-gradient(circle at center, #0C5776 0%, #001C44 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -313,7 +313,7 @@ body {
     gap: 6px;
 }
 .lobby-player-tag {
-    background: var(--bg-item);
+    background: rgba(45, 153, 174, 0.2);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 13px;
@@ -417,8 +417,8 @@ h2, h3 {
 }
 .player-grid-card.dead {
     opacity: 0.5;
-    background: #1e293b;
-    border-color: #334155;
+    background: #00122e;
+    border-color: #0c5776;
     cursor: not-allowed;
 }
 .player-grid-card.dead .name {
@@ -459,8 +459,8 @@ h2, h3 {
     left: 8px;
     z-index: 3;
 }
-.player-grid-card .status-dot.online { background-color: var(--success); }
-.player-grid-card .status-dot.offline { background-color: #64748b; }
+.player-grid-card .status-dot.online { background-color: var(--accent); }
+.player-grid-card .status-dot.offline { background-color: #0c5776; }
 
 /* === NÂNG CẤP HIỆU ỨNG THỊ GIÁC VAI TRÒ (ROLES UPDATE 1) === */
 
@@ -491,15 +491,15 @@ h2, h3 {
 }
 .player-grid-card.guard-blocked {
     opacity: 0.45 !important;
-    background: #1e293b !important;
-    border-color: #475569 !important;
+    background: #00122e !important;
+    border-color: #0c5776 !important;
     pointer-events: none !important;
 }
 .player-grid-card.guard-blocked::after {
     content: "Không thể chọn liên tiếp";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(15, 23, 42, 0.7);
+    background: rgba(0, 28, 68, 0.7);
     color: #f8fafc;
     font-size: 10px;
     display: flex;
@@ -615,7 +615,7 @@ h2, h3 {
     content: "";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-image: url('assets/images/scratch.png'); /* Sẽ tự ẩn nếu không tải được */
+    background-image: url('assets/images/scratch.png'); 
     background-size: cover;
     opacity: 0.3;
     pointer-events: none;
@@ -810,8 +810,8 @@ h2, h3 {
 
 /* 29. Tử Thần (The Reaper) - Xác không hồn / Đầu lâu */
 .player-grid-card.reaper-corpse {
-    background: #334155 !important;
-    border-color: #1e293b !important;
+    background: #0c5776 !important;
+    border-color: #00122e !important;
     opacity: 0.65 !important;
 }
 .player-grid-card.reaper-corpse::after {
@@ -942,7 +942,7 @@ h2, h3 {
 }
 
 .btn-info-role { 
-    background: var(--bg-item); 
+    background: rgba(45, 153, 174, 0.2); 
     color: var(--accent); 
     border: 1px solid var(--accent); 
     border-radius: 4px; 
@@ -958,7 +958,7 @@ h2, h3 {
 }
 .btn-info-role:hover { 
     background: var(--accent); 
-    color: #fff; 
+    color: var(--btn-text); 
 }
 
 /* === LỚP ĐỊNH DẠNG FORM, INPUTS & BUTTONS === */
@@ -977,8 +977,8 @@ input:focus, select:focus {
     border-color: var(--accent);
 }
 button { 
-    background: #2563eb; 
-    color: #fff; 
+    background: var(--accent); 
+    color: var(--btn-text); 
     cursor: pointer; 
     font-weight: bold; 
     border: none; 
@@ -997,10 +997,10 @@ button:disabled {
 }
 .btn-danger { background: var(--danger) !important; color: #fff !important; }
 .btn-success { background: var(--success) !important; color: #fff !important; }
-.btn-accent { background: var(--accent) !important; color: #fff !important; }
+.btn-accent { background: var(--accent) !important; color: var(--btn-text) !important; }
 .btn-small { padding: 6px 12px; font-size: 12px; min-height: 30px; }
 .btn-suggest { 
-    background: var(--bg-item); 
+    background: rgba(45, 153, 174, 0.15); 
     color: var(--text-main); 
     border: 1px solid var(--border-color); 
     font-size: 12px; 
@@ -1010,7 +1010,7 @@ button:disabled {
 .btn-suggest:hover { 
     background: var(--accent); 
     border-color: var(--accent);
-    color: white;
+    color: var(--btn-text);
 }
 
 /* === BÀN CỜ CHÍNH (BOARD) === */
@@ -1052,16 +1052,16 @@ button:disabled {
 
 /* Cán cân Game */
 .balance-wrapper { 
-    background: var(--bg-item); 
+    background: rgba(45, 153, 174, 0.15); 
     padding: 10px; 
     border-radius: 8px; 
     margin-bottom: 12px; 
 }
 .balance-title { font-size: 11px; font-weight: bold; color: var(--text-main); margin-bottom: 6px; }
-.balance-bar-container { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; display: flex; }
+.balance-bar-container { width: 100%; height: 8px; background: var(--bg-main); border-radius: 4px; overflow: hidden; display: flex; }
 .balance-bar-wolf { background: var(--danger); transition: width 0.3s; }
 .balance-bar-third { background: #c084fc; transition: width 0.3s; }
-.balance-bar-village { background: var(--success); transition: width 0.3s; }
+.balance-bar-village { background: #16a34a; transition: width 0.3s; }
 .balance-text { font-size: 12px; font-weight: bold; text-align: center; margin-top: 6px; }
 
 /* Phân trang cấu hình */
@@ -1101,7 +1101,7 @@ button:disabled {
     min-height: auto;
 }
 .mail-tab.active {
-    background: var(--bg-item);
+    background: rgba(45, 153, 174, 0.25);
     color: var(--accent);
     font-weight: bold;
     box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
@@ -1152,7 +1152,7 @@ button:disabled {
     opacity: 0.65;
 }
 .mail-card.read .mail-indicator {
-    color: var(--success);
+    color: #16a34a;
     font-weight: bold;
     font-size: 14px;
     position: absolute;
@@ -1261,7 +1261,7 @@ button:disabled {
 }
 .sys-msg { color: var(--log-text); }
 .kill-msg { color: var(--danger); font-weight: bold; }
-.info-msg { color: var(--success); font-weight: bold; }
+.info-msg { color: #16a34a; font-weight: bold; }
 
 /* === PHÂN HỆ KÊNH CHAT ĐỘNG === */
 .right-tabs {
@@ -1271,7 +1271,7 @@ button:disabled {
 }
 .right-tab {
     flex: 1;
-    background: var(--bg-item);
+    background: rgba(45, 153, 174, 0.15);
     color: var(--text-main);
     border: 1px solid var(--border-color);
     padding: 8px;
@@ -1282,7 +1282,7 @@ button:disabled {
 }
 .right-tab.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--btn-text);
     border-color: var(--accent);
 }
 
@@ -1292,7 +1292,7 @@ button:disabled {
 }
 .channel-tab {
     flex: 1;
-    background: var(--bg-item);
+    background: rgba(45, 153, 174, 0.15);
     color: var(--text-main);
     border: 1px solid var(--border-color);
     font-size: 11px;
@@ -1302,8 +1302,10 @@ button:disabled {
     min-height: auto;
 }
 .channel-tab.active {
-    box-shadow: 0 0 6px currentColor;
+    box-shadow: 0 0 6px var(--accent);
     font-weight: bold;
+    background: var(--bg-item);
+    color: #fff;
 }
 
 /* Trang trí tin nhắn các kênh đặc trưng */
@@ -1324,7 +1326,7 @@ body.ghostly-mist-active::before {
     content: "";
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle, transparent 40%, rgba(15, 23, 42, 0.4) 100%);
+    background: radial-gradient(circle, transparent 40%, rgba(0, 28, 68, 0.4) 100%);
     pointer-events: none;
     z-index: 1001;
     animation: ghostlyFog 8s infinite alternate ease-in-out;
@@ -1372,7 +1374,7 @@ body.ghostly-mist-active::before {
     border-radius: 5px;
     transition: width 0.4s ease-in-out;
 }
-.pred-bar-fill.village { background-color: var(--success); }
+.pred-bar-fill.village { background-color: #16a34a; }
 .pred-bar-fill.wolf { background-color: var(--danger); }
 .pred-bar-fill.third { background-color: #c084fc; }
 .pred-row .pct { width: 35px; text-align: right; font-weight: bold; }
@@ -1397,7 +1399,7 @@ body.ghostly-mist-active::before {
     transition: all 0.2s ease;
 }
 .step-indicator.active {
-    background: var(--bg-item);
+    background: rgba(45, 153, 174, 0.2);
     color: var(--accent);
     font-weight: bold;
     box-shadow: 0 0 5px rgba(56, 189, 248, 0.4);
@@ -1435,7 +1437,7 @@ body.ghostly-mist-active::before {
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 6px;
 }
-.vote-split-column.acquit .column-header { color: var(--success); }
+.vote-split-column.acquit .column-header { color: #16a34a; }
 .vote-split-column.execute .column-header { color: var(--danger); }
 
 /* Chứa avatar người tham gia biểu quyết */
@@ -1446,7 +1448,7 @@ body.ghostly-mist-active::before {
     justify-content: center;
 }
 .voter-avatar-chip {
-    background: var(--bg-item);
+    background: rgba(45, 153, 174, 0.15);
     border: 1px solid var(--border-color);
     border-radius: 15px;
     padding: 4px 8px;
@@ -1466,7 +1468,7 @@ body.ghostly-mist-active::before {
 .gavel-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 17, 44, 0.85);
     z-index: var(--z-alert);
     display: flex;
     justify-content: center;
@@ -1573,7 +1575,7 @@ body.ghostly-mist-active::before {
 }
 .stats-tab.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--btn-text);
 }
 /* Tab Content */
 .stats-tab-content-wrapper {
@@ -1617,7 +1619,7 @@ body.ghostly-mist-active::before {
     gap: 8px;
 }
 .mvp-stat-row {
-    background: var(--bg-item);
+    background: rgba(45, 153, 174, 0.15);
     padding: 8px 12px;
     border-radius: 6px;
     display: flex;
@@ -1722,7 +1724,7 @@ body.ghostly-mist-active::before {
     cursor: pointer; 
     transition: background 0.2s;
 }
-.pill-switch.active { background: var(--success); }
+.pill-switch.active { background: #16a34a; }
 .pill-switch.active::after { left: 26px; }
 .pill-switch.active-danger { background: var(--danger); }
 .pill-switch::after {
@@ -1780,7 +1782,7 @@ body.ghostly-mist-active::before {
     box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
 }
 .t-front { 
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
+    background: linear-gradient(135deg, #0C5776 0%, #001C44 100%); 
     font-size: 28px; 
     color: var(--accent); 
 }
@@ -1823,7 +1825,7 @@ body.ghostly-mist-active::before {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--success);
+    background: var(--accent);
     display: inline-block;
     margin-right: 5px;
 }
@@ -2135,7 +2137,7 @@ body.ghostly-mist-active::before {
     border-color: var(--accent); 
 }
 .target-btn-box.selected .name { 
-    color: #fff; 
+    color: var(--btn-text); 
 }
 .vote-action-footer, .target-action-footer {
     display: flex;
