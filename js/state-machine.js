@@ -1,13 +1,13 @@
-import { db, ref, get, update } from "./firebase-config.js";
-import { Engine_Module, ROLE_DB } from "./game-logic.js";
+import { db, ref, get, update, runTransaction } from "./firebase-config.js";
+import { Engine_Module } from "./game-logic.js";
 import { TickEngine } from "./tick-engine.js";
 import { runGavelStrikeAnimation, showToast } from "./ui-manager.js";
 
-// Khóa trạng thái cục bộ (Mutex Locks) bảo vệ luồng bất đồng bộ
-let isTransitioning = false;
+// Khóa trạng thái cục bộ (Mutex) dùng cho UI (Chống spam click)
+let isLocalTransitioning = false;
 let isResolvingVote = false;
 
-// Danh sách vai trò thụ động ban đêm đồng bộ với thiết lập hệ thống
+// Danh sách vai trò thụ động ban đêm (Không có nút kích hoạt kỹ năng, tự động End Turn)
 const PASSIVE_NIGHT_ROLES = [
     "villager", 
     "clown", 
@@ -19,14 +19,24 @@ const PASSIVE_NIGHT_ROLES = [
     "lostChild"
 ];
 
+// Danh sách các trạng thái (Buff/Debuff thị giác) CẦN ĐƯỢC XÓA khi qua đêm mới (Sửa Bug 5)
+const TRANSIENT_STATES = [
+    "isSeerScanned", "isProtected", "isWitchHealed", "isWitchPoisoned",
+    "isHunterMarked", "isAngelPurified", "isReflectorMirrored",
+    "isWolfTargeted", "isWolfMageScanned", "isDemonHellfire", "isPhantomSwapped"
+    // Ghi chú: isPetroled (Tẩm xăng), inCouple (Ghép đôi), isVampireBitten không bị xóa vì có tác dụng dài hạn
+];
+
 export const StateMachine = {
+    // ==========================================
     // 1. CHUYỂN SANG PHA ĐÊM (NIGHT TRANSITION)
+    // ==========================================
     async transitionToNight() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
-        if (isTransitioning) return;
+        if (isLocalTransitioning) return;
 
-        isTransitioning = true;
+        isLocalTransitioning = true;
         const roomRef = ref(db, `rooms/${Net.roomId}`);
         
         try {
@@ -34,12 +44,9 @@ export const StateMachine = {
             if (!snapshot.exists()) return;
             const roomData = snapshot.val();
 
-            // Guard: Chỉ chuyển sang đêm nếu đang ở pha chuẩn bị hoặc ban ngày
             if (roomData.meta.phase === "night") return;
 
             const nextDay = (roomData.meta.day || 0) + 1;
-            
-            // Khởi tạo trạng thái đêm mới và dọn dẹp dữ liệu biểu quyết cũ trên Firebase
             const updates = {
                 [`rooms/${Net.roomId}/meta/phase`]: "night",
                 [`rooms/${Net.roomId}/meta/day`]: nextDay,
@@ -53,18 +60,27 @@ export const StateMachine = {
                 }
             };
 
-            // Thiết lập trạng thái hành động đêm cho từng người chơi
+            // Thiết lập trạng thái hành động đêm & Xóa hiệu ứng cũ (Sửa Bug 5)
             Object.entries(roomData.players || {}).forEach(([playerId, player]) => {
                 updates[`rooms/${Net.roomId}/players/${playerId}/targetSelection`] = null;
                 
+                // Xóa các buff/debuff hình ảnh của đêm/ngày trước đó
+                TRANSIENT_STATES.forEach(state => {
+                    if (player[state]) {
+                        updates[`rooms/${Net.roomId}/players/${playerId}/${state}`] = null;
+                    }
+                });
+                
+                // Mở khóa câm lặng khi qua đêm mới
+                if (player.isSilencerMuted) {
+                    updates[`rooms/${Net.roomId}/players/${playerId}/isSilencerMuted`] = null;
+                }
+
                 if (!player.alive) {
-                    // Người chết mặc định đã hoàn thành lượt hành động
                     updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = true;
                 } else if (PASSIVE_NIGHT_ROLES.includes(player.role)) {
-                    // Vai trò thụ động không có kỹ năng chủ động ban đêm -> Mặc định xong lượt
                     updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = true;
                 } else {
-                    // Vai trò chủ động bắt đầu pha đêm với trạng thái chưa hoàn thành
                     updates[`rooms/${Net.roomId}/players/${playerId}/turnEnded`] = false;
                 }
             });
@@ -75,15 +91,16 @@ export const StateMachine = {
             console.error("Gặp sự cố khi chuyển đổi sang pha đêm:", error);
             showToast("Không thể đồng bộ pha đêm sang máy chủ!", "danger");
         } finally {
-            isTransitioning = false;
+            isLocalTransitioning = false;
         }
     },
 
-    // 2. KIỂM TRA ĐỒNG BỘ TỰ ĐỘNG CHUYỂN NGÀY (AUTO-TRANSITION DAY CHECK)
+    // ==========================================
+    // 2. TỰ ĐỘNG CHUYỂN NGÀY KHI MỌI NGƯỜI XONG LƯỢT
+    // ==========================================
     async checkAndAutoTransitionToDay() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
-        if (isTransitioning) return;
 
         const playersRef = ref(db, `rooms/${Net.roomId}/players`);
         try {
@@ -97,7 +114,6 @@ export const StateMachine = {
             const allTurnsEnded = alivePlayers.every(p => p.turnEnded === true);
 
             if (allTurnsEnded) {
-                // Nhận diện điều kiện chuyển ngày đạt chuẩn, tiến hành chuyển ngày
                 await StateMachine.transitionToDay();
             }
         } catch (error) {
@@ -105,11 +121,12 @@ export const StateMachine = {
         }
     },
 
-    // 3. CƯỠNG CHẾ CHUYỂN NGÀY CỦA QUẢN TRÒ (FORCE DAY TRANSITION)
+    // ==========================================
+    // 3. GM CƯỠNG CHẾ CHUYỂN NGÀY (FORCE DAY)
+    // ==========================================
     async forceTransitionToDay() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
-        if (isTransitioning) return;
         
         try {
             await Engine_Module.logMsg("⚠️ Quản trò đã cưỡng chế kết thúc đêm đen sớm để duy trì nhịp độ trận đấu!", "kill");
@@ -119,34 +136,51 @@ export const StateMachine = {
         }
     },
 
-    // 4. CHUYỂN SANG PHA NGÀY (DAY TRANSITION - PHÂN GIẢI KỸ NĂNG ĐÊM)
+    // ==========================================
+    // 4. CHUYỂN NGÀY VÀ PHÂN GIẢI LOGIC ĐÊM (SỬA BUG 13: GẮN TRANSACTION LOCK)
+    // ==========================================
     async transitionToDay() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
-        if (isTransitioning) return;
-
-        isTransitioning = true;
         
+        const phaseRef = ref(db, `rooms/${Net.roomId}/meta/phase`);
+
         try {
-            // Phân giải các hành động đêm đồng thời bằng Tick Engine chuyên dụng
+            // SỬA BUG 13: Khóa Transaction. Đảm bảo chỉ 1 client được quyền chạy logic phân giải.
+            const transactionResult = await runTransaction(phaseRef, (currentPhase) => {
+                if (currentPhase === "night") {
+                    return "processing_day"; // Khóa lại, các luồng khác thấy chữ này sẽ bị abort
+                }
+                return; // Trả về undefined sẽ Hủy Transaction
+            });
+
+            if (!transactionResult.committed) {
+                console.warn("Tiến trình chuyển ngày đã được xử lý bởi một luồng khác. Hủy bỏ luồng trùng lặp.");
+                return; 
+            }
+
+            // --- BẮT ĐẦU VÙNG AN TOÀN (CHỈ 1 MÁY CHỦ CHẠY) ---
+            isLocalTransitioning = true;
+            
+            // Phân giải logic từ TickEngine
             const resolutionOutcome = await TickEngine.resolveNightActions(Net.roomId);
 
             const updates = {};
             updates[`rooms/${Net.roomId}/meta/phase`] = "day";
 
-            // Cập nhật trạng thái sinh mệnh của người chơi tử vong trong đêm
+            // Sát thương hạ sát
             resolutionOutcome.deaths.forEach(deadPlayerId => {
                 updates[`rooms/${Net.roomId}/players/${deadPlayerId}/alive`] = false;
             });
 
-            // Ghi nhận và lưu các bùa chú bổ trợ hoặc thay đổi sinh mệnh đêm từ Tick Engine
+            // Ghi nhận trạng thái bùa chú mới
             for (const [playerId, fields] of Object.entries(resolutionOutcome.playerStateUpdates)) {
                 for (const [fieldKey, val] of Object.entries(fields)) {
                     updates[`rooms/${Net.roomId}/players/${playerId}/${fieldKey}`] = val;
                 }
             }
 
-            // Phân phối kết quả đêm vào Mailbox cá nhân của từng người chơi
+            // Phát thư vào Mailbox
             for (const [playerId, mails] of Object.entries(resolutionOutcome.mailboxDeliveries)) {
                 for (const mail of mails) {
                     const mailId = "mail_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
@@ -161,32 +195,34 @@ export const StateMachine = {
                 }
             }
 
-            // Đồng bộ toàn bộ dữ liệu trạng thái mới lên server Firebase
+            // Ghi toàn bộ dữ liệu lên Firebase
             await update(ref(db), updates);
 
-            // Ghi nhật ký công khai cho toàn làng hiển thị tại Log Box công cộng
+            // Ghi lịch sử
             let announcement = "";
             if (resolutionOutcome.deaths.length === 0) {
                 announcement = "☀️ Bình minh rạng rỡ! Một đêm yên bình trôi qua, không có ai bị hạ sát trong bóng tối.";
             } else {
-                const deadNames = resolutionOutcome.deaths.map(id => Net.players[id]?.name || "Ẩn danh").join(", ");
+                const deadNames = resolutionOutcome.deaths.map(id => window.G.players.find(p => p.id === id)?.name || "Ẩn danh").join(", ");
                 announcement = `☀️ Bình minh rạng rỡ! Đêm qua vương quốc ghi nhận ${resolutionOutcome.deaths.length} người tử vong: ${deadNames}`;
             }
 
             await Engine_Module.logMsg(announcement, "info");
-
-            // Kiểm tra điều kiện thắng trận ngay sau khi bình minh hé rạng
             await StateMachine.checkVictoryConditions();
 
         } catch (error) {
             console.error("Lỗi tiến trình phân giải đêm đen:", error);
             showToast("Có lỗi xảy ra khi tính toán kết quả đêm!", "danger");
+            // Mở khóa phòng trường hợp lỗi
+            await update(ref(db, `rooms/${Net.roomId}/meta`), { phase: "day" });
         } finally {
-            isTransitioning = false;
+            isLocalTransitioning = false;
         }
     },
 
-    // 5. PHÂN GIẢI PHÁN QUYẾT BỎ PHIẾU TREO CỔ (VOTING RESOLUTION)
+    // ==========================================
+    // 5. PHÂN GIẢI PHIẾU TREO CỔ (SỬA LỖI BUG 2 & SOFTLOCK)
+    // ==========================================
     async resolveVotingOutcome() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
@@ -213,6 +249,7 @@ export const StateMachine = {
             let countAcquit = 0;
             let countExecute = 0;
 
+            // Kiểm tra chặt chẽ, loại bỏ những phiếu rác nếu có
             Object.values(votes).forEach(voteValue => {
                 if (voteValue === "ACQUIT") countAcquit++;
                 if (voteValue === "EXECUTE") countExecute++;
@@ -222,6 +259,7 @@ export const StateMachine = {
             let decisionText = "";
             let executeTarget = false;
 
+            // Xử lý Logic phán quyết (Nếu hòa hoặc phiếu Tha bổng thắng -> Tha bổng)
             if (countExecute > countAcquit) {
                 decisionText = `BẢN ÁN TỬ HÌNH DÀNH CHO: ${accusedName.toUpperCase()}!`;
                 executeTarget = true;
@@ -229,13 +267,13 @@ export const StateMachine = {
                 decisionText = `${accusedName.toUpperCase()} ĐÃ ĐƯỢC THA BỔNG THÀNH CÔNG!`;
             }
 
-            // Đồng bộ hóa quyết định biểu quyết lên Server để kích hoạt hiệu ứng hình ảnh
+            // Ghi nhận Text lên Firebase để UI của tất cả người chơi kích hoạt Hoạt ảnh Búa
             await update(ref(db, `rooms/${Net.roomId}/trial`), {
                 stage: "verdict",
                 decisionText: decisionText
             });
 
-            // Kích hoạt hoạt ảnh búa gõ phán quyết đồng nhất cho tất cả Client
+            // Kích hoạt Hoạt ảnh trên máy Quản trò, sau đó thực thi án tử trên Database
             runGavelStrikeAnimation(decisionText, async () => {
                 try {
                     const finalUpdates = {};
@@ -246,7 +284,7 @@ export const StateMachine = {
                         await Engine_Module.logMsg(`⚖️ Dân làng đã phán quyết tha bổng hoàn toàn cho [${accusedName}].`, "sys");
                     }
 
-                    // Dọn dẹp trạng thái biểu quyết cũ
+                    // Reset và dọn dẹp hệ thống Bỏ phiếu
                     finalUpdates[`rooms/${Net.roomId}/trial`] = {
                         stage: "none",
                         accusedId: null,
@@ -258,12 +296,11 @@ export const StateMachine = {
 
                     await update(ref(db), finalUpdates);
                     
-                    // Kiểm tra điều kiện thắng sau phán quyết treo cổ
+                    // Kiểm tra thắng thua sau khi treo cổ
                     await StateMachine.checkVictoryConditions();
                 } catch (err) {
                     console.error("Lỗi cập nhật dữ liệu sau biểu quyết:", err);
                 } finally {
-                    // Mở khóa phân giải chỉ sau khi tiến trình ghi DB hoàn tất thành công
                     isResolvingVote = false;
                 }
             });
@@ -274,7 +311,9 @@ export const StateMachine = {
         }
     },
 
-    // 6. KIỂM TRA ĐIỀU KIỆN THẮNG TRẬN (VICTORY CHECK CONDITIONS)
+    // ==========================================
+    // 6. KIỂM TRA ĐIỀU KIỆN THẮNG (VICTORY CHECK)
+    // ==========================================
     async checkVictoryConditions() {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
@@ -292,21 +331,21 @@ export const StateMachine = {
 
             let winner = null;
 
-            // Kịch bản 1: Phe Sói chiếm ưu thế tuyệt đối
-            if (wolvesAlive >= villagersAlive + thirdsAlive) {
+            // Kịch bản 1: Sói chiếm tỷ lệ bàng nhau hoặc lớn hơn Làng + Phe 3 cộng lại
+            if (wolvesAlive >= villagersAlive + thirdsAlive && wolvesAlive > 0) {
                 winner = "wolf";
             }
-            // Kịch bản 2: Toàn bộ Ma Sói và phe thứ 3 nguy hại bị quét sạch
-            else if (wolvesAlive === 0 && thirdsAlive === 0) {
+            // Kịch bản 2: Toàn bộ phe tà ác bị tiêu diệt
+            else if (wolvesAlive === 0 && thirdsAlive === 0 && villagersAlive > 0) {
                 winner = "villager";
             }
-            // Kịch bản 3: Phe Thứ Ba áp đảo và loại bỏ hai phe chính diện
+            // Kịch bản 3: Phe Thứ Ba cướp cờ (Sói chết hết, Dân làng chết hết)
             else if (thirdsAlive > 0 && villagersAlive === 0 && wolvesAlive === 0) {
                 winner = "third";
             }
 
             if (winner) {
-                // Khởi tạo gói dữ liệu thống kê tổng kết MVP mẫu
+                // Lấy tạm 1 người sống sót làm MVP (Sau này có thể nâng cấp hệ thống tính điểm)
                 const mvpCandidate = alivePlayers[0] || { name: "Kẻ vô danh", id: "none" };
                 const mvpData = {
                     name: mvpCandidate.name,

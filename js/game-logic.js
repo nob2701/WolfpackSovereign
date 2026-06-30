@@ -1,4 +1,5 @@
 import { db, ref, set, get, update, push } from "./firebase-config.js";
+import { showToast } from "./ui-manager.js";
 
 // ==========================================
 // 1. TRẠNG THÁI TOÀN CỤC CỤC BỘ (GLOBAL STATE)
@@ -48,7 +49,6 @@ export const DICT = {
     en: {
         tab1: "Players", tab2: "Roles", tab3: "Board", tab4: "Log", tab5: "Settings",
         t_players: "👥 PLAYERS", t_add_ph: "Enter name...", t_add_btn: "Add",
-        t_load: "Load", t_save: "Save", t_delete: "Delete",
         t_role_config: "⚙️ ROLE CONFIG", t_btn_dist: "🎲 Shuffle & Distribute", t_search_role: "Search roles...", t_active_roles: "Roles in play: ",
         t_preset_title: "GAME MODES:", t_mode_classic: "Classic Mode", t_mode_lonewolf: "A Waltz Among Wolves",
         t_balance_meter: "BALANCE METER:", balance_wolf: "🐺 Wolf-Favored", balance_village: "🌾 Village-Favored", balance_third: "3rd Party", balance_neutral: "⚖️ Balanced",
@@ -74,73 +74,15 @@ export const t = (key, ...args) => {
     return text;
 };
 
-// Gán quyền truy xuất sang phạm vi toàn cục để phục vụ các tệp bổ trợ
 window.getRoleName = getRoleName;
 
 // ==========================================
 // 3. ĐỊNH NGHĨA PHÂN PHE VÀ THUỘC TÍNH (FACTIONS DB)
 // ==========================================
 export const ROLE_DB = {
-    villager: { faction: 'villager' }, 
-    seer: { faction: 'villager' }, 
-    guard: { faction: 'villager' }, 
-    witch: { faction: 'villager' }, 
-    hunter: { faction: 'villager' }, 
-    cupid: { faction: 'villager' }, 
-    halfWolf: { faction: 'villager' }, 
-    headlessKnight: { faction: 'villager' }, 
-    apprenticeSeer: { faction: 'villager' }, 
-    ghost: { faction: 'villager' }, 
-    doppelganger: { faction: 'villager' }, 
-    avenger: { faction: 'villager' }, 
-    paradox: { faction: 'villager' }, 
-    lostChild: { faction: 'villager' }, 
-    carver: { faction: 'villager' }, 
-    guarantor: { faction: 'villager' }, 
-    reflector: { faction: 'villager' }, 
-    thief: { faction: 'villager' }, 
-    fugitive: { faction: 'villager' }, 
-    cryptoMiner: { faction: 'villager' }, 
-    reverser: { faction: 'villager' }, 
-    glitch: { faction: 'villager' }, 
-    police: { faction: 'villager' }, 
-    spy: { faction: 'villager' }, 
-    angel: { faction: 'villager' }, 
-    sovereign: { faction: 'villager' }, 
-    demonologist: { faction: 'villager' }, 
-    parrot: { faction: 'villager' }, 
-    ember: { faction: 'villager' },
-    wolf: { faction: 'wolf' }, 
-    wolfBoss: { faction: 'wolf' }, 
-    wolfSnow: { faction: 'wolf' }, 
-    wolfMage: { faction: 'wolf' }, 
-    traitor: { faction: 'wolf' }, 
-    blackDeath: { faction: 'wolf' }, 
-    phantomWolf: { faction: 'wolf' }, 
-    clairvoyantWolf: { faction: 'wolf' }, 
-    mirrorWolf: { faction: 'wolf' }, 
-    resonanceWolf: { faction: 'wolf' }, 
-    silencerWolf: { faction: 'wolf' }, 
-    loneWolf: { faction: 'wolf' }, 
-    solitaireWolf: { faction: 'wolf' }, 
-    chaosWolf: { faction: 'wolf' }, 
-    bloodline: { faction: 'wolf' },
-    demonDetective: { faction: 'third' }, 
-    missionary: { faction: 'third' }, 
-    vampire: { faction: 'third' }, 
-    arsonist: { faction: 'third' }, 
-    eradicator: { faction: 'third' }, 
-    clown: { faction: 'third' }, 
-    manipulator: { faction: 'third' }, 
-    impostor: { faction: 'third' }, 
-    bountyHunter: { faction: 'third' }, 
-    shark: { faction: 'third' }, 
-    apprenticeReaper: { faction: 'third' }, 
-    serialKiller: { faction: 'third' }, 
-    prime: { faction: 'third' }, 
-    ashenKnight: { faction: 'third' }, 
-    cat: { faction: 'third' }, 
-    reaper: { faction: 'third' }
+    villager: { faction: 'villager' }, seer: { faction: 'villager' }, guard: { faction: 'villager' }, witch: { faction: 'villager' }, hunter: { faction: 'villager' }, cupid: { faction: 'villager' }, halfWolf: { faction: 'villager' }, headlessKnight: { faction: 'villager' }, apprenticeSeer: { faction: 'villager' }, ghost: { faction: 'villager' }, doppelganger: { faction: 'villager' }, avenger: { faction: 'villager' }, paradox: { faction: 'villager' }, lostChild: { faction: 'villager' }, carver: { faction: 'villager' }, guarantor: { faction: 'villager' }, reflector: { faction: 'villager' }, thief: { faction: 'villager' }, fugitive: { faction: 'villager' }, cryptoMiner: { faction: 'villager' }, reverser: { faction: 'villager' }, glitch: { faction: 'villager' }, police: { faction: 'villager' }, spy: { faction: 'villager' }, angel: { faction: 'villager' }, sovereign: { faction: 'villager' }, demonologist: { faction: 'villager' }, parrot: { faction: 'villager' }, ember: { faction: 'villager' },
+    wolf: { faction: 'wolf' }, wolfBoss: { faction: 'wolf' }, wolfSnow: { faction: 'wolf' }, wolfMage: { faction: 'wolf' }, traitor: { faction: 'wolf' }, blackDeath: { faction: 'wolf' }, phantomWolf: { faction: 'wolf' }, clairvoyantWolf: { faction: 'wolf' }, mirrorWolf: { faction: 'wolf' }, resonanceWolf: { faction: 'wolf' }, silencerWolf: { faction: 'wolf' }, loneWolf: { faction: 'wolf' }, solitaireWolf: { faction: 'wolf' }, chaosWolf: { faction: 'wolf' }, bloodline: { faction: 'wolf' },
+    demonDetective: { faction: 'third' }, missionary: { faction: 'third' }, vampire: { faction: 'third' }, arsonist: { faction: 'third' }, eradicator: { faction: 'third' }, clown: { faction: 'third' }, manipulator: { faction: 'third' }, impostor: { faction: 'third' }, bountyHunter: { faction: 'third' }, shark: { faction: 'third' }, apprenticeReaper: { faction: 'third' }, serialKiller: { faction: 'third' }, prime: { faction: 'third' }, ashenKnight: { faction: 'third' }, cat: { faction: 'third' }, reaper: { faction: 'third' }
 };
 
 export const ROLE_ICONS = {
@@ -151,7 +93,6 @@ export const ROLE_ICONS = {
 
 export const FACTION_ICONS = { villager: '🌾', wolf: '🐺', third: '🧛' };
 
-// Đăng ký sự kiện cấu hình sau khi DOM sẵn sàng
 document.addEventListener("DOMContentLoaded", () => {
     initRoleSetupListeners();
     initVictoryTabsListeners();
@@ -172,38 +113,33 @@ export const Engine_Module = {
         const playerCount = activePlayers.length;
 
         if (playerCount < 3) {
-            window.alert(t('msg_need_3'));
+            showToast(t('msg_need_3'), "warning");
             return;
         }
 
-        // Tính toán tổng số lượng vai trò được định cấu hình trên máy chủ
         let configuredRoleCount = 0;
         const currentCounts = window.G.roleCounts || {};
         for (let key in currentCounts) {
             configuredRoleCount += currentCounts[key] || 0;
         }
 
-        // Đảm bảo số lượng phân phát khớp tuyệt đối 100% với số người chơi kết nối
         if (configuredRoleCount !== playerCount) {
-            const difference = playerCount - configuredRoleCount;
-            if (difference > 0) {
-                window.alert(`Số lượng vai trò chưa đủ khớp! Vui lòng tăng thêm ${difference} vai trò nữa trong sảnh Cấu Hình để vừa vặn khớp với ${playerCount} người chơi.`);
+            const diff = playerCount - configuredRoleCount;
+            if (diff > 0) {
+                showToast(`Chưa đủ vai trò! Vui lòng thêm ${diff} role nữa để khớp với ${playerCount} người chơi.`, "warning");
             } else {
-                window.alert(`Số lượng vai trò đang bị dư thừa! Vui lòng bớt ${Math.abs(difference)} vai trò ra khỏi danh sách để vừa khớp chính xác với ${playerCount} người chơi.`);
+                showToast(`Dư thừa vai trò! Vui lòng bớt ${Math.abs(diff)} role để khớp với ${playerCount} người chơi.`, "warning");
             }
             return;
         }
 
-        // Thu gom vai trò hợp lệ vào bể trộn ngẫu nhiên
         let rolePool = [];
         for (let key in ROLE_DB) {
             let count = currentCounts[key] || 0;
-            for (let i = 0; i < count; i++) {
-                rolePool.push(key);
-            }
+            for (let i = 0; i < count; i++) rolePool.push(key);
         }
 
-        // Trộn ngẫu nhiên cơ học Fisher-Yates
+        // Fisher-Yates Shuffle
         for (let i = rolePool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [rolePool[i], rolePool[j]] = [rolePool[j], rolePool[i]];
@@ -220,10 +156,10 @@ export const Engine_Module = {
 
         try {
             await update(ref(db), updates);
-            window.alert("Trộn và phân phát vai trò trực tuyến hoàn tất. GM có thể bấm BẮT ĐẦU ĐÊM ĐEN!");
+            showToast("Đã phân phát vai trò! GM có thể bấm BẮT ĐẦU ĐÊM ĐEN.", "success");
             document.getElementById("btn-gm-start-night")?.classList.remove("hidden");
         } catch (error) {
-            window.alert("Đã xảy ra lỗi đồng bộ hóa khi phát vai trò!");
+            showToast("Đã xảy ra lỗi đồng bộ hóa khi phát vai trò!", "danger");
         }
     },
 
@@ -241,7 +177,7 @@ export const Engine_Module = {
             await update(ref(db), updates);
             Engine_Module.logMsg(t('msg_game_start'), "info");
         } catch (error) {
-            window.alert("Không thể phát lệnh khởi tạo trận đấu!");
+            showToast("Không thể phát lệnh khởi tạo trận đấu!", "danger");
         }
     },
 
@@ -249,18 +185,12 @@ export const Engine_Module = {
         const Net = window.Net;
         if (!Net || !Net.roomId) return;
         
-        const logRef = ref(db, `rooms/${Net.roomId}/logs`);
-        const logItem = {
-            day: window.G.day,
-            phase: window.G.phase,
-            msg: msg,
-            type: type,
-            timestamp: Date.now()
-        };
         try {
-            await push(logRef, logItem);
+            await push(ref(db, `rooms/${Net.roomId}/logs`), {
+                day: window.G.day, phase: window.G.phase, msg: msg, type: type, timestamp: Date.now()
+            });
         } catch (error) {
-            console.error("Gặp sự cố khi đẩy lịch sử trận đấu:", error);
+            console.error("Lỗi lưu log:", error);
         }
     },
 
@@ -268,8 +198,7 @@ export const Engine_Module = {
         const Net = window.Net;
         if (!Net) return;
         
-        const selfId = Net.playerId;
-        const currentNomRef = ref(db, `rooms/${Net.roomId}/nominations/${selfId}`);
+        const currentNomRef = ref(db, `rooms/${Net.roomId}/nominations/${Net.playerId}`);
         try {
             const snapshot = await get(currentNomRef);
             if (snapshot.exists() && snapshot.val() === targetId) {
@@ -277,7 +206,7 @@ export const Engine_Module = {
                 Engine_Module.logMsg(`${Net.playerName} đã rút lại đề cử treo cổ của mình.`, "sys");
             } else {
                 await set(currentNomRef, targetId);
-                Engine_Module.logMsg(`${Net.playerName} tố cáo và đề nghị đưa đối tượng lên đài biện hộ: ${Net.players[targetId]?.name}`, "sys");
+                Engine_Module.logMsg(`${Net.playerName} tố cáo và đề nghị đưa lên đài biện hộ: ${Net.players[targetId]?.name}`, "sys");
             }
         } catch (error) {
             console.error(error);
@@ -285,45 +214,47 @@ export const Engine_Module = {
     }
 };
 
-// Kiểm tra đa số phiếu đề cử treo cổ (Chỉ chạy trên máy chủ của Quản trò Host)
+// ==========================================
+// KIỂM TRA QUÁ BÁN (SỬA BUG 1 VÀ BUG 14)
+// ==========================================
 export async function checkMajorityNominationTrigger() {
     const Net = window.Net;
-    if (!Net || !Net.isHost) return; // Bảo vệ luồng chuyển pha duy nhất từ máy Quản trò
+    if (!Net || !Net.isHost) return;
     
-    const nomRef = ref(db, `rooms/${Net.roomId}/nominations`);
     try {
-        const snap = await get(nomRef);
+        // SỬA BUG 1: Kiểm tra chống đè luồng nếu đài xét xử đã mở
+        const trialSnap = await get(ref(db, `rooms/${Net.roomId}/trial`));
+        if (trialSnap.exists() && trialSnap.val().stage !== "none") return;
+
+        const snap = await get(ref(db, `rooms/${Net.roomId}/nominations`));
         const nominations = snap.val() || {};
-        const aliveCount = window.G.players.filter(p => p.alive).length;
-        const majorityThreshold = Math.floor(aliveCount / 2) + 1;
+        
+        // SỬA BUG 14: Lọc bỏ bóng ma ngắt kết nối khỏi tổng người chơi hợp lệ biểu quyết
+        const validVotersCount = window.G.players.filter(p => p.alive && p.isConnected).length;
+        const majorityThreshold = Math.floor(validVotersCount / 2) + 1;
 
         const counts = {};
         Object.values(nominations).forEach(targetId => {
-            if (targetId) {
-                counts[targetId] = (counts[targetId] || 0) + 1;
-            }
+            if (targetId) counts[targetId] = (counts[targetId] || 0) + 1;
         });
 
         for (let [targetId, votes] of Object.entries(counts)) {
             if (votes >= majorityThreshold) {
-                const trialUpdates = {
+                await update(ref(db), {
                     [`rooms/${Net.roomId}/trial`]: {
                         stage: "defense",
                         accusedId: targetId,
                         accusedText: ""
                     }
-                };
-                await update(ref(db), trialUpdates);
+                });
                 Engine_Module.logMsg(`[${Net.players[targetId]?.name}] đã nhận quá bán đề cử treo cổ từ làng. Bắt đầu thời gian biện hộ!`, "info");
                 break;
             }
         }
     } catch (err) {
-        console.error("Lỗi Quản trò quét biểu quyết quá bán:", err);
+        console.error("Lỗi quét biểu quyết quá bán:", err);
     }
 }
-
-// Lộ diện hàm kiểm tra cho hệ thống đồng bộ phòng sảnh
 window.checkMajorityNominationTrigger = checkMajorityNominationTrigger;
 
 // ==========================================
@@ -332,13 +263,9 @@ window.checkMajorityNominationTrigger = checkMajorityNominationTrigger;
 export const UI_Module = {
     switchTab: (idx) => {
         document.body.setAttribute("data-mobile-tab", idx);
-        const tabs = ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"];
-        tabs.forEach((tabId, i) => {
+        ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"].forEach((tabId, i) => {
             const el = document.getElementById(tabId);
-            if (el) {
-                if (i + 1 === idx) el.classList.add("active");
-                else el.classList.remove("active");
-            }
+            if (el) el.classList.toggle("active", i + 1 === idx);
         });
     },
 
@@ -391,33 +318,24 @@ export const UI_Module = {
     changeRoleQty: (key, delta) => {
         const Net = window.Net;
         if (!Net || !Net.isHost) return;
-        
         const currentQty = window.G.roleCounts[key] || 0;
-        const newQty = Math.max(0, currentQty + delta);
-        
-        update(ref(db, `rooms/${Net.roomId}/roleCounts`), {
-            [key]: newQty
-        });
+        update(ref(db, `rooms/${Net.roomId}/roleCounts`), { [key]: Math.max(0, currentQty + delta) });
     },
 
     executeDeath: async (playerId) => {
         const Net = window.Net;
         if (!Net) return;
-
-        const playerRef = ref(db, `rooms/${Net.roomId}/players/${playerId}`);
         try {
-            await update(playerRef, { alive: false });
+            await update(ref(db, `rooms/${Net.roomId}/players/${playerId}`), { alive: false });
             Engine_Module.logMsg(`Đối tượng [${window.G.players.find(p=>p.id===playerId).name}] đã bị Quản trò hành quyết thủ công!`, "kill");
         } catch (error) {
-            window.alert("Đã xảy ra lỗi khi thực thi lệnh hành án!");
+            showToast("Đã xảy ra lỗi khi thực thi lệnh hành án!", "danger");
         }
     },
 
     updateStats: () => {
         const pCountDisp = document.getElementById('player-count-display');
-        const pCount = document.getElementById('player-count');
         if (pCountDisp) pCountDisp.innerText = window.G.players.length;
-        if (pCount) pCount.innerText = window.G.players.length;
     },
 
     updateActiveRolesSummary: () => {
@@ -433,9 +351,7 @@ export const UI_Module = {
     },
 
     updateBalanceUI: () => {
-        let villagePower = 0;
-        let wolfPower = 0;
-        let thirdPower = 0;
+        let villagePower = 0, wolfPower = 0, thirdPower = 0;
 
         for (let key in ROLE_DB) {
             const count = window.G.roleCounts[key] || 0;
@@ -447,18 +363,14 @@ export const UI_Module = {
         }
 
         const total = villagePower + wolfPower + thirdPower || 1;
-        const wPct = (wolfPower / total) * 100;
-        const tPct = (thirdPower / total) * 100;
-        const vPct = (villagePower / total) * 100;
-
         const wBar = document.getElementById('balance-bar-wolf');
         const tBar = document.getElementById('balance-bar-third');
         const vBar = document.getElementById('balance-bar-village');
         const bText = document.getElementById('balance-text');
 
-        if (wBar) wBar.style.width = `${wPct}%`;
-        if (tBar) tBar.style.width = `${tPct}%`;
-        if (vBar) vBar.style.width = `${vPct}%`;
+        if (wBar) wBar.style.width = `${(wolfPower / total) * 100}%`;
+        if (tBar) tBar.style.width = `${(thirdPower / total) * 100}%`;
+        if (vBar) vBar.style.width = `${(villagePower / total) * 100}%`;
 
         if (bText) {
             if (wolfPower > villagePower) bText.innerText = t('balance_wolf');
@@ -469,7 +381,7 @@ export const UI_Module = {
     },
 
     showRoleInfo: (key) => {
-        window.alert(getRoleName(key) + ": " + (DICT[window.G.lang]['r_' + key] || key));
+        showToast(getRoleName(key) + ": " + (DICT[window.G.lang]['r_' + key] || key), "info");
     },
 
     showVictoryScreen: (winningFaction, mvpData, relationLogs) => {
@@ -530,8 +442,7 @@ function initRoleSetupListeners() {
         let allKeys = Object.keys(ROLE_DB).filter(key => 
             getRoleName(key).toLowerCase().includes(window.G.roleSearchKeyword.toLowerCase())
         );
-        const totalPages = Math.ceil(allKeys.length / window.G.rolesPerPage);
-        if (window.G.currentRolePage < totalPages - 1) {
+        if (window.G.currentRolePage < Math.ceil(allKeys.length / window.G.rolesPerPage) - 1) {
             window.G.currentRolePage++;
             UI_Module.renderRoleConfigPage();
         }
@@ -551,23 +462,15 @@ function initRoleSetupListeners() {
         applyPreset({ villager: 3, seer: 1, loneWolf: 1, wolf: 1, serialKiller: 1 });
     });
 
-    document.getElementById("btn-distribute")?.addEventListener("click", () => {
-        Engine_Module.distributeRoles();
-    });
-
-    document.getElementById("btn-gm-start-night")?.addEventListener("click", () => {
-        Engine_Module.startGame();
-    });
+    document.getElementById("btn-distribute")?.addEventListener("click", () => Engine_Module.distributeRoles());
+    document.getElementById("btn-gm-start-night")?.addEventListener("click", () => Engine_Module.startGame());
 }
 
 function applyPreset(preset) {
     const Net = window.Net;
     if (!Net || !Net.isHost) return;
-    
     const updates = {};
-    for (let key in ROLE_DB) {
-        updates[`rooms/${Net.roomId}/roleCounts/${key}`] = preset[key] || 0;
-    }
+    for (let key in ROLE_DB) updates[`rooms/${Net.roomId}/roleCounts/${key}`] = preset[key] || 0;
     update(ref(db), updates);
 }
 
@@ -593,12 +496,9 @@ function renderRelationsTab(relationLogs) {
 
 function triggerSgDrawingRelations() {
     const canvas = document.getElementById("svg-relations-canvas");
-    if (!canvas) return;
-    canvas.innerHTML = "";
-
     const container = document.getElementById("stats-content-map");
-    // Chốt chặn: Chỉ thực hiện đo đạc khi phân vùng chứa sơ đồ thực tế đã hiển thị (ngăn chặn Forced Reflow)
-    if (!container || container.classList.contains("hidden")) return;
+    if (!canvas || !container || container.classList.contains("hidden")) return;
+    canvas.innerHTML = "";
 
     const containerRect = container.getBoundingClientRect();
 
@@ -610,28 +510,17 @@ function triggerSgDrawingRelations() {
             const fromRect = fromEl.getBoundingClientRect();
             const toRect = toEl.getBoundingClientRect();
 
-            const x1 = (fromRect.left + fromRect.width / 2) - containerRect.left;
-            const y1 = (fromRect.top + fromRect.height / 2) - containerRect.top;
-            const x2 = (toRect.left + toRect.width / 2) - containerRect.left;
-            const y2 = (toRect.top + toRect.height / 2) - containerRect.top;
-
             const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", x1);
-            line.setAttribute("y1", y1);
-            line.setAttribute("x2", x2);
-            line.setAttribute("y2", y2);
+            line.setAttribute("x1", (fromRect.left + fromRect.width / 2) - containerRect.left);
+            line.setAttribute("y1", (fromRect.top + fromRect.height / 2) - containerRect.top);
+            line.setAttribute("x2", (toRect.left + toRect.width / 2) - containerRect.left);
+            line.setAttribute("y2", (toRect.top + toRect.height / 2) - containerRect.top);
             line.setAttribute("stroke-width", "3");
 
-            if (log.type === "couple") {
-                line.setAttribute("stroke", "#f472b6");
-                line.setAttribute("stroke-dasharray", "4,4");
-            } else if (log.type === "wolf_bite") {
-                line.setAttribute("stroke", "#ef4444");
-            } else if (log.type === "guard_protect") {
-                line.setAttribute("stroke", "#22c55e");
-            } else {
-                line.setAttribute("stroke", "#38bdf8");
-            }
+            if (log.type === "couple") { line.setAttribute("stroke", "#f472b6"); line.setAttribute("stroke-dasharray", "4,4"); } 
+            else if (log.type === "wolf_bite") line.setAttribute("stroke", "#ef4444");
+            else if (log.type === "guard_protect") line.setAttribute("stroke", "#22c55e");
+            else line.setAttribute("stroke", "#38bdf8");
 
             canvas.appendChild(line);
         }
@@ -646,17 +535,11 @@ function initVictoryTabsListeners() {
             tab.classList.add("active");
 
             const selectedTab = tab.getAttribute("data-stats-tab");
-            const panels = ["stats-content-mvp", "stats-content-map", "stats-content-logs"];
-            panels.forEach(p => document.getElementById(p)?.classList.add("hidden"));
+            ["stats-content-mvp", "stats-content-map", "stats-content-logs"].forEach(p => document.getElementById(p)?.classList.add("hidden"));
 
-            if (selectedTab === "mvp") {
-                document.getElementById("stats-content-mvp")?.classList.remove("hidden");
-            } else if (selectedTab === "map") {
-                document.getElementById("stats-content-map")?.classList.remove("hidden");
-                triggerSgDrawingRelations();
-            } else if (selectedTab === "logs") {
-                document.getElementById("stats-content-logs")?.classList.remove("hidden");
-            }
+            if (selectedTab === "mvp") document.getElementById("stats-content-mvp")?.classList.remove("hidden");
+            else if (selectedTab === "map") { document.getElementById("stats-content-map")?.classList.remove("hidden"); triggerSgDrawingRelations(); } 
+            else if (selectedTab === "logs") document.getElementById("stats-content-logs")?.classList.remove("hidden");
         });
     });
 
@@ -665,11 +548,8 @@ function initVictoryTabsListeners() {
         document.getElementById("victory-stats-panel")?.classList.remove("hidden");
     });
 
-    document.getElementById("btn-stats-back-lobby")?.addEventListener("click", () => {
-        location.reload();
-    });
+    document.getElementById("btn-stats-back-lobby")?.addEventListener("click", () => location.reload());
 }
 
-// Xuất các Module sang tệp app.js
 window.UI_Module = UI_Module;
 window.Engine_Module = Engine_Module;

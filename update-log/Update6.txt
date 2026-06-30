@@ -1,0 +1,96 @@
+🚨 MỨC ĐỘ 1: LỖI NGHIÊM TRỌNG GÂY TREO GAME (SOFTLOCK & CRASH)
+1. Vòng lặp vô tận ở pha Biện Hộ Ban Ngày (Infinite Defense Loop)
+Vị trí: Cuối hàm listenToRoom() trong app.js và hàm checkMajorityNominationTrigger().
+Chi tiết: Khi có người bị vote lên thớt (đạt quá bán), hàm sẽ update Firebase trial.stage = "defense". Tuy nhiên, biến roomData.nominations trên Firebase không hề bị xóa đi. Dẫn đến việc mỗi lần Firebase có biến động (ai đó chat, thay đổi thông số), hàm listenToRoom lại chạy lại 
+→
+→
+ lại thấy roomData.nominations đủ quá bán 
+→
+→
+ lại đè stage: "defense" và reset lại từ đầu.
+Hậu quả: Bị cáo vừa gõ được vài chữ biện hộ, dữ liệu lại bị reset. Game kẹt vĩnh viễn ở bước 2, không thể sang bước Bỏ phiếu.
+2. Không có cơ chế kích hoạt Kết Quả Treo Cổ (Missing Vote Resolution)
+Vị trí: state-machine.js có hàm resolveVotingOutcome() rất dài và chi tiết.
+Chi tiết: Nếu bạn tìm kiếm (Ctrl+F) toàn bộ project, bạn sẽ thấy KHÔNG CÓ MỘT NƠI NÀO gọi hàm StateMachine.resolveVotingOutcome()!
+Hậu quả: Sau khi tất cả người chơi bấm nút "Tha bổng" hoặc "Xử tử",... không có chuyện gì xảy ra cả. Quản trò không có nút chốt kết quả, hệ thống cũng không tự đếm đủ phiếu để chạy. Game đứng hình vĩnh viễn ở Màn hình Chia đôi Bỏ phiếu.
+3. Lỗi sai tên biến gây Tràn RAM và Sập trình duyệt (Memory Leak - Chat Spam)
+Vị trí: Đầu file app.js và hàm listenToChatChannel().
+Chi tiết: Ở đầu file, bạn khai báo biến toàn cục dọn rác là let activeChatUnsub = null; và gọi nó trong clearActiveListeners(). NHƯNG, bên trong hàm lắng nghe chat, bạn lại khai báo một biến hoàn toàn khác: let activeChatUnsubscribe = null;.
+Hậu quả: Hàm dọn rác dọn nhầm một biến luôn bằng null. Trong khi đó, biến thực sự giữ kết nối Firebase (activeChatUnsubscribe) không bao giờ bị xóa. Cứ mỗi lần người chơi chuyển tab chat, hoặc qua Đêm/Ngày mới, hệ thống lại đẻ ra 1 luồng nghe lén mới. Tới Ngày thứ 3, một tin nhắn chat sẽ bị in ra 50 lần trên màn hình, RAM trình duyệt sẽ đầy và gây Crash tab trình duyệt.
+4. Dội bom Database Firebase (Quota Exhaustion - Firebase Crash)
+Vị trí: Hàm setupActivePlayersPresence() gọi trong listenToRoom() (app.js).
+Chi tiết: Mỗi khi có thay đổi dữ liệu phòng (người chơi di chuyển, ngày đêm đổi, v.v.), listenToRoom lại chạy và gọi hàm presence. Hàm này chạy dòng: onDisconnect(connectionRef).set(false);.
+Hậu quả: Mỗi người chơi sẽ gửi hàng ngàn lệnh "hẹn giờ ngắt kết nối" lên Server Firebase trong 1 ván đấu. Điều này sẽ khiến Firebase của bạn bị tràn Request, văng lỗi Quota Exceeded và sập toàn bộ Game Server ngay lập tức.
+⚠️ MỨC ĐỘ 2: LỖI LOGIC GAME & TICK ENGINE GÂY SAI LỆCH KẾT QUẢ
+5. Hiệu ứng thị giác (Buff/Debuff) dính vĩnh viễn không bị xóa
+Vị trí: Hàm applyDecorativeClasses() trong app.js và TickEngine.
+Chi tiết: Khi TickEngine xử lý xong đêm, nó lưu các state (ví dụ isSeerScanned = true, isPetroled = true, v.v.) lên Firebase. Giao diện (UI) sẽ vẽ viền tím cho Tiên tri, v.v. Tuy nhiên, khi sang đêm tiếp theo, không có hàm nào reset các biến này!
+Hậu quả: Một người chơi bị Tiên tri soi ở Đêm 1 sẽ bị dính viền Tím vĩnh viễn đến hết game. Người bị tẩm xăng Đêm 1 nếu sống sót, Đêm 3 Arsonist châm lửa cũng sẽ bị cháy lây dù Đêm 3 không bị tẩm xăng.
+6. TickEngine xóa mất mục tiêu phụ (Secondary Target Bug)
+Vị trí: Tick 3 trong TickEngine (tick-engine.js).
+Chi tiết: Khi kiểm tra bùa phản chiếu (set_mirror), code có đoạn: act.targetId = getRoutedTarget(...). Sau đó filter: actionBuffer = actionBuffer.filter(act => act.targetId !== "neutralized_by_void").
+Hậu quả: Kỹ năng của Cupid hoặc Manipulator có tới 2 mục tiêu (targetId và secondaryId). Nếu targetId bị vô hiệu hóa, toàn bộ action bị ném vào sọt rác, hệ thống bỏ qua luôn cả secondaryId (mặc dù mục tiêu 2 hoàn toàn hợp lệ). Cupid sẽ không thể ghép đôi nếu 1 trong 2 người dính bùa vô hiệu.
+7. Chết do bị chặn phép (Block/Silence) nhưng kỹ năng vẫn dội ngược
+Vị trí: Tick 4 và Tick 7 (tick-engine.js).
+Chi tiết: Thợ Săn (Hunter) chết sẽ kéo theo mục tiêu. Nhưng ở Tick 4, nếu Thợ săn bị Gây mê (Avenger) hoặc Phong ấn (Cat), actionBuffer của Thợ Săn bị xóa khỏi danh sách. Đến Tick 7, Thợ săn chết, code kiểm tra xem Thợ săn có action trong danh sách không 
+→
+→
+ Không có.
+Hậu quả: Thợ săn chết trong lúc bị câm lặng/gây mê sẽ KHÔNG THỂ nhả đạn kéo theo người khác (Sai logic tiêu chuẩn của Ma Sói).
+🎨 MỨC ĐỘ 3: LỖI GIAO DIỆN, DOM VÀ HÀNH VI NGƯỜI DÙNG (UX/UI BUGS)
+8. Lỗi dọn dẹp DOM CloneNode gây văng màn hình (TypeError Crash)
+Vị trí: Hàm askConfirm và openTargetSelection trong ui-manager.js.
+Chi tiết: Để tránh việc bấm 1 nút chạy 2 lệnh (event pileup), code dùng submitBtn.cloneNode(true). Nhìn thì thông minh, nhưng nếu hàm này vô tình được gọi khi DOM chưa load xong, submitBtn sẽ là null.
+Hậu quả: Lệnh submitBtn.parentNode.replaceChild(...) sẽ quăng lỗi đỏ lòm trên Console (TypeError), và cái Modal popup đó sẽ bị liệt vĩnh viễn, người chơi không thể chọn mục tiêu hay làm gì khác ngoài F5.
+9. Cử chỉ chạm giữ (Hold Gesture) đá nhau với cuộn trang (Scroll) trên Mobile
+Vị trí: Hàm setupIdentityCardHoldGesture() trong ui-manager.js.
+Chi tiết: iOS và Android có cơ chế chống chạm nhầm. Khi người chơi chạm giữ thẻ Căn Cước 1.5 giây để xem vai trò, nếu tay họ vô tình nhích lên/xuống 1 pixel, trình duyệt sẽ hiểu là hành động "Cuộn trang" (Scroll) và bắn ra event touchcancel.
+Hậu quả: Rất nhiều điện thoại sẽ không thể xem được vai trò ẩn của mình, vì cứ giữ tay vào là bị ngắt nửa chừng do rung tay.
+10. Màn hình Reconnect và Màn hình Chờ (Splash Screen) đè lên nhau
+Vị trí: Đầu file app.js (attemptSessionReconnection và dismissSplashScreen).
+Chi tiết: Ngay khi vào game, dismissSplashScreen set thời gian 1.2s mới tắt màn đen. Trong cùng lúc đó, attemptSessionReconnection kết nối rất nhanh (chỉ 0.3s) và kích hoạt transitionToGameScreen đổi UI.
+Hậu quả: Giao diện game load xong nhưng bị cái màn hình mờ mờ đè lên cản thao tác, hoặc tạo ra những cú giật lag (Flicker) cực kỳ xấu mắt khi vào game.
+11. Bảo mật: Sói chat đêm, Dân làng ban ngày vẫn đọc được bằng DevTools
+Vị trí: Hàm quản lý layout trong app.js.
+Chi tiết: Ban ngày, hệ thống chặn Dân Làng gõ phím vào kênh Sói bằng disabled = true. NHƯNG code không hề gỡ lắng nghe (unsubscribe) kênh Sói.
+Hậu quả: Một người biết chút IT mở F12, đổi biến Net.currentChannel là có thể nhìn xuyên thấu lịch sử chat đêm của phe Sói hoặc bất kỳ phe nào, phá hỏng tính bảo mật của ván đấu.
+🛑 TẠI SAO GAME BỊ TREO Ở SPLASH SCREEN? (CÁCH FIX NGAY LẬP TỨC)
+Lý do 1: Lỗi bảo mật CORS do mở trực tiếp file HTML (90% người mắc phải)
+Chi tiết: Mã nguồn của bạn sử dụng <script type="module"> và importmap. Trình duyệt web (Chrome, Safari, Edge) có tính năng bảo mật cực gắt: KHÔNG cho phép chạy Module JS nếu bạn mở file bằng cách click đúp (đường dẫn file:///C:/...).
+Hậu quả: Toàn bộ file JS bị chặn tải. Hàm dismissSplashScreen() nằm trong JS không bao giờ được gọi 
+→
+→
+ Màn hình đen vĩnh viễn.
+Cách Fix: Bạn bắt buộc phải chạy game qua một Local Server. Nếu dùng VS Code, hãy cài Extension Live Server và bấm "Go Live".
+Lý do 2: Lỗi truy vấn Firebase vào đường dẫn null (Bị chặn bởi Firebase Rules)
+Vị trí: Hàm setupSpectatorWinPoll() trong app.js.
+Chi tiết: Khi trang web vừa mở (DOMContentLoaded), hệ thống lập tức gọi hàm này. Lúc này, người chơi chưa hề nhập mã phòng, nên Net.roomId đang là null. Nhưng hàm lại chạy lệnh: ref(db, 'rooms/null/prediction_poll') và cắm onValue nghe lén vào đó.
+Hậu quả: Trình duyệt ném ra cảnh báo lỗi, đứt gãy luồng thực thi JS.
+Cách Fix: Phải đưa hàm setupSpectatorWinPoll() vào bên trong hàm listenToRoom() (khi đã có mã phòng).
+🚨 MỨC ĐỘ 4: LỖI NGHIÊM TRỌNG TRONG HỆ THỐNG VẬN HÀNH GAME
+12. Người chết (Hồn ma) bật nắp quan tài lên Bỏ phiếu treo cổ
+Vị trí: Hàm openSplitScreenVoteModal trong app.js.
+Chi tiết: Khi đài treo cổ mở ra, 2 nút "Tha Bổng" và "Xử Tử" đẩy trực tiếp vote của người bấm lên Firebase: set(ref(...), "ACQUIT").
+Hậu quả: Bất kỳ người chơi nào (dù đã bị sói cắn chết từ Đêm 1) vẫn có thể bấm nút này và hệ thống vẫn tính đó là 1 phiếu hợp lệ. Một ván game 10 người, 8 người chết vẫn có thể quyết định treo cổ 1 trong 2 người còn sống!
+Cách Fix: Cần bọc lệnh gửi vote bằng kiểm tra sinh mệnh: if (!window.G.players.find(p => p.id === Net.playerId).alive) return;
+13. Bug nhân bản sự kiện Đêm (Double Resolution) do dùng cờ chặn Cục bộ
+Vị trí: Biến isTransitioning = false ở đầu file state-machine.js.
+Chi tiết: Để tránh Quản trò bấm nút "Chuyển ngày" 2 lần gây lỗi, bạn dùng biến isTransitioning để khóa. NHƯNG đây là biến cục bộ trên máy tính của Quản trò.
+Hậu quả: Nếu mạng lag hoặc phòng có 2 người cùng đăng nhập tài khoản Quản trò, lệnh chuyển ngày sẽ được gửi lên Firebase 2 lần. TickEngine sẽ chạy 2 lần: Sói cắn 2 người, Phù thủy ném 2 bình độc, Thợ săn xả 2 phát đạn trong cùng 1 đêm! Phải dùng cơ chế runTransaction của Firebase để khóa.
+14. Lỗi "Bóng ma người chơi" vĩnh viễn (Ghost Players)
+Vị trí: Hàm setupActivePlayersPresence() và luồng Reconnect.
+Chi tiết: Khi người chơi rớt mạng hẳn hoặc mở trình duyệt ẩn danh khác, họ nhận playerId mới. Cái playerId cũ trên Firebase sẽ set isConnected = false, nhưng không bao giờ bị xóa khỏi danh sách phòng.
+Hậu quả: Lưới giao diện (Grid) sẽ ngày càng phình to, hiện ra hàng chục thẻ người chơi Offline (màu xám). Điều này làm hỏng luôn tính năng tính "Quá bán" khi treo cổ, vì hệ thống đếm luôn cả những cái xác Offline chưa bị xóa.
+⚠️ MỨC ĐỘ 5: LỖI SAI LỆCH LOGIC CỦA TICK ENGINE (MÁY CHỦ PHÂN GIẢI)
+15. Bùa Phản Chiếu (Reflector) đụng độ Thợ Săn gây nổ đệ quy
+Vị trí: Tick 7 trong TickEngine.
+Chi tiết: Thợ săn chết sẽ bắn targetId kéo theo. Nhưng hệ thống xử lý Bùa Phản Chiếu (Tick 3) lại không áp dụng cho đòn bắn của Thợ Săn.
+Hậu quả: Nếu Thợ Săn chết, và chọn bắn vào người có dựng Kính Phản Quang, đòn bắn sẽ xuyên qua kính giết chết người đó (Sai logic game: Kính phải phản đạn lại Thợ săn hoặc dội ra ngoài).
+16. Modifiers (Bổ trợ kỹ năng) bị liệt nếu người chơi bấm "Hủy"
+Vị trí: Hàm openTargetSelection trong ui-manager.js.
+Chi tiết: Khi Phù thủy chọn "Bình Độc", biến chosenModifier lưu thành "poison". Nếu Phù thủy đổi ý bấm "Hủy" (đóng Modal), biến chosenModifier không được reset về null.
+Hậu quả: Lượt sau Phù thủy muốn dùng "Bình Cứu", nhưng vì chosenModifier bị kẹt ở chữ "poison", họ vô tình ném Bình Độc vào người họ muốn cứu!
+17. Sói Ảo Ảnh (Phantom Wolf) chỉ lừa được Tiên Tri, không lừa được sát thương
+Vị trí: Tick 2 & Tick 8 trong TickEngine.
+Chi tiết: Sói Ảo Ảnh tráo đổi vị trí của A và B (identitySwaps). Nhưng TickEngine chỉ lấy biến này để đánh lừa Tiên Tri (Tick 8).
+Hậu quả: Nếu A và B bị tráo, và Sát Nhân (Serial Killer) đâm vào A, theo đúng luật Ma Sói thì B phải chết. Nhưng trong code hiện tại, A vẫn là người chết (Tick 6 Damage Queue không đọc biến identitySwaps). Kỹ năng của Sói Ảo Ảnh bị phế một nửa.
