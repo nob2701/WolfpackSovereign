@@ -25,16 +25,14 @@
     --ghost-blue: #475569;
     --ghost-bg: #121214;
 
-    /* Thang đo Z-index tiêu chuẩn hệ thống (Đã chuẩn hóa) */
+    /* Thang đo Z-index tiêu chuẩn hệ thống */
     --z-nav: 1000; 
     --z-overlay: 2000; 
     --z-modal-bg: 10000; 
     --z-modal: 10005; 
     --z-alert: 20000; 
     --z-action-alert: 20010; 
-    --z-splash: 99998; /* Cố ý để thấp hơn Reconnect 1 bậc */
-    --z-reconnect: 99999;
-    --z-toast: 100000;
+    --z-splash: 99999;
 }
 
 body[data-theme="light"] { 
@@ -94,7 +92,6 @@ body {
     height: 100vh;
     overflow: hidden;
     transition: background 0.3s, color 0.3s;
-    overscroll-behavior: none; /* Ngăn chặn Pull-to-refresh trên thiết bị di động */
 }
 
 /* Tùy chỉnh thanh cuộn đồng bộ */
@@ -182,7 +179,6 @@ body {
     align-items: center;
     justify-content: center;
     transition: opacity 0.5s ease-in-out;
-    touch-action: none;
 }
 .night-sleep-overlay.hidden {
     opacity: 0;
@@ -419,12 +415,11 @@ body {
     text-align: left;
     width: 100%;
     
-    /* Chặn trình duyệt can thiệp vào cảm ứng di động (Bảo vệ Bug 9) */
+    /* Ngăn chặn tuyệt đối xung đột thao tác cuộn trên màn hình cảm ứng di động */
+    touch-action: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
-    -moz-user-select: none;
     user-select: none;
-    touch-action: none;
 }
 .id-card-seal {
     width: 45px;
@@ -507,7 +502,7 @@ h2, h3 {
     align-content: flex-start;
 }
 
-/* Ô Thẻ Người Chơi cơ bản (Đã bổ sung tăng tốc phần cứng GPU) */
+/* Ô Thẻ Người Chơi cơ bản (Bổ sung tăng tốc phần cứng thông qua GPU) */
 .player-grid-card {
     background: var(--bg-item);
     border: 2px solid var(--border-color);
@@ -516,12 +511,15 @@ h2, h3 {
     text-align: center;
     position: relative;
     cursor: pointer;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.2s, box-shadow 0.2s;
     overflow: hidden;
-    will-change: transform, border-color, box-shadow, filter; /* Tối ưu GPU khi JS cập nhật DOM liên tục */
+    
+    /* Force GPU rendering to prevent rendering lag on DB update */
+    will-change: transform, border-color, box-shadow, filter;
+    transform: translate3d(0, 0, 0);
 }
 .player-grid-card:hover {
-    transform: translateY(-3px);
+    transform: translate3d(0, -3px, 0);
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     border-color: var(--accent);
 }
@@ -534,7 +532,6 @@ h2, h3 {
     background: #0d0d0e;
     border-color: #27272a;
     cursor: not-allowed;
-    filter: grayscale(100%);
 }
 .player-grid-card.dead .name {
     text-decoration: line-through;
@@ -577,7 +574,9 @@ h2, h3 {
 .player-grid-card .status-dot.online { background-color: var(--success); }
 .player-grid-card .status-dot.offline { background-color: #4b5563; }
 
-/* === NÂNG CẤP HIỆU ỨNG THỊ GIÁC VAI TRÒ === */
+/* === TRANG TRÍ CÁC TRẠNG THÁI / BÙA CHÚ VAI TRÒ === */
+
+/* Tiên Tri (Seer) */
 .player-grid-card.seer-scanned {
     border-color: #a855f7 !important;
     box-shadow: 0 0 15px #a855f7, inset 0 0 8px rgba(168, 85, 247, 0.4) !important;
@@ -592,6 +591,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Bảo Vệ (Guard) */
 .player-grid-card.guard-protected::before {
     content: "🛡️";
     position: absolute;
@@ -608,7 +608,7 @@ h2, h3 {
     pointer-events: none !important;
 }
 .player-grid-card.guard-blocked::after {
-    content: "Không thể chọn liên tiếp";
+    content: "Khóa Lượt Kế";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(18, 18, 20, 0.85);
@@ -621,6 +621,7 @@ h2, h3 {
     z-index: 5;
 }
 
+/* Phù Thủy (Witch) */
 .player-grid-card.witch-healed {
     animation: witchHealFlash 1s ease-out 2;
 }
@@ -634,6 +635,7 @@ h2, h3 {
     animation: poisonSmokeRise 3s infinite alternate ease-in-out;
 }
 
+/* Thợ Săn (Hunter) */
 .player-grid-card.hunter-marked::after {
     content: "";
     position: absolute;
@@ -657,15 +659,18 @@ h2, h3 {
     pointer-events: none;
 }
 
+/* Cupid */
 .player-grid-card.cupid-linked {
     border-color: #f472b6 !important;
     box-shadow: 0 0 12px #f472b6 !important;
 }
 
+/* Thiên Sứ (Angel) */
 .player-grid-card.angel-purified {
     animation: purifiedGlow 3s ease-in-out forwards;
 }
 
+/* Kẻ Khắc Tên (Carver) */
 .player-grid-card.carver-blacklisted {
     background-image: repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(239, 68, 68, 0.15) 15px, rgba(239, 68, 68, 0.15) 16px);
 }
@@ -679,6 +684,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Người Bảo Lãnh (Guarantor) */
 .player-grid-card.guarantor-sealed::after {
     content: "🎗️";
     position: absolute;
@@ -689,12 +695,14 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Kẻ Phản Chiếu (Reflector) */
 .player-grid-card.reflector-mirrored {
     border: 3px double #cbd5e1 !important;
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.2) !important;
     animation: mirrorReflection 4s infinite linear;
 }
 
+/* Kẻ Báo Thù (Avenger) */
 .player-grid-card.avenger-asleep::before {
     content: "🌀";
     position: absolute;
@@ -711,6 +719,7 @@ h2, h3 {
     animation: executionBloody 0.5s ease-in-out;
 }
 
+/* Phe Sói */
 .player-grid-card.wolf-targeted {
     border-color: var(--danger) !important;
 }
@@ -737,6 +746,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Sói Tuyết (Snow Wolf) */
 .player-grid-card.snowwolf-frozen {
     border-color: #38bdf8 !important;
     background: rgba(56, 189, 248, 0.1) !important;
@@ -753,6 +763,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Pháp Sư Sói (Wolf Mage) */
 .player-grid-card.wolfmage-scanned::before {
     content: "🧿";
     position: absolute;
@@ -764,6 +775,7 @@ h2, h3 {
     z-index: 2;
 }
 
+/* Sói Ảo Ảnh (Phantom Wolf) */
 .player-grid-card.phantom-swapped::after {
     content: "🎭";
     position: absolute;
@@ -773,6 +785,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Sói Câm Lặng (Silencer Wolf) */
 .player-grid-card.silencer-muted::before {
     content: "";
     position: absolute;
@@ -790,6 +803,7 @@ h2, h3 {
     filter: drop-shadow(0 2px 4px #000);
 }
 
+/* Sói Tarot (Solitaire Wolf) */
 .player-grid-card.solitaire-cursed::before {
     content: "🃏";
     position: absolute;
@@ -801,12 +815,14 @@ h2, h3 {
     z-index: 2;
 }
 
+/* Thám Tử Ác Ma (Demon Detective) */
 .player-grid-card.demon-hellfire {
     box-shadow: 0 0 20px var(--danger), inset 0 0 10px rgba(239, 68, 68, 0.4) !important;
     border-color: var(--danger) !important;
     animation: hellfirePulse 1.5s infinite alternate;
 }
 
+/* Nhà Truyền Giáo (Missionary) */
 .player-grid-card.missionary-converted::after {
     content: "🕍";
     position: absolute;
@@ -817,6 +833,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Ma Cà Rồng (Vampire) */
 .player-grid-card.vampire-bitten::after {
     content: "🩸";
     position: absolute;
@@ -827,6 +844,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Kẻ Phóng Hỏa (Arsonist) */
 .player-grid-card.arsonist-petroled::after {
     content: "🛢️";
     position: absolute;
@@ -839,6 +857,7 @@ h2, h3 {
     animation: burningIgnite 1s infinite alternate;
 }
 
+/* Kẻ Thanh Trừng (Eradicator) */
 .player-grid-card.eradicator-trapped::before {
     content: "⚔️";
     position: absolute;
@@ -849,16 +868,19 @@ h2, h3 {
     z-index: 2;
 }
 
+/* Kẻ Thao Túng (The Manipulator) */
 .player-grid-card.manipulator-manipulated {
     border-color: #fbbf24 !important;
     box-shadow: 0 0 10px #fbbf24 !important;
 }
 
+/* Kẻ Mạo Danh (The Impostor) */
 .player-grid-card.lethal-slashed {
     border-color: #991b1b !important;
     background-image: radial-gradient(circle, rgba(153, 27, 27, 0.25) 0%, transparent 70%);
 }
 
+/* Thần Chết Tập Sự (Apprentice Reaper) */
 .player-grid-card.reaper-predicted::before {
     content: "🪦";
     position: absolute;
@@ -870,6 +892,7 @@ h2, h3 {
     z-index: 2;
 }
 
+/* Chủ Thần (The Prime) */
 .player-grid-card.prime-nebula::after {
     content: "🌌";
     position: absolute;
@@ -879,6 +902,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Mèo (Cat) */
 .player-grid-card.cat-clawed {
     background-image: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(22, 163, 74, 0.08) 10px, rgba(22, 163, 74, 0.08) 11px);
 }
@@ -891,6 +915,7 @@ h2, h3 {
     z-index: 4;
 }
 
+/* Tử Thần (The Reaper) */
 .player-grid-card.reaper-corpse {
     background: #18181b !important;
     border-color: #27272a !important;
@@ -1064,7 +1089,9 @@ button:disabled {
     opacity: 0.4; 
     cursor: not-allowed; 
 }
-.w-100 { width: 100%; }
+.w-100 {
+    width: 100%;
+}
 .btn-danger { background: var(--danger) !important; color: #fff !important; }
 .btn-success { background: var(--success) !important; color: #fff !important; }
 .btn-accent { background: var(--accent) !important; color: var(--btn-text) !important; }
@@ -1154,7 +1181,7 @@ button:disabled {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: var(--z-toast);
+    z-index: 100000;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1292,7 +1319,7 @@ button:disabled {
     max-height: 85vh;
     overflow-y: auto;
     animation: parchmentLoad 0.25s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
-    overscroll-behavior: contain; /* Cô lập hành vi cuộn chống đơ UI di động */
+    overscroll-behavior: contain;
 }
 @keyframes parchmentLoad {
     from { transform: scale(0.65) rotate(-3deg); opacity: 0; }
@@ -1371,7 +1398,7 @@ button:disabled {
     margin-top: 10px;
 }
 
-/* === LỊCH SỬ & LÝ LỊCH BẢN ĐỒ === */
+/* === LỊCH SỬ SỰ KIỆN === */
 .log-box { 
     font-family: monospace; 
     font-size: 12.5px; 
@@ -1393,6 +1420,28 @@ button:disabled {
 .info-msg { color: var(--accent); font-weight: bold; }
 
 /* === PHÂN HỆ KÊNH CHAT ĐỘNG === */
+.right-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+.right-tab {
+    flex: 1;
+    background: rgba(63, 63, 70, 0.15);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.right-tab.active {
+    background: var(--accent);
+    color: var(--btn-text);
+    border-color: var(--accent);
+}
+
 .chat-channels-bar {
     display: flex;
     gap: 4px;
@@ -1454,12 +1503,12 @@ button:disabled {
     flex: 1;
     background: var(--bg-main);
     height: 10px;
-    border-radius: 5px;
+    border-radius: 50px;
     overflow: hidden;
 }
 .pred-bar-fill {
     height: 100%;
-    border-radius: 5px;
+    border-radius: 50px;
     transition: width 0.4s ease-in-out;
 }
 .pred-bar-fill.village { background-color: var(--success); }
@@ -1538,7 +1587,6 @@ button:disabled {
     gap: 10px;
     overflow-y: auto;
     max-height: 250px;
-    overscroll-behavior: contain;
 }
 .vote-split-column.acquit {
     border-color: rgba(34, 197, 94, 0.3);
@@ -1600,7 +1648,6 @@ button:disabled {
     display: inline-block;
     transform-origin: bottom right;
     animation: hammerStrike 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045) infinite alternate;
-    will-change: transform;
 }
 .gavel-anvil {
     font-size: 40px;
@@ -1648,7 +1695,6 @@ button:disabled {
     padding: 25px;
     overflow-y: auto;
     max-height: 90vh;
-    overscroll-behavior: contain;
 }
 /* Màn hình chuyển cảnh Victory Splash Screen */
 .victory-splash-card {
@@ -1787,8 +1833,7 @@ button:disabled {
     transform: translateY(100%); 
     max-height: 80vh; 
     overflow-y: auto;
-    overscroll-behavior: contain; /* Ngăn chặn cuộn lan tỏa khóa cứng UI */
-    will-change: transform; /* Tối ưu GPU khi vuốt lên/xuống */
+    overscroll-behavior: contain;
 }
 .bottom-sheet.show { 
     transform: translateY(0); 
@@ -1834,6 +1879,72 @@ button:disabled {
     font-size: 15px; 
     color: var(--text-main); 
     font-weight: bold; 
+}
+
+/* === SỰ KIỆN TAROT (THE LAST HUNT) === */
+.tarot-container { 
+    display: flex; 
+    justify-content: center; 
+    gap: 12px; 
+    perspective: 1000px; 
+    margin-top: 15px; 
+    flex-wrap: wrap;
+}
+.tarot-card { 
+    width: 80px; 
+    height: 120px; 
+    position: relative; 
+    transition: transform 0.6s; 
+    transform-style: preserve-3d; 
+    cursor: pointer; 
+}
+.tarot-card.flipped { 
+    transform: rotateY(180deg); 
+    cursor: default; 
+}
+.tarot-card.disabled { 
+    pointer-events: none; 
+}
+.tarot-card.dimmed { 
+    opacity: 0.4; 
+    filter: grayscale(80%); 
+}
+.t-face { 
+    position: absolute; 
+    width: 100%; 
+    height: 100%; 
+    backface-visibility: hidden; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    border-radius: 8px; 
+    border: 2px solid var(--accent); 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
+}
+.t-front { 
+    background: linear-gradient(135deg, #1a1a1e 0%, #0a0a0c 100%); 
+    font-size: 28px; 
+    color: var(--accent); 
+}
+.t-back { 
+    background: #f8fafc; 
+    transform: rotateY(180deg); 
+    color: #0f172a; 
+    font-weight: bold; 
+    font-size: 13px; 
+    text-align: center; 
+    padding: 4px; 
+}
+.t-back-hunt { 
+    background: #fce4ec; 
+    transform: rotateY(180deg); 
+    color: #b71c1c; 
+    font-weight: bold; 
+    font-size: 16px; 
+    text-align: center; 
+    padding: 4px; 
+    border: 2px solid #b71c1c; 
 }
 
 /* === LỚP ĐẶC THÙ CHO TRƯỞNG LÀNG / TRƯỞNG PHIẾU === */
@@ -1882,8 +1993,13 @@ button:disabled {
     overflow-y: auto; 
     overscroll-behavior: contain;
 }
-.setting-item { margin-bottom: 15px; }
-.setting-item h3 { font-size: 13px; margin-bottom: 8px; }
+.setting-item {
+    margin-bottom: 15px;
+}
+.setting-item h3 {
+    font-size: 13px;
+    margin-bottom: 8px;
+}
 .setting-controls {
     display: flex;
     align-items: center;
@@ -1892,7 +2008,12 @@ button:disabled {
     padding: 8px;
     border-radius: 6px;
 }
-.setting-controls input[type="range"] { flex: 1; }
+.setting-controls input[type="range"] {
+    flex: 1;
+}
+#bgm-selector {
+    width: 100%;
+}
 .donate-box { 
     padding: 15px; 
     background: var(--bg-main); 
@@ -2142,7 +2263,6 @@ button:disabled {
     transition: 0.15s; 
     position: relative; 
     min-height: 65px;
-    will-change: transform;
 }
 .vote-btn-huge:active, .target-btn-box:active { 
     transform: scale(0.96); 

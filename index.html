@@ -2,23 +2,15 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <!-- Ngăn chặn phóng to thu nhỏ trên mobile để tránh lỗi chạm (Hỗ trợ Bug 9) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Wolfpack Sovereign</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&family=Dancing+Script:wght@400;700&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
     
-    <!-- CSS styles -->
+    <!-- CSS Styles -->
     <link rel="stylesheet" href="style.css">
     
-    <!-- HỖ TRỢ LÝ DO 1: KIỂM TRA LỖI CORS (FILE PROTOCOL) NGAY KHI LOAD -->
-    <script>
-        if (window.location.protocol === 'file:') {
-            alert("🚨 CẢNH BÁO LỖI TRÌNH DUYỆT (CORS) 🚨\n\nBạn đang mở trực tiếp file HTML (đường dẫn file:///).\nTrình duyệt bảo mật sẽ CHẶN toàn bộ mã nguồn Game!\n\nCách khắc phục:\nHãy mở game thông qua một Web Server (Ví dụ: Dùng extension 'Live Server' trên VS Code).");
-        }
-    </script>
-
     <!-- Firebase SDK Imports via CDN Module Map -->
     <script type="importmap">
         {
@@ -32,14 +24,35 @@
 </head>
 <body data-theme="dark" data-font="comfortaa" data-view="lobby" data-mobile-tab="3">
 
-    <!-- SCREEN 1: SPLASH SCREEN (Z-index thấp hơn Reconnect 1 bậc để sửa Bug 10) -->
-    <div id="splash-screen" style="z-index: 99998;">
+    <!-- DIAGNOSTIC CORS & LOCAL ENVIRONMENT WARNING PANEL -->
+    <div id="local-protocol-warning" class="custom-modal-overlay" style="display: none; z-index: 999999;">
+        <div class="custom-modal" style="border-color: var(--danger); max-width: 500px;">
+            <h3 style="color: var(--danger);">⚠️ PHÁT HIỆN LỖI KHỞI CHẠY</h3>
+            <p style="text-align: left; font-size: 13.5px; line-height: 1.6;">
+                Bạn đang mở trực tiếp tệp tin HTML từ thư mục máy tính bằng giao thức <code>file:///</code>.<br><br>
+                Vì lý do bảo mật, các trình duyệt hiện đại sẽ <strong>chặn hoạt động của JavaScript ES6 Modules</strong> khi chạy trực tiếp không thông qua máy chủ. Điều này khiến trò chơi bị treo vĩnh viễn ở màn hình chờ.<br><br>
+                <strong>Cách khắc phục:</strong><br>
+                1. Hãy khởi chạy ứng dụng thông qua một máy chủ cục bộ (ví dụ: dùng tiện ích <strong>Live Server</strong> trên VS Code).<br>
+                2. Hoặc tải mã nguồn lên các nền tảng Hosting trực tuyến (GitHub Pages, Vercel, Firebase Hosting) để vận hành trò chơi.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Kiểm tra nhanh giao thức khởi chạy để hướng dẫn người dùng
+        if (window.location.protocol === 'file:') {
+            document.getElementById('local-protocol-warning').style.display = 'flex';
+        }
+    </script>
+
+    <!-- SCREEN 1: SPLASH SCREEN -->
+    <div id="splash-screen">
         <img src="assets/images/logo.png" alt="Logo Game" id="splash-logo" onerror="this.style.display='none'"> 
         <div class="typewriter-text">Wolfpack Sovereign</div>
         <div class="splash-hint">Chạm nhẹ màn hình để bước vào bóng đêm...</div>
     </div>
 
-    <!-- RECONNECTION OVERLAY (ĐỒNG BỘ PHỤC HỒI KẾT NỐI - Đặt lên layer cao nhất) -->
+    <!-- RECONNECTION OVERLAY (ĐỒNG BỘ PHỤC HỒI KẾT NỐI) -->
     <div id="reconnect-overlay" class="custom-modal-overlay" style="display: none; z-index: 99999;">
         <div class="custom-modal">
             <h3 style="color: var(--accent);">🔄 ĐANG PHỤC HỒI PHIÊN CHƠI</h3>
@@ -79,7 +92,7 @@
     <div id="lobby-screen" class="app-screen">
         <div class="lobby-container">
             <h1 class="game-logo-title">🐺 WOLFPACK SOVEREIGN</h1>
-            <p class="game-subtitle">Hệ thống đồng bộ hóa ván đấu trực tuyến v46.0 (Patched)</p>
+            <p class="game-subtitle">Hệ thống đồng bộ hóa ván đấu trực tuyến v46.0</p>
             
             <!-- ĐĂNG NHẬP BAN ĐẦU -->
             <div id="login-form-panel">
@@ -94,7 +107,7 @@
                 </div>
             </div>
 
-            <!-- NHẬP MÃ PHÒNG 6 KÝ TỰ (ĐÃ TỐI ƯU HÓA HOẠT ĐỘNG NHẬP) -->
+            <!-- NHẬP MÃ PHÒNG 6 KÝ TỰ -->
             <div id="join-code-panel" class="hidden">
                 <p class="section-instruction">Nhập mã phòng gồm 6 ký tự:</p>
                 <div class="join-code-container" id="join-code-wrapper">
@@ -219,6 +232,7 @@
                 <div class="gm-role-actions-bar" style="display:flex; flex-direction:column; gap:5px;">
                     <button id="btn-distribute" class="btn-success w-100">🎲 Trộn & Phát Role</button>
                     <button id="btn-gm-force-day" class="btn-danger w-100 hidden">⚠️ Cưỡng chế sang ngày</button>
+                    <button id="btn-gm-resolve-vote" class="btn-danger w-100 hidden">⚖️ Phán Quyết Biểu Quyết</button>
                     <button id="btn-gm-start-night" class="btn-danger w-100 hidden">🌙 BẮT ĐẦU ĐÊM ĐEN</button>
                 </div>
             </div>
@@ -227,14 +241,15 @@
         <!-- CỘT 3 (GIỮA): LƯỚI BÀN ĐIỀU KHIỂN CHÍNH -->
         <div id="col-board-container" class="panel col-board">
             
-            <!-- THẺ CĂN CƯỚC NGƯỜI CHƠI (Đã thêm CSS Inline khóa cuộn cứng hỗ trợ Bug 9) -->
-            <div id="player-identity-card" class="player-identity-card hidden" style="user-select: none; -webkit-user-select: none; touch-action: none; -webkit-touch-callout: none;">
+            <!-- THẺ CĂN CƯỚC NGƯỜI CHƠI (HỖ TRỢ CHẠM GIỮ BẢO MẬT) -->
+            <!-- Tích hợp touch-action: none để loại bỏ xung đột cuộn trên thiết bị di động -->
+            <div id="player-identity-card" class="player-identity-card hidden" style="user-select: none; -webkit-user-select: none; touch-action: none;">
                 <div class="id-card-seal"></div>
                 <div class="id-card-content">
                     <div class="id-card-title">CĂN CƯỚC THẦN DÂN</div>
                     <div class="id-row"><span>Vai trò:</span> <strong id="id-role-val" style="filter: blur(5px); transition: filter 0.25s ease-in-out;">-</strong></div>
                     <div class="id-row"><span>Phe cánh:</span> <strong id="id-faction-val" style="filter: blur(5px); transition: filter 0.25s ease-in-out;">-</strong></div>
-                    <div class="id-desc" id="id-skills-summary">Chạm giữ thẻ căn cước 1.5 giây để tạm thời phá niêm phong sáp xem vai trò...</div>
+                    <div class="id-desc" id="id-skills-summary">Chạm giữ thẻ căn cước 1.5 giây để tạm thời phá niêm phong sáp xem vai trò mật...</div>
                 </div>
             </div>
 
@@ -578,11 +593,7 @@
     <!-- ==========================================
          JAVASCRIPT DEPLOYMENT
          ========================================== -->
-    <script type="module" src="firebase-config.js"></script>
-    <script type="module" src="game-logic.js"></script>
-    <script type="module" src="tick-engine.js"></script>
-    <script type="module" src="state-machine.js"></script>
-    <script type="module" src="ui-manager.js"></script>
+    <!-- Đăng ký duy nhất tệp tin app.js là Module khởi chạy để quản lý vòng đời tải đồng bộ -->
     <script type="module" src="app.js"></script>
 </body>
 </html>

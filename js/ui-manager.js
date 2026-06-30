@@ -1,5 +1,7 @@
+import { db, ref, set, get, update } from "./firebase-config.js";
+
 // ==========================================
-// QUẢN LÝ TRÌNH TỰ MODALS (MODAL QUEUE MANAGER)
+// 1. QUẢN LÝ TRÌNH TỰ MODALS (MODAL QUEUE MANAGER)
 // ==========================================
 export const ModalManager = {
     currentModalId: null,
@@ -12,13 +14,11 @@ export const ModalManager = {
             const el = document.getElementById(this.currentModalId);
             if (el) el.style.display = "none";
             
-            // Chống đẩy trùng lặp modal vào danh sách lịch sử hoán đổi
             if (!this.modalHistory.includes(this.currentModalId)) {
                 this.modalHistory.push(this.currentModalId);
             }
         }
 
-        // Đặt giới hạn trần bảo vệ bộ nhớ khỏi lỗi phình to ngăn xếp
         if (this.modalHistory.length > 20) {
             this.modalHistory.shift();
         }
@@ -55,7 +55,7 @@ export const ModalManager = {
 };
 
 // ==========================================
-// HỆ THỐNG TOAST THAY THẾ ALERT MẶC ĐỊNH
+// 2. HỆ THỐNG TOAST THAY THẾ ALERT MẶC ĐỊNH
 // ==========================================
 export function showToast(message, type = "info") {
     const container = document.getElementById("toast-container");
@@ -67,7 +67,6 @@ export function showToast(message, type = "info") {
 
     container.appendChild(toast);
 
-    // Tự động biến mất sau 3.2 giây
     setTimeout(() => {
         toast.style.opacity = "0";
         toast.style.transform = "translateY(-15px)";
@@ -81,46 +80,51 @@ export function showToast(message, type = "info") {
 window.alert = (msg) => showToast(msg, "info");
 
 // ==========================================
-// HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG TRÙNG SỰ KIỆN 
-// (SỬA BUG 8: LOẠI BỎ CLONENODE GÂY CRASH TYPEERROR)
+// 3. HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG TRÙNG SỰ KIỆN (BUG 8)
 // ==========================================
 export function askConfirm(message, onConfirm, onCancel = null) {
     const modal = document.getElementById("confirm-modal");
     if (!modal) return;
 
-    document.getElementById("confirm-modal-message").innerText = message;
+    const msgEl = document.getElementById("confirm-modal-message");
+    if (msgEl) msgEl.innerText = message;
+    
     modal.style.display = "flex";
 
     const btnSubmit = document.getElementById("confirm-modal-submit");
     const btnCancel = document.getElementById("confirm-modal-cancel");
 
+    if (!btnSubmit || !btnCancel) return;
+
+    // Tạo bản sao mới hoàn chỉnh để dọn dẹp các sự kiện dồn tích cũ trên DOM
+    const newSubmitBtn = btnSubmit.cloneNode(true);
+    const newCancelBtn = btnCancel.cloneNode(true);
+
+    if (btnSubmit.parentNode) btnSubmit.parentNode.replaceChild(newSubmitBtn, btnSubmit);
+    if (btnCancel.parentNode) btnCancel.parentNode.replaceChild(newCancelBtn, btnCancel);
+
     const cleanup = () => {
         modal.style.display = "none";
-        // Reset hàm để rác bộ nhớ tự động bị thu gom
-        btnSubmit.onclick = null;
-        btnCancel.onclick = null;
     };
 
-    // Sử dụng .onclick thay vì addEventListener để ghi đè sạch sẽ sự kiện cũ
-    btnSubmit.onclick = () => {
+    newSubmitBtn.onclick = () => {
         cleanup();
         if (onConfirm) onConfirm();
     };
 
-    btnCancel.onclick = () => {
+    newCancelBtn.onclick = () => {
         cleanup();
         if (onCancel) onCancel();
     };
 }
 
-// Ghi đè confirm mặc định của trình duyệt bằng cơ chế an toàn
 window.confirm = (msg) => {
     askConfirm(msg, () => {});
     return false; 
 };
 
 // ==========================================
-// BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
+// 4. BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
 // ==========================================
 export function setupPasteCodeHandler() {
     const wrapper = document.getElementById("join-code-panel");
@@ -144,7 +148,7 @@ export function setupPasteCodeHandler() {
 }
 
 // ==========================================
-// BẢNG CHỌN MỤC TIÊU ĐỘNG (SỬA BUG 8 & BUG 16)
+// 5. BẢNG CHỌN MỤC TIÊU ĐỘNG (BUG 16 - RESOLVED)
 // ==========================================
 export function openTargetSelection(playersList, role, onConfirmCallback) {
     const Net = window.Net;
@@ -155,7 +159,6 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
     
     if (!grid || !modifiersBox || !textInputBox || !instruction || !Net) return;
 
-    // SỬA BUG 16: Dọn dẹp sạch sẽ trạng thái cũ trước khi mở Modal
     grid.innerHTML = "";
     modifiersBox.innerHTML = "";
     modifiersBox.classList.add("hidden");
@@ -163,10 +166,10 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
     instruction.style.display = "none";
 
     let selectedPlayerIds = [];
-    let chosenModifier = null; // Biến cục bộ, tự reset mỗi lần gọi hàm
+    let chosenModifier = null;
     let extraPhrase = "";
 
-    const multiTargetRoles = ["cupid", "phantomWolf", "eradicator", "manipulator", "prime", "arsonist"];
+    const multiTargetRoles = ["cupid", "phantomWolf", "eradicator", "manipulator", "prime"];
     const isMultiSelect = multiTargetRoles.includes(role);
     const maxSelections = isMultiSelect ? 2 : 1;
 
@@ -182,13 +185,12 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         return;
     }
 
-    // Sinh các thẻ bấm chọn
     validTargets.forEach(p => {
         const targetBtn = document.createElement("div");
         targetBtn.className = "target-btn-box";
         targetBtn.innerHTML = `<span class="name">${p.name}</span>`;
         
-        targetBtn.onclick = () => {
+        targetBtn.addEventListener("click", () => {
             if (isMultiSelect) {
                 if (selectedPlayerIds.includes(p.id)) {
                     selectedPlayerIds = selectedPlayerIds.filter(id => id !== p.id);
@@ -199,7 +201,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
                         targetBtn.classList.add("selected");
                     } else {
                         const removedId = selectedPlayerIds.shift();
-                        Array.from(grid.children).forEach(btn => {
+                        document.querySelectorAll(".target-btn-box").forEach(btn => {
                             const nameEl = btn.querySelector(".name");
                             if (nameEl && nameEl.innerText === playersList.find(pl => pl.id === removedId)?.name) {
                                 btn.classList.remove("selected");
@@ -211,31 +213,46 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
                 }
                 instruction.innerText = `Kỹ năng yêu cầu chọn đủ ${maxSelections} mục tiêu khác nhau. Lượt chọn: ${selectedPlayerIds.length}/${maxSelections}`;
             } else {
-                Array.from(grid.children).forEach(btn => btn.classList.remove("selected"));
+                document.querySelectorAll(".target-btn-box").forEach(btn => btn.classList.remove("selected"));
                 targetBtn.classList.add("selected");
                 selectedPlayerIds = [p.id];
             }
-        };
+        });
         
         grid.appendChild(targetBtn);
     });
 
-    // Cấu hình Modifiers cho từng vai trò đặc biệt
+    // Cấu hình Modifiers đặc thù cho từng nhóm vai trò
     if (role === "seer") {
         modifiersBox.classList.remove("hidden");
-        renderModifiers([{ id: "seer_scan", label: "🔮 Thấu Thị" }, { id: "seer_open_eye", label: "👁️ Khai Nhãn" }]);
+        renderModifiers([
+            { id: "seer_scan", label: "🔮 Thấu Thị" },
+            { id: "seer_open_eye", label: "👁️ Khai Nhãn" }
+        ]);
     } else if (role === "witch") {
         modifiersBox.classList.remove("hidden");
-        renderModifiers([{ id: "heal", label: "🧪 Bình Cứu" }, { id: "poison", label: "☠️ Bình Độc" }]);
+        renderModifiers([
+            { id: "heal", label: "🧪 Bình Cứu" },
+            { id: "poison", label: "☠️ Bình Độc" }
+        ]);
     } else if (role === "avenger") {
         modifiersBox.classList.remove("hidden");
-        renderModifiers([{ id: "anesthetize", label: "💤 Gây Mê" }, { id: "execute", label: "⚔️ Phán Quyết" }]);
+        renderModifiers([
+            { id: "anesthetize", label: "💤 Gây Mê" },
+            { id: "execute", label: "⚔️ Phán Quyết" }
+        ]);
     } else if (role === "arsonist") {
         modifiersBox.classList.remove("hidden");
-        renderModifiers([{ id: "pour_petrol", label: "🛢️ Tẩm Xăng" }, { id: "ignite", label: "🔥 Châm Lửa (Không cần chọn)" }]);
+        renderModifiers([
+            { id: "pour_petrol", label: "🛢️ Tẩm Xăng" },
+            { id: "ignite", label: "🔥 Châm Lửa" }
+        ]);
     } else if (role === "cat") {
         modifiersBox.classList.remove("hidden");
-        renderModifiers([{ id: "tear", label: "🐾 Xé Xác" }, { id: "seal", label: "🔒 Phong Ấn" }]);
+        renderModifiers([
+            { id: "tear", label: "🐾 Xé Xác" },
+            { id: "seal", label: "🔒 Phong Ấn" }
+        ]);
     }
 
     function renderModifiers(options) {
@@ -243,19 +260,15 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
             const btn = document.createElement("button");
             btn.className = "btn-suggest btn-small";
             btn.innerText = opt.label;
-            
-            // Mặc định chọn kỹ năng đầu tiên
             if (idx === 0) {
                 btn.className = "btn-accent btn-small";
                 chosenModifier = opt.id;
             }
-            
-            btn.onclick = (e) => {
-                e.preventDefault();
-                Array.from(modifiersBox.children).forEach(b => b.className = "btn-suggest btn-small");
+            btn.addEventListener("click", () => {
+                document.querySelectorAll("#target-action-modifiers button").forEach(b => b.className = "btn-suggest btn-small");
                 btn.className = "btn-accent btn-small";
                 chosenModifier = opt.id;
-            };
+            });
             modifiersBox.appendChild(btn);
         });
     }
@@ -269,20 +282,20 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
     const submitBtn = document.getElementById("target-modal-submit");
     const cancelBtn = document.getElementById("target-modal-close");
 
-    // SỬA BUG 8: Dùng .onclick an toàn thay vì cloneNode
-    submitBtn.onclick = () => {
-        // Miễn trừ chọn mục tiêu cho chức năng Châm Lửa
-        if (chosenModifier === "ignite") {
-            onConfirmCallback(null, null, chosenModifier, "");
-            ModalManager.closeCurrent();
-            return;
-        }
+    if (!submitBtn || !cancelBtn) return;
 
+    // Nhân bản làm sạch nút bấm chống dồn đống sự kiện
+    const newSubmitBtn = submitBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+
+    if (submitBtn.parentNode) submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn);
+    if (cancelBtn.parentNode) cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+    newSubmitBtn.onclick = () => {
         if (selectedPlayerIds.length === 0) {
             showToast("Vui lòng chạm chọn mục tiêu trước!", "warning");
             return;
         }
-        
         if (isMultiSelect && selectedPlayerIds.length < maxSelections) {
             showToast(`Vai trò này yêu cầu bạn phải chọn đúng đủ ${maxSelections} mục tiêu!`, "warning");
             return;
@@ -298,10 +311,15 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         }
 
         onConfirmCallback(selectedPlayerIds[0], isMultiSelect ? selectedPlayerIds[1] : null, chosenModifier, extraPhrase);
+        
+        // GIẢI PHÓNG TRẠNG THÁI TRÁNH RÒ RỈ LƯỢT TIẾP THEO (BUG 16)
+        chosenModifier = null;
         ModalManager.closeCurrent();
     };
 
-    cancelBtn.onclick = () => {
+    newCancelBtn.onclick = () => {
+        // GIẢI PHÓNG TRẠNG THÁI TRÁNH RÒ RỈ LƯỢT TIẾP THEO (BUG 16)
+        chosenModifier = null;
         ModalManager.closeCurrent();
     };
 
@@ -309,7 +327,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 }
 
 // ==========================================
-// ĐỒNG BỘ TABS DI ĐỘNG (MOBILE TABS NAV)
+// 6. ĐỒNG BỘ TABS DI ĐỘNG (MOBILE TABS NAV)
 // ==========================================
 export function initMobileTabSync() {
     const tabSelectors = ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"];
@@ -332,8 +350,7 @@ export function initMobileTabSync() {
 }
 
 // ==========================================
-// CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT (HOLD TO REVEAL)
-// SỬA BUG 9: NÂNG CẤP LÊN POINTER EVENTS API ĐỂ CHỐNG LỖI VUỐT
+// 7. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT (BUG 9 - RESOLVED)
 // ==========================================
 export function setupIdentityCardHoldGesture() {
     const idCard = document.getElementById("player-identity-card");
@@ -345,34 +362,26 @@ export function setupIdentityCardHoldGesture() {
     let holdTimer = null;
     let isHolding = false;
 
-    const clearBlur = () => {
-        idRoleVal.style.filter = "none";
-        idFactionVal.style.filter = "none";
-    };
-
-    const restoreBlur = () => {
-        idRoleVal.style.filter = "blur(5px)";
-        idFactionVal.style.filter = "blur(5px)";
-    };
-
     const startHold = (e) => {
-        // Chặn hành vi mở Menu chuột phải / bôi đen mặc định
-        if (e.cancelable) e.preventDefault();
-        
+        // Khóa hành vi cuộn mặc định của trình duyệt để giữ vững tiêu điểm cảm ứng
+        if (e.cancelable) {
+            e.preventDefault();
+        }
+
         if (isHolding) return;
         isHolding = true;
 
-        if (holdTimer) clearTimeout(holdTimer);
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+        }
 
-        // Kích hoạt giải mờ sau 1.2 giây
         holdTimer = setTimeout(() => {
             if (isHolding) {
-                clearBlur();
+                idRoleVal.style.filter = "none";
+                idFactionVal.style.filter = "none";
                 showToast("Đã giải mờ căn cước tạm thời!", "info");
-                // Tự động mờ lại sau 4 giây bảo mật
-                setTimeout(restoreBlur, 4000);
             }
-        }, 1200); 
+        }, 1500); // Đặt độ trễ giữ 1.5 giây tiêu chuẩn
     };
 
     const endHold = () => {
@@ -381,21 +390,23 @@ export function setupIdentityCardHoldGesture() {
             clearTimeout(holdTimer);
             holdTimer = null;
         }
-        restoreBlur();
+        idRoleVal.style.filter = "blur(5px)";
+        idFactionVal.style.filter = "blur(5px)";
     };
 
-    // Dùng Pointer Events: Nhận diện chung cho cả Chuột, Cảm ứng và Bút cảm ứng
-    idCard.addEventListener("pointerdown", startHold);
-    idCard.addEventListener("pointerup", endHold);
-    idCard.addEventListener("pointerleave", endHold);
-    idCard.addEventListener("pointercancel", endHold);
+    // Đăng ký sự kiện trên máy tính (Mouse)
+    idCard.addEventListener("mousedown", startHold);
+    idCard.addEventListener("mouseup", endHold);
+    idCard.addEventListener("mouseleave", endHold);
 
-    // Chặn menu chuột phải click thẳng
-    idCard.addEventListener("contextmenu", (e) => e.preventDefault());
+    // Đăng ký sự kiện di động (Cấu hình passive: false cho phép chặn cuộn trang hoàn toàn)
+    idCard.addEventListener("touchstart", startHold, { passive: false });
+    idCard.addEventListener("touchend", endHold, { passive: true });
+    idCard.addEventListener("touchcancel", endHold, { passive: true });
 }
 
 // ==========================================
-// BẢNG BỆNH ÁN CHI TIẾT NGƯỜI CHƠI (PLAYER BOTTOM SHEET)
+// 8. BẢNG TRẠNG THÁI NGƯỜI CHƠI (BOTTOM SHEET)
 // ==========================================
 export function showPlayerBottomSheet(playerData, isGM = false) {
     const Net = window.Net;
@@ -510,7 +521,7 @@ function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
 }
 
 // ==========================================
-// HOẠT ẢNH BÚA PHÁN QUYẾT TÒA ÁN ĐỒNG BỘ
+// 9. HOẠT ẢNH BÚA PHÁN QUYẾT TÒA ÁN ĐỒNG BỘ
 // ==========================================
 export function runGavelStrikeAnimation(decisionText, callback) {
     const overlay = document.getElementById("gavel-animation-overlay");
@@ -534,7 +545,7 @@ export function runGavelStrikeAnimation(decisionText, callback) {
 }
 
 // ==========================================
-// QUẢN LÝ THIẾT LẬP ÂM THANH
+// 10. QUẢN LÝ THIẾT LẬP ÂM THANH
 // ==========================================
 export function setupSoundSettings() {
     const bgmPlayer = document.getElementById("bgm-player");
@@ -569,15 +580,28 @@ export function setupSoundSettings() {
     });
 
     document.getElementById("btn-desktop-settings")?.addEventListener("click", () => {
-        document.getElementById("panel-settings-donate").style.display = "flex";
-        document.getElementById("desktop-overlay").style.display = "block";
+        const settingsPanel = document.getElementById("panel-settings-donate");
+        const desktopOverlay = document.getElementById("desktop-overlay");
+        if (settingsPanel) settingsPanel.style.display = "flex";
+        if (desktopOverlay) desktopOverlay.style.display = "block";
     });
 
     const closeSettings = () => {
-        document.getElementById("panel-settings-donate").style.display = "none";
-        document.getElementById("desktop-overlay").style.display = "none";
+        const settingsPanel = document.getElementById("panel-settings-donate");
+        const desktopOverlay = document.getElementById("desktop-overlay");
+        if (settingsPanel) settingsPanel.style.display = "none";
+        if (desktopOverlay) desktopOverlay.style.display = "none";
     };
 
     document.getElementById("btn-close-settings")?.addEventListener("click", closeSettings);
     document.getElementById("desktop-overlay")?.addEventListener("click", closeSettings);
+
+    const btnCopyStk = document.getElementById("btn-copy-stk");
+    if (btnCopyStk) {
+        btnCopyStk.addEventListener("click", () => {
+            navigator.clipboard.writeText("1208856666").then(() => {
+                showToast("Đã sao chép số tài khoản quyên góp!", "success");
+            });
+        });
+    }
 }
