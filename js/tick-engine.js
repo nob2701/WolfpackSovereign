@@ -1,5 +1,4 @@
 import { db, ref, get } from "./firebase-config.js";
-import { ROLE_DB } from "./game-logic.js";
 
 export const TickEngine = {
     // PHÂN GIẢI TOÀN BỘ HÀNH ĐỘNG ĐÊM ĐỒNG THỜI (DETERMINISTIC 8-TICK PRIORITY RESOLUTION)
@@ -28,10 +27,7 @@ export const TickEngine = {
             if (!playerStateUpdates[pid]) playerStateUpdates[pid] = {};
         };
 
-        // ==========================================
-        // SỬA LỖI BUFF/DEBUFF PERSISTENCE (BUG 5)
-        // Reset sạch bùa chú tạm thời của đêm hôm trước để tránh bị lưu dính vĩnh viễn
-        // ==========================================
+        // Reset sạch toàn bộ bùa chú tạm thời của đêm hôm trước để tránh bị lưu dính vĩnh viễn
         playersList.forEach(p => {
             initPlayerState(p.id);
             playerStateUpdates[p.id].isSeerScanned = false;
@@ -129,7 +125,7 @@ export const TickEngine = {
         // ==========================================
         // TICK 2: ĐÁNH TRÁO NHÂN DẠNG, BẺ HƯỚNG & ĐẶT BẪY
         // ==========================================
-        // 2.1 Sói Ảo Ảnh (Phantom Wolf) hoán đổi
+        // 2.1 Sói Ảo Ảnh hoán đổi vị trí
         actionBuffer.forEach(act => {
             if (act.role === "phantomWolf" && act.actionType === "identity_swap") {
                 identitySwaps[act.targetId] = act.secondaryId;
@@ -142,7 +138,6 @@ export const TickEngine = {
             }
         });
 
-        // SỬA LỖI SÓI ẢO ẢNH CHỈ LỪA ĐƯỢC TIÊN TRI (BUG 17)
         // Áp dụng định hướng tráo đổi thực tế lên toàn bộ các hành động ngay sau khi hoán đổi hoàn tất
         actionBuffer.forEach(act => {
             if (act.role !== "phantomWolf") {
@@ -157,7 +152,7 @@ export const TickEngine = {
             }
         });
 
-        // 2.2 Kẻ Thao Túng (The Manipulator) điều hướng kỹ năng
+        // 2.2 Kẻ Thao Túng điều hướng kỹ năng
         actionBuffer.forEach(act => {
             if (act.role === "manipulator" && act.actionType === "redirect") {
                 actionBuffer.forEach(subAct => {
@@ -173,7 +168,7 @@ export const TickEngine = {
             }
         });
 
-        // 2.3 Kẻ Thanh Trừng (Eradicator) đặt bẫy
+        // 2.3 Kẻ Thanh Trừng đặt bẫy phòng ngự
         actionBuffer.forEach(act => {
             if (act.role === "eradicator" && act.actionType === "set_trap") {
                 trappedPlayers[act.srcId] = [act.targetId, act.secondaryId];
@@ -228,7 +223,7 @@ export const TickEngine = {
             }
         });
 
-        // Thiết lập Kẻ Phản Chiếu (The Reflector)
+        // Thiết lập gương phản quang
         actionBuffer.forEach(act => {
             if (act.role === "reflector" && act.actionType === "set_mirror") {
                 mirrorsMap[act.targetId] = act.srcId; 
@@ -243,7 +238,7 @@ export const TickEngine = {
             }
         });
 
-        // Hàm dò vết bẻ tuyến phản chiếu (Gìn giữ mục tiêu secondaryId - Sửa lỗi Bug 6)
+        // Hàm dò vết bẻ tuyến phản chiếu một hướng tránh lặp vô tận
         const getRoutedTarget = (casterId, currentTargetId, visited = new Set()) => {
             if (!currentTargetId || currentTargetId === "neutralized_by_void") return "neutralized_by_void";
             if (visited.has(currentTargetId)) return "neutralized_by_void"; 
@@ -496,7 +491,6 @@ export const TickEngine = {
         // ==========================================
         // TICK 7: PHẢN SÁT & TRẢ ĐÒN CUỐI CÙNG (DEATH RETALIATIONS)
         // ==========================================
-        // SỬA LỖI THỢ SĂN BỊ KHÓA PHÉP NHƯNG VẪN BẮN (BUG 7) & BÚA PHẢN CHIẾU VS THỢ SĂN (BUG 15)
         // Quét độc lập trực tiếp từ cấu trúc người chơi gốc để đảm bảo phát súng tử vong luôn nổ súng
         playersList.forEach(p => {
             if (p.role === "hunter" && deathsSet.has(p.id) && p.targetSelection) {
@@ -520,7 +514,7 @@ export const TickEngine = {
             }
         });
 
-        // Sập bẫy của Kẻ Thanh Trừng (Eradicator) đặt phòng vệ
+        // Sập bẫy của Kẻ Thanh Trừng đặt phòng vệ
         actionBuffer.forEach(act => {
             if (trappedPlayers[act.srcId]) {
                 const trapTargets = trappedPlayers[act.srcId];
@@ -589,7 +583,7 @@ export const TickEngine = {
             }
         });
 
-        // Thiết lập động kênh chat Tử Thần (Reaper Faction chat)
+        // Thiết lập động kênh chat Tử Thần
         const reaperFactionChatId = "reaper_" + roomId;
         const reapers = playersList.filter(p => p.alive && (p.role === "reaper" || p.role === "apprenticeReaper"));
         if (reapers.length >= 2) {

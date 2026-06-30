@@ -401,6 +401,20 @@ body {
     50% { opacity: 0.3; }
 }
 
+/* === NÚT RỜI PHÒNG NÂNG CẤP === */
+#btn-leave-room {
+    background: transparent !important;
+    border: 1px solid var(--danger) !important;
+    color: var(--danger) !important;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+#btn-leave-room:hover:not(:disabled) {
+    background: var(--danger) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+    transform: scale(1.01);
+}
+
 /* === THẺ CĂN CƯỚC NGƯỜI CHƠI CỐ ĐỊNH (IDENTITY WIDGET) === */
 .player-identity-card {
     background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-main) 100%);
@@ -415,7 +429,7 @@ body {
     text-align: left;
     width: 100%;
     
-    /* Ngăn chặn tuyệt đối xung đột thao tác cuộn trên màn hình cảm ứng di động (Bug 9) */
+    /* Ngăn chặn tuyệt đối xung đột thao tác cuộn trên màn hình cảm ứng di động */
     touch-action: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -448,6 +462,8 @@ body {
 }
 .id-row strong {
     color: var(--text-main);
+    filter: blur(5px);
+    transition: filter 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .id-desc {
     font-size: 11px;
@@ -514,8 +530,8 @@ h2, h3 {
     transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.2s, box-shadow 0.2s;
     overflow: hidden;
     
-    /* Force GPU rendering to prevent rendering lag on DB update */
-    will-change: transform, border-color, box-shadow, filter;
+    /* Ép kết xuất đồ họa bằng GPU chống nhấp nháy màn hình */
+    will-change: transform, border-color, box-shadow;
     transform: translate3d(0, 0, 0);
 }
 .player-grid-card:hover {
@@ -547,12 +563,15 @@ h2, h3 {
 }
 .player-grid-card .name {
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13.5px;
     display: block;
     margin-bottom: 4px;
     word-break: break-all;
     z-index: 2;
     position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .player-grid-card .role-unmasked {
     font-size: 11px;
@@ -833,7 +852,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* Ma Cà Rồng (Vampire) */
+/* Ma Ma Cà Rồng (Vampire) */
 .player-grid-card.vampire-bitten::after {
     content: "🩸";
     position: absolute;
@@ -2239,7 +2258,7 @@ button:disabled {
     flex: 1;
 }
 
-/* === BẢNG BỎ PHIẾU & CHỌN MỤC TIÊU === */
+/* === BẢNG BỔ PHIẾU & CHỌN MỤC TIÊU === */
 #vote-modal-content, #target-modal-content {
     width: 95%; 
     max-width: 680px; 

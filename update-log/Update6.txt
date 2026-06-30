@@ -94,3 +94,6 @@ Hậu quả: Lượt sau Phù thủy muốn dùng "Bình Cứu", nhưng vì chos
 Vị trí: Tick 2 & Tick 8 trong TickEngine.
 Chi tiết: Sói Ảo Ảnh tráo đổi vị trí của A và B (identitySwaps). Nhưng TickEngine chỉ lấy biến này để đánh lừa Tiên Tri (Tick 8).
 Hậu quả: Nếu A và B bị tráo, và Sát Nhân (Serial Killer) đâm vào A, theo đúng luật Ma Sói thì B phải chết. Nhưng trong code hiện tại, A vẫn là người chết (Tick 6 Damage Queue không đọc biến identitySwaps). Kỹ năng của Sói Ảo Ảnh bị phế một nửa.
+
+
+vậy áp dụng tất cả cập nhật và thay đổi, cho tôi code của app.js sau khi cập nhật

@@ -82,20 +82,24 @@ function initLobbyEngine() {
     const btnCopyRoom = document.getElementById("btn-copy-room-id");
     const btnToggleReady = document.getElementById("btn-player-toggle-ready");
     const btnHostStartSetup = document.getElementById("btn-host-start-setup");
+    const btnLeaveRoom = document.getElementById("btn-leave-room");
 
     const savedName = localStorage.getItem("online_player_name");
     if (savedName && nameInput) {
-        nameInput.value = savedName;
-        Net.playerName = savedName;
-        btnInitialJoin.disabled = savedName.length < 2;
-        btnCreate.disabled = savedName.length < 2;
+        // Cắt bớt tên cũ nếu vượt quá 10 ký tự giới hạn mới
+        const truncatedName = savedName.substring(0, 10);
+        nameInput.value = truncatedName;
+        Net.playerName = truncatedName;
+        btnInitialJoin.disabled = truncatedName.length < 2;
+        btnCreate.disabled = truncatedName.length < 2;
     }
 
     if (nameInput) {
         nameInput.addEventListener("input", () => {
-            const cleanName = nameInput.value.trim().replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, "");
+            // Giới hạn 10 ký tự chữ và số thông thường
+            const cleanName = nameInput.value.trim().replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, "").substring(0, 10);
             nameInput.value = cleanName;
-            const isValid = cleanName.length >= 2;
+            const isValid = cleanName.length >= 2 && cleanName.length <= 10;
             btnInitialJoin.disabled = !isValid;
             btnCreate.disabled = !isValid;
             Net.playerName = cleanName;
@@ -118,7 +122,27 @@ function initLobbyEngine() {
     }
 
     if (btnCreate) btnCreate.addEventListener("click", createRoom);
-    if (btnJoinSubmit) btnJoinSubmit.addEventListener("click", joinRoomFromInputs);
+    if (btnJoinSubmit) btnJoinSubmit.addEventListener("click", () => {
+        let code = "";
+        for (let i = 1; i <= 6; i++) {
+            code += document.getElementById(`code-${i}`).value;
+        }
+        if (code.length === 6) {
+            joinRoom(code.toUpperCase());
+        }
+    });
+
+    if (btnLeaveRoom) {
+        btnLeaveRoom.addEventListener("click", () => {
+            const confirmMsg = Net.isHost 
+                ? "Bạn có chắc chắn muốn HỦY PHÒNG này? Tất cả người chơi khác sẽ bị đẩy ra ngoài sảnh chờ."
+                : "Bạn có chắc chắn muốn RỜI KHỎI PHÒNG này?";
+            askConfirm(confirmMsg, async () => {
+                await handleRoomExit();
+            });
+        });
+    }
+
     if (btnCopyRoom) btnCopyRoom.addEventListener("click", copyRoomId);
     if (btnToggleReady) btnToggleReady.addEventListener("click", toggleReadyState);
     if (btnHostStartSetup) btnHostStartSetup.addEventListener("click", hostStartSetup);
@@ -130,7 +154,7 @@ function initLobbyEngine() {
         });
     });
 
-    // Sự kiện Quản trò chốt kết quả biểu quyết thủ công (Bug 2)
+    // Sự kiện Quản trò chốt kết quả biểu quyết thủ công
     document.getElementById("btn-gm-resolve-vote")?.addEventListener("click", () => {
         askConfirm("Bạn có chắc chắn muốn chốt kết quả bỏ phiếu treo cổ và công bố phán quyết ngay lập tức?", () => {
             StateMachine.resolveVotingOutcome();
@@ -229,17 +253,7 @@ async function createRoom() {
     }
 }
 
-function joinRoomFromInputs() {
-    const inputs = document.querySelectorAll(".code-input");
-    let code = "";
-    inputs.forEach(i => code += i.value);
-    
-    if (code.length === 6) {
-        joinRoom(code, Net.playerName);
-    }
-}
-
-async function joinRoom(roomId, name) {
+async function joinRoom(roomId, name = Net.playerName) {
     const roomRef = ref(db, `rooms/${roomId}`);
     try {
         const snapshot = await get(roomRef);
@@ -305,7 +319,6 @@ function enterLobbyMode() {
 }
 
 function setupActivePlayersPresence() {
-    // Kiểm tra cờ chặn trùng lặp onDisconnect (Bug 4)
     if (presenceConfigured) return;
     presenceConfigured = true;
 
@@ -337,7 +350,7 @@ async function attemptSessionReconnection() {
 
                     enterLobbyMode();
                     
-                    if (roomData.meta.started) {
+                    if (roomData.meta.phase !== "setup" || roomData.meta.started) {
                         transitionToGameScreen(roomData);
                     }
                     
@@ -363,6 +376,43 @@ function cleanSessionStorage() {
     localStorage.removeItem("reconnect_player_id");
 }
 
+// Xử lý dọn dẹp biến và đồng bộ hóa rời phòng
+async function handleRoomExit() {
+    if (!Net.roomId) return;
+    try {
+        if (Net.isHost) {
+            // Xóa hoàn toàn node phòng trên Firebase để giải phóng bộ nhớ máy chủ
+            await set(ref(db, `rooms/${Net.roomId}`), null);
+        } else {
+            // Xóa node thông tin người chơi hiện tại khỏi danh sách thành viên phòng
+            await set(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}`), null);
+        }
+    } catch (err) {
+        console.error("Lỗi khi gửi lệnh dọn dẹp phòng rác lên Firebase:", err);
+    } finally {
+        cleanSessionStorage();
+        handleLocalEvictionCleanup();
+    }
+}
+
+function handleLocalEvictionCleanup() {
+    clearActiveListeners();
+    
+    Net.roomId = null;
+    Net.playerId = null;
+    Net.isHost = false;
+    
+    document.body.setAttribute("data-view", "lobby");
+    document.getElementById("lobby-room-status").classList.add("hidden");
+    document.getElementById("join-code-panel").classList.add("hidden");
+    document.getElementById("game-screen").classList.add("hidden");
+    document.getElementById("lobby-screen").classList.remove("hidden");
+    document.getElementById("login-form-panel").classList.remove("hidden");
+    
+    // Reset sạch các trường nhập mã phòng
+    document.querySelectorAll(".code-input").forEach(input => input.value = "");
+}
+
 // ==========================================
 // 3. ĐỒNG BỘ THỜI GIAN THỰC TỪ FIREBASE
 // ==========================================
@@ -370,12 +420,18 @@ function listenToRoom() {
     clearActiveListeners();
     setupActivePlayersPresence();
 
-    // Gọi khởi chạy thăm dò khán giả khi roomId đã tồn tại (Bug 19)
+    // Khởi động hệ thống thăm dò tỷ lệ dự đoán phe thắng
     setupSpectatorWinPoll();
 
     const roomRef = ref(db, `rooms/${Net.roomId}`);
     const unsubRoom = onValue(roomRef, (snapshot) => {
-        if (!snapshot.exists()) return;
+        if (!snapshot.exists()) {
+            // Trường hợp phòng đã bị hủy bởi chủ phòng
+            showToast("Phòng chơi đã bị hủy bởi chủ phòng!", "danger");
+            handleLocalEvictionCleanup();
+            return;
+        }
+        
         const roomData = snapshot.val();
         
         window.G.day = roomData.meta.day || 0;
@@ -390,7 +446,10 @@ function listenToRoom() {
         const lobbyConnectedEl = document.getElementById("lobby-connected-count");
         if (lobbyConnectedEl) lobbyConnectedEl.innerText = connectedCount;
 
-        if (!roomData.meta.started) {
+        // KIỂM TRA ĐIỀU KIỆN CHUYỂN GIAO DIỆN PHÙ HỢP TRÁNH TREO LOBBY HANG
+        const isSetupPhaseInLobby = (roomData.meta.phase === "setup" && !roomData.meta.started);
+
+        if (isSetupPhaseInLobby) {
             renderLobbyPlayersList();
             
             if (Net.isHost) {
@@ -399,6 +458,7 @@ function listenToRoom() {
                 document.getElementById("btn-host-start-setup").disabled = !allReady;
             }
         } else {
+            // Khi phase đã thay đổi (khác "setup" hoặc "started === true"), kích hoạt chuyển tiếp màn hình
             if (document.body.getAttribute("data-view") === "lobby") {
                 transitionToGameScreen(roomData);
             }
@@ -482,7 +542,13 @@ function transitionToGameScreen(roomData) {
     } else {
         document.getElementById("gm-timeline-container").classList.add("hidden");
         document.getElementById("player-mailbox-container").classList.remove("hidden");
+        
+        // Kích hoạt bộ lọc danh mục mật thư của người chơi
+        setupMailboxCategoryFilters();
     }
+    
+    // Tự động nhảy Tab 3 (Bàn chơi - Board) trên thanh di động để người chơi nhìn thấy bàn cờ tức thì
+    window.UI_Module.switchTab(3);
 }
 
 // ==========================================
@@ -537,7 +603,7 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             }
         }
     } else {
-        // CÔ LẬP KÊNH CHAT RIÊNG BAN NGÀY ĐỂ BẢO MẬT TRÁNH NHÌN TRỘM (BUG 11)
+        // Cô lập hoàn toàn kênh mật ban ngày tránh rò rỉ thông tin
         const dayBannedChannels = ["wolf", "couple", "prime", "vampire", "reaper"];
         if (dayBannedChannels.includes(Net.currentChannel)) {
             Net.currentChannel = "public";
@@ -595,7 +661,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
         forceDayBtn?.classList.add("hidden");
     }
 
-    // Hiển thị hoặc ẩn nút phán quyết biểu quyết treo cổ thủ công khẩn cấp (Bug 2)
     const resolveVoteBtn = document.getElementById("btn-gm-resolve-vote");
     if (Net.isHost && phase === "day" && roomData.trial && roomData.trial.stage === "vote") {
         resolveVoteBtn?.classList.remove("hidden");
@@ -613,9 +678,9 @@ function updatePlayerIdentityCard(mySelf) {
     const idFactionVal = document.getElementById("id-faction-val");
     const idSkillsSummary = document.getElementById("id-skills-summary");
 
-    if (!idCard || !mySelf) return;
+    if (!idCard || !idRoleVal || !idFactionVal) return;
 
-    if (Net.isHost) {
+    if (Net.isHost || !mySelf) {
         idCard.classList.add("hidden");
         return;
     }
@@ -823,17 +888,19 @@ function openSplitScreenVoteModal(accusedId, roomData) {
     let countExecute = 0;
 
     Object.entries(votes).forEach(([voterId, voteValue]) => {
-        const voterName = Net.players[voterId]?.name || "Thành viên";
-        const chip = document.createElement("div");
-        chip.className = "voter-avatar-chip";
-        chip.innerText = voterName;
+        const voter = roomData.players[voterId];
+        if (voter && voter.alive) {
+            const chip = document.createElement("div");
+            chip.className = "voter-avatar-chip";
+            chip.innerText = voter.name;
 
-        if (voteValue === "ACQUIT") {
-            countAcquit++;
-            listAcquit.appendChild(chip);
-        } else if (voteValue === "EXECUTE") {
-            countExecute++;
-            listExecute.appendChild(chip);
+            if (voteValue === "ACQUIT") {
+                countAcquit++;
+                listAcquit.appendChild(chip);
+            } else if (voteValue === "EXECUTE") {
+                countExecute++;
+                listExecute.appendChild(chip);
+            }
         }
     });
 
@@ -856,13 +923,13 @@ function openSplitScreenVoteModal(accusedId, roomData) {
 
     document.getElementById("btn-vote-acquit").onclick = () => {
         const mySelf = Net.players[Net.playerId];
-        if (mySelf && !mySelf.alive) return; // Người chết không thể vote (Bug 12)
+        if (mySelf && !mySelf.alive) return;
         set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "ACQUIT");
     };
 
     document.getElementById("btn-vote-execute").onclick = () => {
         const mySelf = Net.players[Net.playerId];
-        if (mySelf && !mySelf.alive) return; // Người chết không thể vote (Bug 12)
+        if (mySelf && !mySelf.alive) return;
         set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "EXECUTE");
     };
 }
@@ -1010,7 +1077,7 @@ function setupMailboxCategoryFilters() {
 }
 
 // ==========================================
-// 7. KHÁN GIẢ & KÊNH CHAT BẢO MẬT ĐÊM
+// 6. KHÁN GIẢ & KÊNH CHAT BẢO MẬT ĐÊM
 // ==========================================
 function setupChatEngine() {
     const btnSend = document.getElementById("btn-chat-send");
@@ -1025,7 +1092,7 @@ function setupChatEngine() {
 
     const channels = ["chan-public", "chan-wolf", "chan-couple", "chan-prime", "chan-vampire", "chan-reaper", "chan-graveyard"];
     channels.forEach(ch => {
-        document.getElementById(ch)?.addEventListener("click", (e) => {
+        document.getElementById(ch)?.addEventListener("click", () => {
             channels.forEach(c => document.getElementById(c)?.classList.remove("active"));
             document.getElementById(ch)?.classList.add("active");
             
@@ -1086,7 +1153,6 @@ async function sendChatMessage() {
 }
 
 function listenToChatChannel(channelPath) {
-    // Khử vết Listener rò rỉ kênh chat cũ khi chuyển phòng/kênh (Bug 3)
     if (activeChatUnsub) {
         activeChatUnsub();
         activeChatUnsub = null;
@@ -1110,7 +1176,6 @@ function listenToChatChannel(channelPath) {
 }
 
 function setupSpectatorWinPoll() {
-    // SỬA LỖI ĐỌC TRUY VẤN FIREBASE TRƯỚC KHI KHỞI TẠO MÃ PHÒNG (BUG 19 & BUG 4)
     if (spectatorPollConfigured || !Net.roomId) return;
     spectatorPollConfigured = true;
 
@@ -1162,7 +1227,7 @@ function setupSpectatorWinPoll() {
 }
 
 // ==========================================
-// 8. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING - TRÁNH NHẤP NHÁY)
+// 4. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING - TRÁNH NHẤP NHÁY)
 // ==========================================
 function renderPlayersGridSmartly() {
     const grid = document.getElementById("game-players-grid");
@@ -1288,7 +1353,7 @@ function renderGMLogs(logs) {
 }
 
 // ==========================================
-// 9. CÁC TIỆN ÍCH HOẠT ĐỘNG KHÁC
+// 5. CÁC TIỆN ÍCH HOẠT ĐỘNG KHÁC
 // ==========================================
 function copyRoomId() {
     if (!Net.roomId) return;

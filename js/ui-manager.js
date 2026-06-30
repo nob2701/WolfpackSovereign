@@ -76,11 +76,11 @@ export function showToast(message, type = "info") {
     }, 3200);
 }
 
-// Ghi đè phương thức alert truyền thống tránh khóa luồng UI
+// Ghi đè phương thức alert truyền thống tránh khóa luồng UI của trình duyệt
 window.alert = (msg) => showToast(msg, "info");
 
 // ==========================================
-// 3. HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG TRÙNG SỰ KIỆN (BUG 8)
+// 3. HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG TRÙNG SỰ KIỆN
 // ==========================================
 export function askConfirm(message, onConfirm, onCancel = null) {
     const modal = document.getElementById("confirm-modal");
@@ -119,7 +119,7 @@ export function askConfirm(message, onConfirm, onCancel = null) {
 }
 
 // ==========================================
-// BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
+// 4. BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
 // ==========================================
 export function setupPasteCodeHandler() {
     const wrapper = document.getElementById("join-code-panel");
@@ -143,7 +143,7 @@ export function setupPasteCodeHandler() {
 }
 
 // ==========================================
-// 5. BẢNG CHỌN MỤC TIÊU ĐỘNG (BUG 16)
+// 5. BẢNG CHỌN MỤC TIÊU ĐỘNG CHO CHỨC NĂNG ĐÊM
 // ==========================================
 export function openTargetSelection(playersList, role, onConfirmCallback) {
     const Net = window.Net;
@@ -278,7 +278,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 
     if (!submitBtn || !cancelBtn) return;
 
-    // Nhân bản làm sạch nút Xác Nhận và Hủy
+    // Nhân bản làm sạch nút Xác Nhận và Hủy dồn tích
     const newSubmitBtn = submitBtn.cloneNode(true);
     const newCancelBtn = cancelBtn.cloneNode(true);
 
@@ -306,13 +306,12 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 
         onConfirmCallback(selectedPlayerIds[0], isMultiSelect ? selectedPlayerIds[1] : null, chosenModifier, extraPhrase);
         
-        // Reset trạng thái đệm tránh rò rỉ bùa chú (Bug 16)
+        // Reset hoàn toàn biến trạng thái bùa chú đệm tránh rò rỉ thông tin
         chosenModifier = null;
         ModalManager.closeCurrent();
     };
 
     newCancelBtn.onclick = () => {
-        // Reset trạng thái đệm tránh rò rỉ bùa chú (Bug 16)
         chosenModifier = null;
         ModalManager.closeCurrent();
     };
@@ -344,7 +343,7 @@ export function initMobileTabSync() {
 }
 
 // ==========================================
-// 7. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT (BUG 9)
+// 7. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT
 // ==========================================
 export function setupIdentityCardHoldGesture() {
     const idCard = document.getElementById("player-identity-card");
@@ -357,7 +356,7 @@ export function setupIdentityCardHoldGesture() {
     let isHolding = false;
 
     const startHold = (e) => {
-        // Chặn cuộn trang của hệ điều hành di động
+        // Chặn hoàn toàn cử chỉ cuộn trang mặc định của thiết bị di động
         if (e.cancelable) {
             e.preventDefault();
         }
@@ -393,7 +392,7 @@ export function setupIdentityCardHoldGesture() {
     idCard.addEventListener("mouseup", endHold);
     idCard.addEventListener("mouseleave", endHold);
 
-    // Đăng ký sự kiện di động (Cấu hình passive: false cho phép chặn cuộn trang hoàn toàn)
+    // Đăng ký sự kiện di động (Chặn passive: false để hỗ trợ preventDefault)
     idCard.addEventListener("touchstart", startHold, { passive: false });
     idCard.addEventListener("touchend", endHold, { passive: true });
     idCard.addEventListener("touchcancel", endHold, { passive: true });

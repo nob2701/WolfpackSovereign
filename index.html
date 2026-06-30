@@ -98,7 +98,8 @@
             <div id="login-form-panel">
                 <div class="lobby-form-group">
                     <label for="player-name-input">Nhập tên hiển thị của bạn:</label>
-                    <input type="text" id="player-name-input" maxlength="15" placeholder="Tên thần dân...">
+                    <!-- CẬP NHẬT 1: Đổi maxlength thành 10 -->
+                    <input type="text" id="player-name-input" maxlength="10" placeholder="Tên thần dân (tối đa 10 ký tự)...">
                 </div>
                 <div class="lobby-actions">
                     <button id="btn-initial-join-trigger" class="btn-success w-100" disabled>THAM GIA PHÒNG</button>
@@ -146,6 +147,10 @@
                 <div class="player-controls hidden" id="lobby-player-controls">
                     <button id="btn-player-toggle-ready" class="btn-success w-100">ĐÃ SẴN SÀNG (READY!)</button>
                 </div>
+
+                <!-- CẬP NHẬT 2: Nút rời phòng chung cho cả GM và Player -->
+                <button id="btn-leave-room" class="btn-suggest w-100" style="margin-top: 15px; border-color: var(--danger); color: var(--danger);">🚪 RỜI KHỎI PHÒNG</button>
+
                 <p class="waiting-msg" id="lobby-waiting-msg">Đang chờ người chơi chuẩn bị...</p>
             </div>
         </div>

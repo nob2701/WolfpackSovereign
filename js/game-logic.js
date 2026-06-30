@@ -200,6 +200,7 @@ export const Engine_Module = {
             }
         }
 
+        // Trộn mảng bài ngẫu nhiên
         for (let i = rolePool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [rolePool[i], rolePool[j]] = [rolePool[j], rolePool[i]];
@@ -302,7 +303,6 @@ export async function checkMajorityNominationTrigger() {
 
         for (let [targetId, votes] of Object.entries(counts)) {
             if (votes >= majorityThreshold) {
-                // SỬA LỖI VÒNG LẶP VÔ HẠN PHA BIỆN HỘ (BUG 1)
                 // Đóng gói tác vụ dọn dẹp nominations atomically cùng thời điểm chuyển giai đoạn
                 const trialUpdates = {
                     [`rooms/${Net.roomId}/trial`]: {
@@ -498,7 +498,7 @@ export const UI_Module = {
 
         if (mvpData) {
             mvpName.innerText = mvpData.name || "Ẩn danh";
-            mvpBadge.innerText = mvpData.badge || "Kẻ Vô Hình";
+            mvpBadge.innerText = mvpData.badge || "Kẻ Vô Invisible";
             mvpDetails.innerHTML = "";
             (mvpData.stats || []).forEach(stat => {
                 mvpDetails.innerHTML += `
@@ -595,7 +595,7 @@ function triggerSgDrawingRelations() {
     canvas.innerHTML = "";
 
     const container = document.getElementById("stats-content-map");
-    // Bảo vệ Forced Reflow: Chặn tuyệt đối đo đạc DOM khi phần tử đang bị ẩn khuất
+    // Chặn tuyệt đối đo đạc vị trí DOM khi phần tử đang bị ẩn khuất
     if (!container || container.classList.contains("hidden")) return;
 
     const containerRect = container.getBoundingClientRect();

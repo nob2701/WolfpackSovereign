@@ -29,11 +29,11 @@ export const StateMachine = {
         isTransitioning = true;
         
         try {
-            // SỬ DỤNG TRANSACTIONS ĐỂ KHÓA PHÂN GIẢI TRÁNH GỬI TRÙNG LẶP SỰ KIỆN (BUG 13)
+            // Sử dụng Transactions để ngăn phân giải đêm lặp lại nhiều lần
             let success = false;
             await runTransaction(ref(db, `rooms/${Net.roomId}/meta`), (meta) => {
                 if (!meta) return meta;
-                if (meta.phase === "night") return; // Đã là ban đêm, hủy bỏ tránh ghi đè lặp
+                if (meta.phase === "night") return; // Đã là ban đêm, bỏ qua tránh ghi đè lặp
                 meta.phase = "night";
                 meta.day = (meta.day || 0) + 1;
                 success = true;
@@ -51,7 +51,7 @@ export const StateMachine = {
                 const players = snap.val();
                 const updates = {};
                 
-                // DỌN SẠCH DỮ LIỆU ĐỀ CỬ & VOTE CŨ ĐỂ CHỐNG VÒNG LẶP VÔ HẠN (BUG 1)
+                // Dọn sạch dữ liệu đề cử & vote cũ để tránh vòng lặp vô hạn
                 updates[`rooms/${Net.roomId}/votes`] = null;
                 updates[`rooms/${Net.roomId}/nominations`] = null;
                 updates[`rooms/${Net.roomId}/trial`] = {
@@ -76,7 +76,7 @@ export const StateMachine = {
 
                 await update(ref(db), updates);
 
-                // Lấy thông số ngày thực tế sau khi lưu transaction để ghi nhật ký
+                // Lấy thông số ngày thực tế sau khi lưu transaction để ghi nhật ký chính xác
                 const currentDaySnap = await get(ref(db, `rooms/${Net.roomId}/meta/day`));
                 const nextDay = currentDaySnap.val() || 1;
                 await Engine_Module.logMsg(`🌙 Bóng đêm bao phủ vương quốc. Đêm thứ ${nextDay} bắt đầu!`, "sys");
@@ -137,7 +137,7 @@ export const StateMachine = {
         isTransitioning = true;
         
         try {
-            // SỬ DỤNG TRANSACTION ĐỂ NGĂN PHÂN GIẢI ĐÊM ĐƠN 2 LẦN (BUG 13)
+            // Sử dụng transaction để tránh phân giải đêm hai lần liên tiếp
             let success = false;
             await runTransaction(ref(db, `rooms/${Net.roomId}/meta/phase`), (phase) => {
                 if (phase === "day") return; // Đã chuyển sang ngày rồi, hủy tác vụ
@@ -232,7 +232,7 @@ export const StateMachine = {
             let countAcquit = 0;
             let countExecute = 0;
 
-            // SỬA LỖI NGƯỜI CHẾT BẦU SỐ PHẬN (BUG 12): Chỉ chấp nhận phiếu của người chơi còn sống!
+            // Chắt lọc chỉ chấp nhận phiếu bầu của người chơi còn sống
             Object.entries(votes).forEach(([voterId, voteValue]) => {
                 const voter = roomData.players[voterId];
                 if (voter && voter.alive) {
@@ -252,10 +252,10 @@ export const StateMachine = {
                 decisionText = `${accusedName.toUpperCase()} ĐÃ ĐƯỢC THA BỔNG THÀNH CÔNG!`;
             }
 
-            // Chuyển giai đoạn xử án sang phán quyết (Verdict) atomically để tránh race condition
+            // Chuyển giai đoạn xử án sang phán quyết (Verdict) atomically để tránh xung đột ghi đè
             let allowed = false;
             await runTransaction(ref(db, `rooms/${Net.roomId}/trial/stage`), (stage) => {
-                if (stage === "verdict") return; // Đã được xử lý bởi máy khách khác
+                if (stage === "verdict") return; // Đã được xử lý bởi tiến trình khác
                 allowed = true;
                 return "verdict";
             });
