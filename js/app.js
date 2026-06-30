@@ -20,6 +20,7 @@ export const Net = {
 };
 window.Net = Net;
 
+// Quản lý dọn dẹp bộ nhớ của các Listener Realtime Database
 let activeUnsubscribers = [];
 let activeChatUnsub = null; 
 let presenceConfigured = false; 
@@ -37,11 +38,11 @@ document.addEventListener("DOMContentLoaded", () => {
     setupParchmentNavigation();
     dismissSplashScreen();
     
-    // Tự động kích hoạt luồng phục hồi phiên chơi cũ nếu gặp sự cố rớt mạng/F5
+    // Tự động khôi phục phiên chơi cũ nếu gặp sự cố rớt mạng/F5
     attemptSessionReconnection();
 });
 
-// Gỡ bỏ màn hình chờ mượt mà
+// Gỡ bỏ màn hình chờ
 function dismissSplashScreen() {
     const splash = document.getElementById("splash-screen");
     if (splash) {
@@ -53,7 +54,7 @@ function dismissSplashScreen() {
     }
 }
 
-// Giải phóng bộ nhớ của toàn bộ các Listener Realtime Database cũ
+// Giải phóng bộ nhớ của toàn bộ các Listener cũ
 function clearActiveListeners() {
     activeUnsubscribers.forEach(unsub => {
         if (typeof unsub === "function") unsub();
@@ -129,7 +130,7 @@ function initLobbyEngine() {
         });
     });
 
-    // SỰ KIỆN QUẢN TRÒ PHÁN QUYẾT BIỂU QUYẾT BỎ PHIẾU (BUG 2)
+    // Sự kiện Quản trò chốt kết quả biểu quyết thủ công (Bug 2)
     document.getElementById("btn-gm-resolve-vote")?.addEventListener("click", () => {
         askConfirm("Bạn có chắc chắn muốn chốt kết quả bỏ phiếu treo cổ và công bố phán quyết ngay lập tức?", () => {
             StateMachine.resolveVotingOutcome();
@@ -304,7 +305,7 @@ function enterLobbyMode() {
 }
 
 function setupActivePlayersPresence() {
-    // SỬA LỖI TRÀN HẠN NGẠCH CONNECTION REQUEST (BUG 4)
+    // Kiểm tra cờ chặn trùng lặp onDisconnect (Bug 4)
     if (presenceConfigured) return;
     presenceConfigured = true;
 
@@ -313,7 +314,7 @@ function setupActivePlayersPresence() {
     onDisconnect(connectionRef).set(false);
 }
 
-// LUỒNG PHỤC HỒI KẾT NỐI TỰ ĐỘNG KHI F5
+// KHÔI PHỤC PHIÊN CHƠI KHI F5
 async function attemptSessionReconnection() {
     const savedRoomId = localStorage.getItem("reconnect_room_id");
     const savedPlayerId = localStorage.getItem("reconnect_player_id");
@@ -369,7 +370,7 @@ function listenToRoom() {
     clearActiveListeners();
     setupActivePlayersPresence();
 
-    // SỬA LỖI TRUY VẤN SỚM KHI CHƯA KHỞI TẠO MÃ PHÒNG (BUG 19)
+    // Gọi khởi chạy thăm dò khán giả khi roomId đã tồn tại (Bug 19)
     setupSpectatorWinPoll();
 
     const roomRef = ref(db, `rooms/${Net.roomId}`);
@@ -536,8 +537,7 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             }
         }
     } else {
-        // BẢO MẬT BAN NGÀY (BUG 11 - RESOLVED)
-        // Cưỡng chế ngắt toàn bộ kênh chat phe phái ban đêm khi bình minh lên
+        // CÔ LẬP KÊNH CHAT RIÊNG BAN NGÀY ĐỂ BẢO MẬT TRÁNH NHÌN TRỘM (BUG 11)
         const dayBannedChannels = ["wolf", "couple", "prime", "vampire", "reaper"];
         if (dayBannedChannels.includes(Net.currentChannel)) {
             Net.currentChannel = "public";
@@ -635,7 +635,7 @@ function updateSovereignStatusAndGuide(roomData) {
     const scriptText = document.getElementById("script-text");
 
     if (pTitle) {
-        pTitle.innerText = phase === "night" ? `🌙 ĐÊM ĐEM THỨ ${day}` : `☀️ BAN NGÀY THỨ ${day}`;
+        pTitle.innerText = phase === "night" ? `🌙 ĐÊM ĐEN THỨ ${day}` : `☀️ BAN NGÀY THỨ ${day}`;
     }
 
     if (scriptText) {
@@ -856,13 +856,13 @@ function openSplitScreenVoteModal(accusedId, roomData) {
 
     document.getElementById("btn-vote-acquit").onclick = () => {
         const mySelf = Net.players[Net.playerId];
-        if (mySelf && !mySelf.alive) return; // Bảo vệ: Người chết không được vote (Bug 12)
+        if (mySelf && !mySelf.alive) return; // Người chết không thể vote (Bug 12)
         set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "ACQUIT");
     };
 
     document.getElementById("btn-vote-execute").onclick = () => {
         const mySelf = Net.players[Net.playerId];
-        if (mySelf && !mySelf.alive) return; // Bảo vệ: Người chết không được vote (Bug 12)
+        if (mySelf && !mySelf.alive) return; // Người chết không thể vote (Bug 12)
         set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "EXECUTE");
     };
 }
@@ -1027,7 +1027,7 @@ function setupChatEngine() {
     channels.forEach(ch => {
         document.getElementById(ch)?.addEventListener("click", (e) => {
             channels.forEach(c => document.getElementById(c)?.classList.remove("active"));
-            e.target.classList.add("active");
+            document.getElementById(ch)?.classList.add("active");
             
             const chanName = ch.replace("chan-", "");
             Net.currentChannel = chanName;
@@ -1086,7 +1086,7 @@ async function sendChatMessage() {
 }
 
 function listenToChatChannel(channelPath) {
-    // SỬA LỖI TRÙNG KÊNH CHAT TRÊN TÊN BIẾN RÒ RỈ (BUG 3 - RESOLVED)
+    // Khử vết Listener rò rỉ kênh chat cũ khi chuyển phòng/kênh (Bug 3)
     if (activeChatUnsub) {
         activeChatUnsub();
         activeChatUnsub = null;
@@ -1110,7 +1110,7 @@ function listenToChatChannel(channelPath) {
 }
 
 function setupSpectatorWinPoll() {
-    // SỬA LỖI KHỞI TẠO SỚM TRÊN BIẾN GỌI ĐƠN (BUG 19 & BUG 4)
+    // SỬA LỖI ĐỌC TRUY VẤN FIREBASE TRƯỚC KHI KHỞI TẠO MÃ PHÒNG (BUG 19 & BUG 4)
     if (spectatorPollConfigured || !Net.roomId) return;
     spectatorPollConfigured = true;
 
@@ -1143,20 +1143,26 @@ function setupSpectatorWinPoll() {
         const wolfPct = Math.round((counts.wolf / total) * 100);
         const thirdPct = Math.round((counts.third / total) * 100);
 
-        document.getElementById("pred-bar-village").style.width = `${vilPct}%`;
-        document.getElementById("pred-pct-village").innerText = `${vilPct}%`;
+        const barVil = document.getElementById("pred-bar-village");
+        const pctVil = document.getElementById("pred-pct-village");
+        if (barVil) barVil.style.width = `${vilPct}%`;
+        if (pctVil) pctVil.innerText = `${vilPct}%`;
 
-        document.getElementById("pred-bar-wolf").style.width = `${wolfPct}%`;
-        document.getElementById("pred-pct-wolf").innerText = `${wolfPct}%`;
+        const barWolf = document.getElementById("pred-bar-wolf");
+        const pctWolf = document.getElementById("pred-pct-wolf");
+        if (barWolf) barWolf.style.width = `${wolfPct}%`;
+        if (pctWolf) pctWolf.innerText = `${wolfPct}%`;
 
-        document.getElementById("pred-bar-third").style.width = `${thirdPct}%`;
-        document.getElementById("pred-pct-third").innerText = `${thirdPct}%`;
+        const barThird = document.getElementById("pred-bar-third");
+        const pctThird = document.getElementById("pred-pct-third");
+        if (barThird) barThird.style.width = `${thirdPct}%`;
+        if (pctThird) pctThird.innerText = `${thirdPct}%`;
     });
     activeUnsubscribers.push(unsubPoll);
 }
 
 // ==========================================
-// 8. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING TRÁNH NHẤP NHÁY)
+// 8. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING - TRÁNH NHẤP NHÁY)
 // ==========================================
 function renderPlayersGridSmartly() {
     const grid = document.getElementById("game-players-grid");

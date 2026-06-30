@@ -30,7 +30,7 @@ export const TickEngine = {
 
         // ==========================================
         // SỬA LỖI BUFF/DEBUFF PERSISTENCE (BUG 5)
-        // Reset sạch sẽ bùa chú tạm thời của đêm hôm trước để tránh bị lưu dính vĩnh viễn
+        // Reset sạch bùa chú tạm thời của đêm hôm trước để tránh bị lưu dính vĩnh viễn
         // ==========================================
         playersList.forEach(p => {
             initPlayerState(p.id);

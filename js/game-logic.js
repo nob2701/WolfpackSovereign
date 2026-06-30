@@ -302,8 +302,8 @@ export async function checkMajorityNominationTrigger() {
 
         for (let [targetId, votes] of Object.entries(counts)) {
             if (votes >= majorityThreshold) {
-                // SỬA LỖI VÒNG LẶP VÔ HẠN PHA BIỆN HỘ (BUG 1):
-                // Reset sạch nominations trên database ngay khi chuyển giai đoạn để chặn lặp
+                // SỬA LỖI VÒNG LẶP VÔ HẠN PHA BIỆN HỘ (BUG 1)
+                // Đóng gói tác vụ dọn dẹp nominations atomically cùng thời điểm chuyển giai đoạn
                 const trialUpdates = {
                     [`rooms/${Net.roomId}/trial`]: {
                         stage: "defense",
@@ -595,7 +595,7 @@ function triggerSgDrawingRelations() {
     canvas.innerHTML = "";
 
     const container = document.getElementById("stats-content-map");
-    // Chặn đo đạc tọa độ khi tab sơ đồ đang bị ẩn nhằm triệt tiêu lỗi Forced Reflow của trình duyệt
+    // Bảo vệ Forced Reflow: Chặn tuyệt đối đo đạc DOM khi phần tử đang bị ẩn khuất
     if (!container || container.classList.contains("hidden")) return;
 
     const containerRect = container.getBoundingClientRect();

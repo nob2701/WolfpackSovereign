@@ -303,7 +303,7 @@ export const StateMachine = {
             });
 
         } catch (error) {
-            console.error("Gặp sự cố khi phân giải phiếu biểu quyết:", error);
+            console.error("Gặp sự cố khi phán quyết bỏ phiếu:", error);
             isResolvingVote = false;
         }
     },

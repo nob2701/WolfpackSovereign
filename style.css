@@ -415,7 +415,7 @@ body {
     text-align: left;
     width: 100%;
     
-    /* Ngăn chặn tuyệt đối xung đột thao tác cuộn trên màn hình cảm ứng di động */
+    /* Ngăn chặn tuyệt đối xung đột thao tác cuộn trên màn hình cảm ứng di động (Bug 9) */
     touch-action: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -1503,7 +1503,7 @@ button:disabled {
     flex: 1;
     background: var(--bg-main);
     height: 10px;
-    border-radius: 50px;
+    border-radius: 5px;
     overflow: hidden;
 }
 .pred-bar-fill {
@@ -2037,6 +2037,12 @@ button:disabled {
     border-radius: 4px;
     font-weight: bold;
 }
+.watermark { 
+    text-align: center; 
+    opacity: 0.35; 
+    font-size: 10px; 
+    margin-top: 15px; 
+}
 
 /* === GIAO DIỆN PHƯƠNG TIỆN DI ĐỘNG (MOBILE LAYOUT) === */
 .mobile-nav { display: none; }
@@ -2175,6 +2181,9 @@ button:disabled {
     text-align: left; 
     white-space: pre-wrap;
 }
+
+.bloody-overlay { background: rgba(20, 5, 5, 0.94) !important; }
+.bloody-modal { border-color: var(--danger) !important; box-shadow: 0 0 35px var(--danger) !important; background: #000 !important; }
 
 /* === BỘ THẺ CHỨC NĂNG (FLASHCARD) === */
 .custom-modal-card-wrapper {

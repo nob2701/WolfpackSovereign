@@ -232,7 +232,7 @@
                 <div class="gm-role-actions-bar" style="display:flex; flex-direction:column; gap:5px;">
                     <button id="btn-distribute" class="btn-success w-100">🎲 Trộn & Phát Role</button>
                     <button id="btn-gm-force-day" class="btn-danger w-100 hidden">⚠️ Cưỡng chế sang ngày</button>
-                    <button id="btn-gm-resolve-vote" class="btn-danger w-100 hidden">⚖️ Phán Quyết Biểu Quyết</button>
+                    <button id="btn-gm-resolve-vote" class="btn-danger w-100 hidden">⚖️ Phán quyết Biểu quyết</button>
                     <button id="btn-gm-start-night" class="btn-danger w-100 hidden">🌙 BẮT ĐẦU ĐÊM ĐEN</button>
                 </div>
             </div>
@@ -242,7 +242,6 @@
         <div id="col-board-container" class="panel col-board">
             
             <!-- THẺ CĂN CƯỚC NGƯỜI CHƠI (HỖ TRỢ CHẠM GIỮ BẢO MẬT) -->
-            <!-- Tích hợp touch-action: none để loại bỏ xung đột cuộn trên thiết bị di động -->
             <div id="player-identity-card" class="player-identity-card hidden" style="user-select: none; -webkit-user-select: none; touch-action: none;">
                 <div class="id-card-seal"></div>
                 <div class="id-card-content">
@@ -253,7 +252,7 @@
                 </div>
             </div>
 
-            <!-- DỰ ĐOÁN TỈ LỆ THẮNG (KHÁN GIẢ VÀ HỒN MA VOTE) -->
+            <!-- DỰ ĐOÁN TỈ LỆ THẮNG -->
             <div id="spectator-prediction-widget" class="hidden">
                 <div class="prediction-header">
                     <span>📊 DỰ ĐOÁN PHE CHIẾN THẮNG TRẬN ĐẤU</span>
@@ -593,7 +592,6 @@
     <!-- ==========================================
          JAVASCRIPT DEPLOYMENT
          ========================================== -->
-    <!-- Đăng ký duy nhất tệp tin app.js là Module khởi chạy để quản lý vòng đời tải đồng bộ -->
     <script type="module" src="app.js"></script>
 </body>
 </html>

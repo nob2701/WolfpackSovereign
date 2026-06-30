@@ -96,7 +96,7 @@ export function askConfirm(message, onConfirm, onCancel = null) {
 
     if (!btnSubmit || !btnCancel) return;
 
-    // Tạo bản sao mới hoàn chỉnh để dọn dẹp các sự kiện dồn tích cũ trên DOM
+    // Nhân bản làm sạch sự kiện dồn tích cũ trên DOM
     const newSubmitBtn = btnSubmit.cloneNode(true);
     const newCancelBtn = btnCancel.cloneNode(true);
 
@@ -118,13 +118,8 @@ export function askConfirm(message, onConfirm, onCancel = null) {
     };
 }
 
-window.confirm = (msg) => {
-    askConfirm(msg, () => {});
-    return false; 
-};
-
 // ==========================================
-// 4. BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
+// BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
 // ==========================================
 export function setupPasteCodeHandler() {
     const wrapper = document.getElementById("join-code-panel");
@@ -148,7 +143,7 @@ export function setupPasteCodeHandler() {
 }
 
 // ==========================================
-// 5. BẢNG CHỌN MỤC TIÊU ĐỘNG (BUG 16 - RESOLVED)
+// 5. BẢNG CHỌN MỤC TIÊU ĐỘNG (BUG 16)
 // ==========================================
 export function openTargetSelection(playersList, role, onConfirmCallback) {
     const Net = window.Net;
@@ -222,7 +217,6 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         grid.appendChild(targetBtn);
     });
 
-    // Cấu hình Modifiers đặc thù cho từng nhóm vai trò
     if (role === "seer") {
         modifiersBox.classList.remove("hidden");
         renderModifiers([
@@ -284,7 +278,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 
     if (!submitBtn || !cancelBtn) return;
 
-    // Nhân bản làm sạch nút bấm chống dồn đống sự kiện
+    // Nhân bản làm sạch nút Xác Nhận và Hủy
     const newSubmitBtn = submitBtn.cloneNode(true);
     const newCancelBtn = cancelBtn.cloneNode(true);
 
@@ -312,13 +306,13 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 
         onConfirmCallback(selectedPlayerIds[0], isMultiSelect ? selectedPlayerIds[1] : null, chosenModifier, extraPhrase);
         
-        // GIẢI PHÓNG TRẠNG THÁI TRÁNH RÒ RỈ LƯỢT TIẾP THEO (BUG 16)
+        // Reset trạng thái đệm tránh rò rỉ bùa chú (Bug 16)
         chosenModifier = null;
         ModalManager.closeCurrent();
     };
 
     newCancelBtn.onclick = () => {
-        // GIẢI PHÓNG TRẠNG THÁI TRÁNH RÒ RỈ LƯỢT TIẾP THEO (BUG 16)
+        // Reset trạng thái đệm tránh rò rỉ bùa chú (Bug 16)
         chosenModifier = null;
         ModalManager.closeCurrent();
     };
@@ -350,7 +344,7 @@ export function initMobileTabSync() {
 }
 
 // ==========================================
-// 7. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT (BUG 9 - RESOLVED)
+// 7. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT (BUG 9)
 // ==========================================
 export function setupIdentityCardHoldGesture() {
     const idCard = document.getElementById("player-identity-card");
@@ -363,7 +357,7 @@ export function setupIdentityCardHoldGesture() {
     let isHolding = false;
 
     const startHold = (e) => {
-        // Khóa hành vi cuộn mặc định của trình duyệt để giữ vững tiêu điểm cảm ứng
+        // Chặn cuộn trang của hệ điều hành di động
         if (e.cancelable) {
             e.preventDefault();
         }
@@ -381,7 +375,7 @@ export function setupIdentityCardHoldGesture() {
                 idFactionVal.style.filter = "none";
                 showToast("Đã giải mờ căn cước tạm thời!", "info");
             }
-        }, 1500); // Đặt độ trễ giữ 1.5 giây tiêu chuẩn
+        }, 1500); 
     };
 
     const endHold = () => {
@@ -394,7 +388,7 @@ export function setupIdentityCardHoldGesture() {
         idFactionVal.style.filter = "blur(5px)";
     };
 
-    // Đăng ký sự kiện trên máy tính (Mouse)
+    // Đăng ký sự kiện máy tính (Mouse)
     idCard.addEventListener("mousedown", startHold);
     idCard.addEventListener("mouseup", endHold);
     idCard.addEventListener("mouseleave", endHold);
@@ -488,7 +482,6 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
     setupBottomSheetSwipeGesture(sheet, overlay, closeSheet);
 }
 
-// Cử chỉ vuốt di động tắt nhanh Bottom Sheet (Swipe down to dismiss)
 function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
     let startY = 0;
     let currentY = 0;
@@ -545,7 +538,7 @@ export function runGavelStrikeAnimation(decisionText, callback) {
 }
 
 // ==========================================
-// 10. QUẢN LÝ THIẾT LẬP ÂM THANH
+// 10. QUẢN LÝ THIẾT LẬP ÂM THANH & DONATE
 // ==========================================
 export function setupSoundSettings() {
     const bgmPlayer = document.getElementById("bgm-player");
