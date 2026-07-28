@@ -1,13 +1,17 @@
-/* === HỆ THỐNG BIẾN CSS & THEMES (PHONG CÁCH GOTHIC / DARK FANTASY) === */
+/* ==========================================================================
+   WOLFPACK SOVEREIGN - SYSTEM CSS STYLESHEET (GOTHIC / DARK FANTASY THEME)
+   ========================================================================== */
+
+/* === 1. HỆ THỐNG BIẾN CSS & THEMES (COLOR PALETTE & Z-INDEX MATRIX) === */
 :root {
     --bg-main: #121214;       /* Xám tro tối (Nền sảnh sương mù) */
     --bg-panel: #1a1a1e;      /* Đen trầm Gothic (Nền bảng điều khiển chính) */
     --bg-item: #26262b;       /* Xám tối đục (Thẻ người chơi & khối phụ trợ) */
-    --text-main: #f8fafc;     /* Trắng sữa dịu mắt (Độ tương phản tối đa trên nền tối) */
+    --text-main: #f8fafc;     /* Trắng sữa dịu mắt (Tương phản tối đa) */
     --accent: #eab308;        /* Vàng kim vương quyền (Thế lực Làng / Sovereign) */
-    --danger: #ef4444;        /* Đỏ máu dạ quang (Thế lực Sói / Ma thuật ác quỷ) */
+    --danger: #ef4444;        /* Đỏ máu dạ quang (Thế lực Ma Sói / Bùa chú tà ác) */
     --success: #22c55e;       /* Xanh lục bảo (Sự sống hồi sinh) */
-    --log-bg: #0a0a0c;        /* Đen tuyền sâu thẳm (Nền khối nhật ký đêm) */
+    --log-bg: #0a0a0c;        /* Đen tuyền sâu thẳm (Nền nhật ký đêm) */
     --log-text: #94a3b8;      /* Xám bạc nhạt */
     --border-color: #3f3f46;  /* Viền xám mờ */
     --btn-text: #0a0a0c;      /* Màu chữ tối tương phản tốt trên nút vàng */
@@ -15,7 +19,7 @@
     --input-text: #f8fafc;
     --modal-overlay: rgba(10, 10, 12, 0.94);
     
-    /* Biến bổ sung cho các phe phái và mật thư cổ */
+    /* Biến màu sắc bổ sung cho các phe phái và mật thư cổ */
     --parchment-bg: #f4ecd8;
     --parchment-text: #2c1a04;
     --wolf-red: #991b1b;
@@ -25,14 +29,15 @@
     --ghost-blue: #475569;
     --ghost-bg: #121214;
 
-    /* Thang đo Z-index tiêu chuẩn hệ thống */
+    /* Thang đo Z-index tiêu chuẩn hệ thống (Tránh xung đột lớp phủ) */
     --z-nav: 1000; 
     --z-overlay: 2000; 
     --z-modal-bg: 10000; 
     --z-modal: 10005; 
-    --z-alert: 20000; 
-    --z-action-alert: 20010; 
-    --z-splash: 99999;
+    --z-night-sleep: 99990;
+    --z-alert: 200000; 
+    --z-action-alert: 200010; 
+    --z-splash: 999999;
 }
 
 body[data-theme="light"] { 
@@ -70,14 +75,14 @@ body[data-theme="hacker"] {
     font-family: 'Courier New', Courier, monospace !important; 
 }
 
-/* === FONTS ĐẶC TRƯNG === */
+/* === 2. FONTS ĐẶC TRƯNG === */
 body[data-font="system"] { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 body[data-font="times"] { font-family: 'Times New Roman', Times, serif; }
 body[data-font="hacker"] { font-family: 'Courier New', Courier, monospace; }
 body[data-font="dancing"] { font-family: 'Dancing Script', cursive; }
 body[data-font="comfortaa"] { font-family: 'Comfortaa', sans-serif; }
 
-/* === BỐ CỤC CHUNG & SCROLLBAR === */
+/* === 3. BỐ CỤC CHUNG & CẤU HÌNH THANH CUỘN (SCROLLBAR) === */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -94,7 +99,7 @@ body {
     transition: background 0.3s, color 0.3s;
 }
 
-/* Tùy chỉnh thanh cuộn đồng bộ */
+/* Tùy chỉnh thanh cuộn hệ thống */
 ::-webkit-scrollbar { 
     width: 6px; 
     height: 6px; 
@@ -112,7 +117,7 @@ body {
     background: var(--accent); 
 }
 
-/* === MÀN HÌNH CHỜ (SPLASH SCREEN) === */
+/* === 4. MÀN HÌNH CHỜ BAN ĐẦU (SPLASH SCREEN) === */
 #splash-screen {
     position: fixed; 
     top: 0; 
@@ -169,12 +174,12 @@ body {
     50% { border-color: var(--accent); } 
 }
 
-/* === MÀN HÌNH NGỦ SAY ĐÊM ĐEN === */
+/* === 5. MÀN HÌNH CHỜ BAN ĐÊM (NIGHT SLEEP OVERLAY) === */
 .night-sleep-overlay {
     position: fixed;
     top: 0; left: 0; width: 100vw; height: 100vh;
     background: radial-gradient(circle at center, #0a0a0c 40%, #000000 100%);
-    z-index: 9999;
+    z-index: var(--z-night-sleep);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -234,7 +239,7 @@ body {
     100% { transform: translate(10px, 5px) scale(1.1); }
 }
 
-/* === LỚP ĐIỀU HƯỚNG VIEW CHỦ ĐẠO === */
+/* === 6. LỚP MÀN HÌNH ỨNG DỤNG CHÍNH === */
 .app-screen {
     width: 100%;
     height: 100%;
@@ -245,7 +250,7 @@ body {
     display: none !important;
 }
 
-/* === SẢNH CHỜ (LOBBY SCREEN) === */
+/* === 7. SẢNH CHỜ PHÒNG CHƠI (LOBBY SCREEN) === */
 #lobby-screen {
     background: radial-gradient(circle at center, #1a1a1e 0%, #121214 100%);
     display: flex;
@@ -300,7 +305,7 @@ body {
     margin: 5px 0;
 }
 
-/* Ô NHẬP MÃ 6 KÝ TỰ */
+/* Ô NHẬP MÃ 6 KÝ TỰ PIN */
 .section-instruction {
     font-size: 14px;
     font-weight: bold;
@@ -331,7 +336,6 @@ body {
     transform: scale(1.05);
 }
 
-/* Khung thông tin phòng trong Lobby */
 .room-info-card {
     margin-top: 25px;
     padding-top: 20px;
@@ -372,7 +376,6 @@ body {
     border: 1px solid rgba(234, 179, 8, 0.1);
 }
 
-/* Thẻ trạng thái sẵn sàng */
 .lobby-player-tag .status-badge {
     padding: 2px 6px;
     border-radius: 4px;
@@ -401,7 +404,6 @@ body {
     50% { opacity: 0.3; }
 }
 
-/* === NÚT RỜI PHÒNG NÂNG CẤP === */
 #btn-leave-room {
     background: transparent !important;
     border: 1px solid var(--danger) !important;
@@ -415,7 +417,7 @@ body {
     transform: scale(1.01);
 }
 
-/* === THẺ CĂN CƯỚC NGƯỜI CHƠI CỐ ĐỊNH (IDENTITY WIDGET) === */
+/* === 8. THẺ CĂN CƯỚC NGƯỜI CHƠI (IDENTITY WIDGET) === */
 .player-identity-card {
     background: linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-main) 100%);
     border: 2px solid var(--accent);
@@ -429,7 +431,6 @@ body {
     text-align: left;
     width: 100%;
     
-    /* Ngăn chặn tuyệt đối xung đột thao tác cuộn trên màn hình cảm ứng di động */
     touch-action: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -475,7 +476,7 @@ body {
     padding-top: 6px;
 }
 
-/* === TRONG GAME - CÁC CỘT BỐ CỤC === */
+/* === 9. BỐ CỤC CÁC CỘT TRONG MÀN HÌNH GAME === */
 .panel { 
     padding: 15px; 
     display: flex; 
@@ -509,7 +510,7 @@ h2, h3 {
     font-size: 15px; 
 }
 
-/* Grid hiển thị thẻ người chơi */
+/* GRID THẺ NGƯỜI CHƠI */
 .players-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -518,7 +519,6 @@ h2, h3 {
     align-content: flex-start;
 }
 
-/* Ô Thẻ Người Chơi cơ bản (Bổ sung tăng tốc phần cứng thông qua GPU) */
 .player-grid-card {
     background: var(--bg-item);
     border: 2px solid var(--border-color);
@@ -530,7 +530,6 @@ h2, h3 {
     transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.2s, box-shadow 0.2s;
     overflow: hidden;
     
-    /* Ép kết xuất đồ họa bằng GPU chống nhấp nháy màn hình */
     will-change: transform, border-color, box-shadow;
     transform: translate3d(0, 0, 0);
 }
@@ -593,7 +592,7 @@ h2, h3 {
 .player-grid-card .status-dot.online { background-color: var(--success); }
 .player-grid-card .status-dot.offline { background-color: #4b5563; }
 
-/* === TRANG TRÍ CÁC TRẠNG THÁI / BÙA CHÚ VAI TRÒ === */
+/* === 10. HIỆU ỨNG HIỂN THỊ TRẠNG THÁI & BÙA CHÚ VAI TRÒ === */
 
 /* Tiên Tri (Seer) */
 .player-grid-card.seer-scanned {
@@ -627,7 +626,7 @@ h2, h3 {
     pointer-events: none !important;
 }
 .player-grid-card.guard-blocked::after {
-    content: "Khóa Lượt Kế";
+    content: "Khóa Lượt";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(18, 18, 20, 0.85);
@@ -746,9 +745,7 @@ h2, h3 {
     content: "";
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-image: url('assets/images/scratch.png'); 
-    background-size: cover;
-    opacity: 0.35;
+    background-image: radial-gradient(circle, rgba(239, 68, 68, 0.25) 0%, transparent 70%);
     pointer-events: none;
     z-index: 2;
 }
@@ -770,7 +767,6 @@ h2, h3 {
     border-color: #38bdf8 !important;
     background: rgba(56, 189, 248, 0.1) !important;
     box-shadow: 0 0 15px rgba(56, 189, 248, 0.5) !important;
-    backdrop-filter: blur(1px);
 }
 .player-grid-card.snowwolf-frozen::after {
     content: "❄️";
@@ -852,7 +848,7 @@ h2, h3 {
     z-index: 4;
 }
 
-/* Ma Ma Cà Rồng (Vampire) */
+/* Ma Cà Rồng (Vampire) */
 .player-grid-card.vampire-bitten::after {
     content: "🩸";
     position: absolute;
@@ -949,7 +945,17 @@ h2, h3 {
     z-index: 4;
 }
 
-/* === LỚP HOẠT ẢNH VÀ TRANG TRÍ CHUNG === */
+/* Huy hiệu Trưởng Làng */
+.mayor-star {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 14px;
+    filter: drop-shadow(0 0 3px var(--accent));
+    z-index: 5;
+}
+
+/* === 11. KEYFRAMES VÀ TRANG TRÍ HOẠT ẢNH === */
 @keyframes eyePulse { 
     0% { transform: scale(0.9); opacity: 0.6; } 
     100% { transform: scale(1.1); opacity: 1; } 
@@ -1004,21 +1010,7 @@ h2, h3 {
     100% { transform: scale(1); }
 }
 
-/* Huy hiệu đề cử đài treo cổ */
-.player-grid-card .nomination-badge {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    background: var(--danger);
-    color: white;
-    font-size: 10px;
-    font-weight: bold;
-    padding: 2px 5px;
-    border-radius: 8px;
-    z-index: 4;
-}
-
-/* Các cấu hình vai trò */
+/* === 12. BẢNG CẤU HÌNH VAI TRÒ === */
 .role-config-row { 
     display: flex; 
     justify-content: space-between; 
@@ -1074,7 +1066,7 @@ h2, h3 {
     color: var(--btn-text); 
 }
 
-/* === LỚP ĐỊNH DẠNG FORM, INPUTS & BUTTONS === */
+/* === 13. FORM, INPUTS & BUTTONS === */
 input, select, textarea { 
     padding: 10px; 
     border-radius: 8px; 
@@ -1108,9 +1100,7 @@ button:disabled {
     opacity: 0.4; 
     cursor: not-allowed; 
 }
-.w-100 {
-    width: 100%;
-}
+.w-100 { width: 100%; }
 .btn-danger { background: var(--danger) !important; color: #fff !important; }
 .btn-success { background: var(--success) !important; color: #fff !important; }
 .btn-accent { background: var(--accent) !important; color: var(--btn-text) !important; }
@@ -1129,11 +1119,11 @@ button:disabled {
     color: var(--btn-text);
 }
 
-/* === BÀN CỜ CHÍNH (BOARD) === */
+/* === 14. BÀN ĐIỀU KHIỂN BÀN CỜ CHÍNH (BOARD) === */
 #board { 
     width: 100%; 
     background: var(--bg-panel); 
-    padding: 24px; 
+    padding: 20px; 
     border-radius: 16px; 
     border: 1px solid var(--border-color); 
     text-align: center; 
@@ -1147,11 +1137,11 @@ button:disabled {
     margin-bottom: 10px; 
 }
 #script-text { 
-    font-size: 17px; 
+    font-size: 16px; 
     font-weight: bold; 
     color: var(--text-main); 
-    margin: 20px 0; 
-    min-height: 50px; 
+    margin: 15px 0; 
+    min-height: 45px; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
@@ -1166,7 +1156,7 @@ button:disabled {
     width: 100%;
 }
 
-/* Cán cân Game */
+/* Thanh cán cân sức mạnh */
 .balance-wrapper { 
     background: rgba(234, 179, 8, 0.05); 
     padding: 10px; 
@@ -1195,12 +1185,12 @@ button:disabled {
     font-weight: bold;
 }
 
-/* === HỆ THỐNG TOAST THAY THẾ ALERT === */
+/* === 15. HỆ THỐNG TOAST THÔNG BÁO NỔI === */
 .toast-container {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 100000;
+    z-index: var(--z-alert);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1224,13 +1214,14 @@ button:disabled {
 .toast.toast-danger { border-left-color: var(--danger); }
 .toast.toast-success { border-left-color: var(--success); }
 .toast.toast-info { border-left-color: #38bdf8; }
+.toast.toast-warning { border-left-color: #f59e0b; }
 
 @keyframes toastSlideIn {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
 
-/* === HỆ THỐNG HÒM THƯ (MAILBOX SYSTEM) === */
+/* === 16. HỆ THỐNG HÒM THƯ (MAILBOX SYSTEM) === */
 .mailbox-tabs {
     display: flex;
     gap: 5px;
@@ -1258,7 +1249,6 @@ button:disabled {
     border-bottom: 2px solid var(--accent);
 }
 
-/* Thẻ tin nhắn đơn */
 .mail-card {
     display: flex;
     flex-direction: column;
@@ -1267,13 +1257,12 @@ button:disabled {
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     border: 1px solid var(--border-color);
+    position: relative;
 }
-/* Trạng thái chưa đọc */
 .mail-card.unread {
     background: var(--bg-panel);
     border-color: rgba(239, 68, 68, 0.4);
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
-    position: relative;
     animation: mailPulse 2s infinite alternate;
 }
 @keyframes mailPulse {
@@ -1296,7 +1285,6 @@ button:disabled {
     right: 10px;
     box-shadow: 0 0 6px var(--danger);
 }
-/* Trạng thái đã đọc */
 .mail-card.read {
     background: var(--bg-main);
     opacity: 0.65;
@@ -1323,7 +1311,7 @@ button:disabled {
     white-space: nowrap;
 }
 
-/* === MẪU GIẤY DA CỔ ĐIỂN (PARCHMENT MAIL MODAL) === */
+/* === 17. GIẤY DA CỔ ĐIỂN (PARCHMENT MAIL MODAL) === */
 .parchment-scroll-container {
     background: var(--parchment-bg);
     color: var(--parchment-text);
@@ -1356,9 +1344,8 @@ button:disabled {
     font-weight: bold;
     min-height: auto;
 }
-.parchment-close-btn:hover {
-    color: var(--danger);
-}
+.parchment-close-btn:hover { color: var(--danger); }
+
 .parchment-wax-seal {
     background: radial-gradient(circle, #ff1a1a 20%, #800000 80%);
     border-radius: 50%;
@@ -1386,7 +1373,6 @@ button:disabled {
     white-space: pre-wrap;
 }
 
-/* Điều hướng đọc thư */
 .parchment-navigation {
     display: flex;
     justify-content: space-between;
@@ -1417,7 +1403,7 @@ button:disabled {
     margin-top: 10px;
 }
 
-/* === LỊCH SỬ SỰ KIỆN === */
+/* === 18. NHẬT KÝ VÁN ĐẤU (LOG BOX) === */
 .log-box { 
     font-family: monospace; 
     font-size: 12.5px; 
@@ -1438,29 +1424,7 @@ button:disabled {
 .kill-msg { color: var(--danger); font-weight: bold; }
 .info-msg { color: var(--accent); font-weight: bold; }
 
-/* === PHÂN HỆ KÊNH CHAT ĐỘNG === */
-.right-tabs {
-    display: flex;
-    gap: 5px;
-    margin-bottom: 10px;
-}
-.right-tab {
-    flex: 1;
-    background: rgba(63, 63, 70, 0.15);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    padding: 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-    font-weight: bold;
-}
-.right-tab.active {
-    background: var(--accent);
-    color: var(--btn-text);
-    border-color: var(--accent);
-}
-
+/* === 19. CÁC KÊNH CHAT CHUYÊN DỤNG === */
 .chat-channels-bar {
     display: flex;
     gap: 4px;
@@ -1483,7 +1447,6 @@ button:disabled {
     color: #fff;
 }
 
-/* Trang trí tin nhắn các kênh đặc trưng */
 .chat-msg {
     margin-bottom: 6px;
     line-height: 1.4;
@@ -1492,7 +1455,7 @@ button:disabled {
 .chat-msg.couple { color: #f472b6; background: rgba(236, 72, 153, 0.08); border-left: 2px solid var(--couple-pink); padding-left: 5px;}
 .chat-msg.graveyard { color: #94a3b8; font-style: italic; background: rgba(71, 85, 105, 0.1); border-left: 2px solid var(--ghost-blue); padding-left: 5px;}
 
-/* Widget dự đoán tỷ lệ thắng */
+/* === 20. WIDGET DỰ ĐOÁN TỶ LỆ CHIẾN THẮNG === */
 #spectator-prediction-widget {
     background: var(--bg-panel);
     border: 1px solid var(--accent);
@@ -1535,7 +1498,7 @@ button:disabled {
 .pred-bar-fill.third { background-color: #c084fc; }
 .pred-row .pct { width: 35px; text-align: right; font-weight: bold; }
 
-/* === BỘ CHỈ BÁO BIỂU QUYẾT 4 BƯỚC === */
+/* === 21. BỘ CHỈ BÁO VÀ TIẾN TRÌNH BIỂU QUYẾT XỬ ÁN === */
 .trial-steps-bar {
     display: flex;
     justify-content: space-between;
@@ -1561,7 +1524,6 @@ button:disabled {
     box-shadow: 0 0 5px rgba(234, 179, 8, 0.3);
 }
 
-/* THANH TIẾN TRÌNH BIỂU QUYẾT TREO CỔ */
 .trial-vote-progress-wrapper {
     background: var(--bg-main);
     border-radius: 8px;
@@ -1588,7 +1550,6 @@ button:disabled {
     transition: width 0.3s ease-out;
 }
 
-/* GIAO DIỆN CHIA ĐÔI BỎ PHIẾU */
 .voting-split-container {
     display: flex;
     gap: 15px;
@@ -1607,12 +1568,8 @@ button:disabled {
     overflow-y: auto;
     max-height: 250px;
 }
-.vote-split-column.acquit {
-    border-color: rgba(34, 197, 94, 0.3);
-}
-.vote-split-column.execute {
-    border-color: rgba(239, 68, 68, 0.3);
-}
+.vote-split-column.acquit { border-color: rgba(34, 197, 94, 0.3); }
+.vote-split-column.execute { border-color: rgba(239, 68, 68, 0.3); }
 .vote-split-column .column-header {
     font-weight: bold;
     font-size: 14px;
@@ -1623,7 +1580,6 @@ button:disabled {
 .vote-split-column.acquit .column-header { color: var(--success); }
 .vote-split-column.execute .column-header { color: var(--danger); }
 
-/* Chứa avatar người tham gia biểu quyết */
 .voters-avatar-list {
     display: flex;
     flex-wrap: wrap;
@@ -1647,7 +1603,7 @@ button:disabled {
     to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
-/* === HOẠT ẢNH BÚA TÒA ÁN === */
+/* === 22. HOẠT ẢNH BÚA TÒA ÁN TỐI CAO === */
 .gavel-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -1703,7 +1659,7 @@ button:disabled {
     100% { opacity: 0; transform: translate(-50%, -50%) scale(5); }
 }
 
-/* === MÀN HÌNH TỔNG KẾT VÀ VINH DANH CHI TIẾT === */
+/* === 23. MÀN HÌNH VICTORY VÀ VINH DANH MVP === */
 .victory-layout-container {
     background: var(--bg-panel);
     border-radius: 20px;
@@ -1715,7 +1671,6 @@ button:disabled {
     overflow-y: auto;
     max-height: 90vh;
 }
-/* Màn hình chuyển cảnh Victory Splash Screen */
 .victory-splash-card {
     text-align: center;
     padding: 20px;
@@ -1737,7 +1692,6 @@ button:disabled {
     align-items: center;
     margin-bottom: 25px;
 }
-/* Bảng Vinh Danh Hiệu Năng & Thống Kê Chi Tiết */
 .stats-tabs {
     display: flex;
     gap: 5px;
@@ -1760,14 +1714,12 @@ button:disabled {
     background: var(--accent);
     color: var(--btn-text);
 }
-/* Tab Content */
 .stats-tab-content-wrapper {
     background: var(--bg-main);
     border-radius: 12px;
     padding: 15px;
     min-height: 320px;
 }
-/* Cấu trúc bục MVP */
 .mvp-podium {
     text-align: center;
     padding: 15px;
@@ -1795,12 +1747,6 @@ button:disabled {
     border-radius: 12px;
     display: inline-block;
 }
-.mvp-details-box {
-    margin-top: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
 .mvp-stat-row {
     background: rgba(63, 63, 70, 0.3);
     padding: 8px 12px;
@@ -1808,9 +1754,9 @@ button:disabled {
     display: flex;
     justify-content: space-between;
     font-size: 13px;
+    margin-top: 6px;
 }
 
-/* Sơ đồ quan hệ SVG */
 .unmasked-relations-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1826,7 +1772,7 @@ button:disabled {
     z-index: 5;
 }
 
-/* === BỆNH ÁN NGƯỜI CHƠI (BOTTOM SHEET) === */
+/* === 24. BOTTOM SHEET BỆNH ÁN NGƯỜI CHƠI === */
 .bottom-sheet-overlay {
     position: fixed; 
     top: 0; 
@@ -1900,99 +1846,30 @@ button:disabled {
     font-weight: bold; 
 }
 
-/* === SỰ KIỆN TAROT (THE LAST HUNT) === */
-.tarot-container { 
-    display: flex; 
-    justify-content: center; 
-    gap: 12px; 
-    perspective: 1000px; 
-    margin-top: 15px; 
-    flex-wrap: wrap;
-}
-.tarot-card { 
-    width: 80px; 
-    height: 120px; 
-    position: relative; 
-    transition: transform 0.6s; 
-    transform-style: preserve-3d; 
-    cursor: pointer; 
-}
-.tarot-card.flipped { 
-    transform: rotateY(180deg); 
-    cursor: default; 
-}
-.tarot-card.disabled { 
-    pointer-events: none; 
-}
-.tarot-card.dimmed { 
-    opacity: 0.4; 
-    filter: grayscale(80%); 
-}
-.t-face { 
-    position: absolute; 
-    width: 100%; 
-    height: 100%; 
-    backface-visibility: hidden; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    align-items: center; 
-    border-radius: 8px; 
-    border: 2px solid var(--accent); 
-    box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
-}
-.t-front { 
-    background: linear-gradient(135deg, #1a1a1e 0%, #0a0a0c 100%); 
-    font-size: 28px; 
-    color: var(--accent); 
-}
-.t-back { 
-    background: #f8fafc; 
-    transform: rotateY(180deg); 
-    color: #0f172a; 
-    font-weight: bold; 
-    font-size: 13px; 
-    text-align: center; 
-    padding: 4px; 
-}
-.t-back-hunt { 
-    background: #fce4ec; 
-    transform: rotateY(180deg); 
-    color: #b71c1c; 
-    font-weight: bold; 
-    font-size: 16px; 
-    text-align: center; 
-    padding: 4px; 
-    border: 2px solid #b71c1c; 
-}
-
-/* === LỚP ĐẶC THÙ CHO TRƯỞNG LÀNG / TRƯỞNG PHIẾU === */
-.mayor-star {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    font-size: 12px;
-}
-
-/* Đồng bộ kết nối trực tuyến */
-.online-dot {
-    width: 8px;
-    height: 8px;
+/* NÚT CÀI ĐẶT DESKTOP */
+.desktop-btn-settings {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    z-index: var(--z-nav);
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    font-size: 18px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    background: var(--success);
-    display: inline-block;
-    margin-right: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
-.offline-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--log-text);
-    display: inline-block;
-    margin-right: 5px;
+.desktop-btn-settings:hover {
+    border-color: var(--accent);
+    transform: rotate(30deg);
 }
 
-/* === GIAO DIỆN PANEL CÀI ĐẶT & QUYÊN GÓP === */
+/* === 25. CÀI ĐẶT PANEL & QUYÊN GÓP === */
 #panel-settings-donate {
     display: none; 
     flex-direction: column; 
@@ -2004,7 +1881,7 @@ button:disabled {
     max-width: 90vw; 
     max-height: 85vh; 
     background: var(--bg-panel); 
-    z-index: calc(var(--z-nav) + 1); 
+    z-index: calc(var(--z-nav) + 10); 
     border-radius: 16px; 
     box-shadow: 0 10px 30px rgba(0,0,0,0.7); 
     border: 1px solid var(--border-color); 
@@ -2030,9 +1907,6 @@ button:disabled {
 .setting-controls input[type="range"] {
     flex: 1;
 }
-#bgm-selector {
-    width: 100%;
-}
 .donate-box { 
     padding: 15px; 
     background: var(--bg-main); 
@@ -2056,17 +1930,10 @@ button:disabled {
     border-radius: 4px;
     font-weight: bold;
 }
-.watermark { 
-    text-align: center; 
-    opacity: 0.35; 
-    font-size: 10px; 
-    margin-top: 15px; 
-}
 
-/* === GIAO DIỆN PHƯƠNG TIỆN DI ĐỘNG (MOBILE LAYOUT) === */
+/* === 26. THANH TABS DI ĐỘNG & BREAKPOINTS RESPONSIVE === */
 .mobile-nav { display: none; }
 
-/* Huy hiệu chỉ báo thông báo chưa đọc trên Mobile Nav */
 .nav-badge {
     position: absolute;
     top: 5px;
@@ -2139,7 +2006,6 @@ button:disabled {
         overflow-y: auto; 
     }
     
-    /* Ánh xạ chuyển Tab trên Mobile tương ứng với index.html */
     body[data-mobile-tab="1"] .col-players { display: flex !important; }
     body[data-mobile-tab="2"] .col-roles { display: flex !important; }
     body[data-mobile-tab="3"] .col-board { display: flex !important; }
@@ -2159,7 +2025,7 @@ button:disabled {
     }
 }
 
-/* === GIAO DIỆN KHU VỰC MODAL CHUNG === */
+/* === 27. CẤU TRÚC POPUP MODALS CHUNG === */
 .custom-modal-overlay { 
     position: fixed; 
     top: 0; 
@@ -2201,10 +2067,6 @@ button:disabled {
     white-space: pre-wrap;
 }
 
-.bloody-overlay { background: rgba(20, 5, 5, 0.94) !important; }
-.bloody-modal { border-color: var(--danger) !important; box-shadow: 0 0 35px var(--danger) !important; background: #000 !important; }
-
-/* === BỘ THẺ CHỨC NĂNG (FLASHCARD) === */
 .custom-modal-card-wrapper {
     perspective: 1000px;
     width: 100%;
@@ -2258,7 +2120,6 @@ button:disabled {
     flex: 1;
 }
 
-/* === BẢNG BỔ PHIẾU & CHỌN MỤC TIÊU === */
 #vote-modal-content, #target-modal-content {
     width: 95%; 
     max-width: 680px; 
@@ -2275,7 +2136,7 @@ button:disabled {
     overflow-y: auto; 
     align-content: flex-start;
 }
-.vote-btn-huge, .target-btn-box { 
+.target-btn-box { 
     flex: 1 1 calc(33.33% - 10px); 
     min-width: 100px; 
     background: var(--bg-item); 
@@ -2292,20 +2153,14 @@ button:disabled {
     position: relative; 
     min-height: 65px;
 }
-.vote-btn-huge:active, .target-btn-box:active { 
+.target-btn-box:active { 
     transform: scale(0.96); 
 }
-.vote-btn-huge .name, .target-btn-box .name { 
+.target-btn-box .name { 
     font-size: 13px; 
     font-weight: bold; 
     color: var(--text-main); 
     word-wrap: break-word;
-}
-.vote-btn-huge .count { 
-    font-size: 20px; 
-    font-weight: 900; 
-    color: var(--accent); 
-    margin-top: 5px;
 }
 .target-btn-box.selected { 
     background: var(--accent); 
@@ -2314,11 +2169,11 @@ button:disabled {
 .target-btn-box.selected .name { 
     color: var(--btn-text); 
 }
-.vote-action-footer, .target-action-footer {
+.target-action-footer {
     display: flex;
     gap: 10px;
     margin-top: 10px;
 }
-.vote-action-footer button, .target-action-footer button {
+.target-action-footer button {
     flex: 1;
 }

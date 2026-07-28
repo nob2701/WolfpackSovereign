@@ -1,7 +1,7 @@
 import { db, ref, set, get, update } from "./firebase-config.js";
 
 // ==========================================
-// 1. QUẢN LÝ TRÌNH TỰ MODALS (MODAL QUEUE MANAGER)
+// 1. QUẢN LÝ TRÌNH TỰ VÀ HÀNG CHỜ MODALS (MODAL STACK MANAGER)
 // ==========================================
 export const ModalManager = {
     currentModalId: null,
@@ -76,11 +76,11 @@ export function showToast(message, type = "info") {
     }, 3200);
 }
 
-// Ghi đè phương thức alert truyền thống tránh khóa luồng UI của trình duyệt
+// Ghi đè alert truyền thống để không làm nghẽn luồng xử lý JavaScript
 window.alert = (msg) => showToast(msg, "info");
 
 // ==========================================
-// 3. HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG TRÙNG SỰ KIỆN
+// 3. HỘP THOẠI XÁC NHẬN AN TOÀN CHỐNG DỒN TÍCH SỰ KIỆN
 // ==========================================
 export function askConfirm(message, onConfirm, onCancel = null) {
     const modal = document.getElementById("confirm-modal");
@@ -96,7 +96,7 @@ export function askConfirm(message, onConfirm, onCancel = null) {
 
     if (!btnSubmit || !btnCancel) return;
 
-    // Nhân bản làm sạch sự kiện dồn tích cũ trên DOM
+    // Nhân bản Node để tẩy sạch listener cũ dồn tích
     const newSubmitBtn = btnSubmit.cloneNode(true);
     const newCancelBtn = btnCancel.cloneNode(true);
 
@@ -119,7 +119,7 @@ export function askConfirm(message, onConfirm, onCancel = null) {
 }
 
 // ==========================================
-// 4. BỘ DÁN MÃ PHÒNG NHANH CHO DI ĐỘNG (CLIPBOARD PASTE)
+// 4. TRỢ LÝ DÁN MÃ PHÒNG PIN NHANH (CLIPBOARD PASTE)
 // ==========================================
 export function setupPasteCodeHandler() {
     const wrapper = document.getElementById("join-code-panel");
@@ -137,13 +137,13 @@ export function setupPasteCodeHandler() {
             }
             const confirmBtn = document.getElementById("btn-join-room-submit");
             if (confirmBtn) confirmBtn.disabled = false;
-            showToast("Đã nhập nhanh mã phòng từ khay nhớ tạm!", "success");
+            showToast("Đã tự động nhập mã phòng từ khay nhớ tạm!", "success");
         }
     });
 }
 
 // ==========================================
-// 5. BẢNG CHỌN MỤC TIÊU ĐỘNG CHO CHỨC NĂNG ĐÊM
+// 5. BẢNG CHỌN MỤC TIÊU HÀNH ĐỘNG ĐỘNG BAN ĐÊM
 // ==========================================
 export function openTargetSelection(playersList, role, onConfirmCallback) {
     const Net = window.Net;
@@ -164,19 +164,20 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
     let chosenModifier = null;
     let extraPhrase = "";
 
-    const multiTargetRoles = ["cupid", "phantomWolf", "eradicator", "manipulator", "prime"];
+    // Danh sách các vai trò cần chọn 2 mục tiêu
+    const multiTargetRoles = ["cupid", "phantomWolf", "eradicator", "manipulator", "prime", "arsonist"];
     const isMultiSelect = multiTargetRoles.includes(role);
     const maxSelections = isMultiSelect ? 2 : 1;
 
     if (isMultiSelect) {
         instruction.style.display = "block";
-        instruction.innerText = `Kỹ năng yêu cầu chọn đủ ${maxSelections} mục tiêu khác nhau. Lượt chọn: 0/${maxSelections}`;
+        instruction.innerText = `Kỹ năng yêu cầu chọn đủ ${maxSelections} mục tiêu. Đã chọn: 0/${maxSelections}`;
     }
 
     const validTargets = playersList.filter(p => p.alive && p.id !== Net.playerId);
 
     if (validTargets.length === 0) {
-        showToast("Không tìm thấy mục tiêu hợp lệ nào còn sống để thi triển!", "danger");
+        showToast("Không tìm thấy mục tiêu hợp lệ nào còn sống!", "danger");
         return;
     }
 
@@ -206,7 +207,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
                         targetBtn.classList.add("selected");
                     }
                 }
-                instruction.innerText = `Kỹ năng yêu cầu chọn đủ ${maxSelections} mục tiêu khác nhau. Lượt chọn: ${selectedPlayerIds.length}/${maxSelections}`;
+                instruction.innerText = `Kỹ năng yêu cầu chọn đủ ${maxSelections} mục tiêu. Đã chọn: ${selectedPlayerIds.length}/${maxSelections}`;
             } else {
                 document.querySelectorAll(".target-btn-box").forEach(btn => btn.classList.remove("selected"));
                 targetBtn.classList.add("selected");
@@ -217,11 +218,12 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         grid.appendChild(targetBtn);
     });
 
+    // Render các nút bổ trợ tùy chọn hành động
     if (role === "seer") {
         modifiersBox.classList.remove("hidden");
         renderModifiers([
-            { id: "seer_scan", label: "🔮 Thấu Thị" },
-            { id: "seer_open_eye", label: "👁️ Khai Nhãn" }
+            { id: "seer_scan", label: "🔮 Thấu Thị Phe" },
+            { id: "seer_open_eye", label: "👁️ Khai Nhãn Vai Trò" }
         ]);
     } else if (role === "witch") {
         modifiersBox.classList.remove("hidden");
@@ -232,8 +234,8 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
     } else if (role === "avenger") {
         modifiersBox.classList.remove("hidden");
         renderModifiers([
-            { id: "anesthetize", label: "💤 Gây Mê" },
-            { id: "execute", label: "⚔️ Phán Quyết" }
+            { id: "anesthetize", label: "💤 Gây Mê Phong Ấn" },
+            { id: "execute", label: "⚔️ Trừng Phạt" }
         ]);
     } else if (role === "arsonist") {
         modifiersBox.classList.remove("hidden");
@@ -278,7 +280,6 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 
     if (!submitBtn || !cancelBtn) return;
 
-    // Nhân bản làm sạch nút Xác Nhận và Hủy dồn tích
     const newSubmitBtn = submitBtn.cloneNode(true);
     const newCancelBtn = cancelBtn.cloneNode(true);
 
@@ -287,11 +288,11 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 
     newSubmitBtn.onclick = () => {
         if (selectedPlayerIds.length === 0) {
-            showToast("Vui lòng chạm chọn mục tiêu trước!", "warning");
+            showToast("Vui lòng chọn mục tiêu trước khi xác nhận!", "warning");
             return;
         }
         if (isMultiSelect && selectedPlayerIds.length < maxSelections) {
-            showToast(`Vai trò này yêu cầu bạn phải chọn đúng đủ ${maxSelections} mục tiêu!`, "warning");
+            showToast(`Kỹ năng này yêu cầu bạn phải chọn đủ ${maxSelections} mục tiêu!`, "warning");
             return;
         }
 
@@ -299,14 +300,13 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
             const phraseInput = document.getElementById("target-phrase-input");
             extraPhrase = phraseInput ? phraseInput.value.trim() : "";
             if (!extraPhrase) {
-                showToast("Vui lòng nhập câu thoại bắt đối phương nói nhái!", "warning");
+                showToast("Vui lòng nhập lời thoại ép đối phương nói nhái!", "warning");
                 return;
             }
         }
 
         onConfirmCallback(selectedPlayerIds[0], isMultiSelect ? selectedPlayerIds[1] : null, chosenModifier, extraPhrase);
         
-        // Reset hoàn toàn biến trạng thái bùa chú đệm tránh rò rỉ thông tin
         chosenModifier = null;
         ModalManager.closeCurrent();
     };
@@ -320,7 +320,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 }
 
 // ==========================================
-// 6. ĐỒNG BỘ TABS DI ĐỘNG (MOBILE TABS NAV)
+// 6. ĐỒNG BỘ THANH ĐIỀU HƯỚNG DI ĐỘNG (MOBILE TABS)
 // ==========================================
 export function initMobileTabSync() {
     const tabSelectors = ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"];
@@ -343,7 +343,7 @@ export function initMobileTabSync() {
 }
 
 // ==========================================
-// 7. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ BẢO MẬT
+// 7. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ MẬT
 // ==========================================
 export function setupIdentityCardHoldGesture() {
     const idCard = document.getElementById("player-identity-card");
@@ -356,25 +356,20 @@ export function setupIdentityCardHoldGesture() {
     let isHolding = false;
 
     const startHold = (e) => {
-        // Chặn hoàn toàn cử chỉ cuộn trang mặc định của thiết bị di động
-        if (e.cancelable) {
-            e.preventDefault();
-        }
+        if (e.cancelable) e.preventDefault();
 
         if (isHolding) return;
         isHolding = true;
 
-        if (holdTimer) {
-            clearTimeout(holdTimer);
-        }
+        if (holdTimer) clearTimeout(holdTimer);
 
         holdTimer = setTimeout(() => {
             if (isHolding) {
                 idRoleVal.style.filter = "none";
                 idFactionVal.style.filter = "none";
-                showToast("Đã giải mờ căn cước tạm thời!", "info");
+                showToast("Đã phá niêm phong giải mờ căn cước tạm thời!", "info");
             }
-        }, 1500); 
+        }, 1200); 
     };
 
     const endHold = () => {
@@ -387,19 +382,17 @@ export function setupIdentityCardHoldGesture() {
         idFactionVal.style.filter = "blur(5px)";
     };
 
-    // Đăng ký sự kiện máy tính (Mouse)
     idCard.addEventListener("mousedown", startHold);
     idCard.addEventListener("mouseup", endHold);
     idCard.addEventListener("mouseleave", endHold);
 
-    // Đăng ký sự kiện di động (Chặn passive: false để hỗ trợ preventDefault)
     idCard.addEventListener("touchstart", startHold, { passive: false });
     idCard.addEventListener("touchend", endHold, { passive: true });
     idCard.addEventListener("touchcancel", endHold, { passive: true });
 }
 
 // ==========================================
-// 8. BẢNG TRẠNG THÁI NGƯỜI CHƠI (BOTTOM SHEET)
+// 8. BẢNG TRẠNG THÁI / LÝ LỊCH (BOTTOM SHEET)
 // ==========================================
 export function showPlayerBottomSheet(playerData, isGM = false) {
     const Net = window.Net;
@@ -467,7 +460,7 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
     if (killBtn) {
         killBtn.onclick = () => {
             closeSheet();
-            askConfirm(`Bạn có chắc chắn muốn thi hành án tử hình lập tức lên người chơi ${playerData.name}?`, () => {
+            askConfirm(`Bạn chắc chắn muốn thi hành án tử hình đối tượng ${playerData.name}?`, () => {
                 window.UI_Module.executeDeath(playerData.id);
             });
         };
@@ -513,7 +506,7 @@ function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
 }
 
 // ==========================================
-// 9. HOẠT ẢNH BÚA PHÁN QUYẾT TÒA ÁN ĐỒNG BỘ
+// 9. HOẠT ẢNH BÚA TÒA ÁN
 // ==========================================
 export function runGavelStrikeAnimation(decisionText, callback) {
     const overlay = document.getElementById("gavel-animation-overlay");
@@ -537,8 +530,29 @@ export function runGavelStrikeAnimation(decisionText, callback) {
 }
 
 // ==========================================
-// 10. QUẢN LÝ THIẾT LẬP ÂM THANH & DONATE
+// 10. HỆ THỐNG PHÁT ÂM THANH (AUDIO SFX & BGM)
 // ==========================================
+export function playSFX(sfxName) {
+    const sfxPlayer = document.getElementById("sfx-player");
+    if (!sfxPlayer) return;
+    
+    // Tự động gán đường dẫn SFX tương ứng
+    sfxPlayer.src = `assets/audio/${sfxName}.mp3`;
+    sfxPlayer.play().catch(err => {
+        console.warn("Âm thanh bị trình duyệt chặn phát tự động:", err.message);
+    });
+}
+
+export function playBGM(bgmName) {
+    const bgmPlayer = document.getElementById("bgm-player");
+    if (!bgmPlayer) return;
+
+    bgmPlayer.src = `assets/audio/${bgmName}.mp3`;
+    bgmPlayer.play().catch(err => {
+        console.warn("Nhạc nền bị chặn phát tự động:", err.message);
+    });
+}
+
 export function setupSoundSettings() {
     const bgmPlayer = document.getElementById("bgm-player");
     const sfxPlayer = document.getElementById("sfx-player");
@@ -588,12 +602,9 @@ export function setupSoundSettings() {
     document.getElementById("btn-close-settings")?.addEventListener("click", closeSettings);
     document.getElementById("desktop-overlay")?.addEventListener("click", closeSettings);
 
-    const btnCopyStk = document.getElementById("btn-copy-stk");
-    if (btnCopyStk) {
-        btnCopyStk.addEventListener("click", () => {
-            navigator.clipboard.writeText("1208856666").then(() => {
-                showToast("Đã sao chép số tài khoản quyên góp!", "success");
-            });
+    document.getElementById("btn-copy-stk")?.addEventListener("click", () => {
+        navigator.clipboard.writeText("1208856666").then(() => {
+            showToast("Đã sao chép số tài khoản quyên góp!", "success");
         });
-    }
+    });
 }

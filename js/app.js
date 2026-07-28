@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupParchmentNavigation();
     dismissSplashScreen();
     
-    // Tự động khôi phục phiên chơi cũ nếu gặp sự cố rớt mạng/F5
+    // Tự động khôi phục phiên chơi cũ khi F5 rớt mạng
     attemptSessionReconnection();
 });
 
@@ -71,7 +71,7 @@ function clearActiveListeners() {
 }
 
 // ==========================================
-// 1. LUỒNG ĐĂNG KÝ VÀ KIỂM TRA ĐẦU VÀO (LOGIN ENGINE)
+// 1. ĐĂNG NHẬP & TẠO/THAM GIA PHÒNG (LOBBY ENGINE)
 // ==========================================
 function initLobbyEngine() {
     const nameInput = document.getElementById("player-name-input");
@@ -86,7 +86,6 @@ function initLobbyEngine() {
 
     const savedName = localStorage.getItem("online_player_name");
     if (savedName && nameInput) {
-        // Cắt bớt tên cũ nếu vượt quá 10 ký tự giới hạn mới
         const truncatedName = savedName.substring(0, 10);
         nameInput.value = truncatedName;
         Net.playerName = truncatedName;
@@ -96,7 +95,6 @@ function initLobbyEngine() {
 
     if (nameInput) {
         nameInput.addEventListener("input", () => {
-            // Giới hạn 10 ký tự chữ và số thông thường
             const cleanName = nameInput.value.trim().replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, "").substring(0, 10);
             nameInput.value = cleanName;
             const isValid = cleanName.length >= 2 && cleanName.length <= 10;
@@ -147,16 +145,23 @@ function initLobbyEngine() {
     if (btnToggleReady) btnToggleReady.addEventListener("click", toggleReadyState);
     if (btnHostStartSetup) btnHostStartSetup.addEventListener("click", hostStartSetup);
 
-    // Sự kiện cưỡng chế sang ngày của GM (Force Day Transition)
+    // Nút Bắt Đầu Bầu Trưởng Làng của Quản trò
+    document.getElementById("btn-gm-trigger-mayor")?.addEventListener("click", () => {
+        askConfirm("Bạn có chắc chắn muốn kích hoạt cuộc bầu chọn Trưởng Làng ngay bây giờ?", () => {
+            StateMachine.startMayorElection();
+        });
+    });
+
+    // Sự kiện cưỡng chế sang ngày của GM
     document.getElementById("btn-gm-force-day")?.addEventListener("click", () => {
-        askConfirm("Bạn có chắc chắn muốn cưỡng chế chuyển sang BAN NGÀY lập tức? Mọi hành động chưa thực hiện của người chơi đêm nay sẽ bị bỏ qua!", () => {
+        askConfirm("Bạn có chắc chắn muốn cưỡng chế chuyển sang BAN NGÀY lập tức? Mọi hành động chưa thực hiện đêm nay sẽ bị bỏ qua!", () => {
             StateMachine.forceTransitionToDay();
         });
     });
 
     // Sự kiện Quản trò chốt kết quả biểu quyết thủ công
     document.getElementById("btn-gm-resolve-vote")?.addEventListener("click", () => {
-        askConfirm("Bạn có chắc chắn muốn chốt kết quả bỏ phiếu treo cổ và công bố phán quyết ngay lập tức?", () => {
+        askConfirm("Bạn có chắc chắn muốn chốt kết quả bỏ phiếu treo cổ ngay lập tức?", () => {
             StateMachine.resolveVotingOutcome();
         });
     });
@@ -192,7 +197,7 @@ function checkCodeComplete() {
 }
 
 // ==========================================
-// 2. KẾT NỐI: TẠO PHÒNG VÀ ĐỒNG BỘ TRẠNG THÁI CHỜ
+// 2. KẾT NỐI TẠO PHÒNG VÀ ĐỒNG BỘ TRỰC TUYẾN
 // ==========================================
 function generateRoomCode() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -249,7 +254,7 @@ async function createRoom() {
         enterLobbyMode();
         listenToRoom();
     } catch (error) {
-        showToast("Lỗi khi kết nối máy chủ để khởi tạo phòng!", "danger");
+        showToast("Lỗi khi khởi tạo phòng trực tuyến!", "danger");
     }
 }
 
@@ -264,7 +269,7 @@ async function joinRoom(roomId, name = Net.playerName) {
 
         const roomData = snapshot.val();
         if (roomData.meta.started) {
-            showToast("Ván đấu trong phòng đã bắt đầu, không thể tham gia!", "danger");
+            showToast("Ván đấu đã bắt đầu, không thể tham gia!", "danger");
             return;
         }
 
@@ -293,7 +298,7 @@ async function joinRoom(roomId, name = Net.playerName) {
         enterLobbyMode();
         listenToRoom();
     } catch (error) {
-        showToast("Gặp sự cố khi gia nhập phòng trực tuyến!", "danger");
+        showToast("Gặp sự cố khi gia nhập phòng!", "danger");
     }
 }
 
@@ -355,7 +360,7 @@ async function attemptSessionReconnection() {
                     }
                     
                     listenToRoom();
-                    showToast("Khôi phục phiên kết nối cũ thành công!", "success");
+                    showToast("Khôi phục phiên kết nối thành công!", "success");
                 } else {
                     cleanSessionStorage();
                 }
@@ -376,19 +381,16 @@ function cleanSessionStorage() {
     localStorage.removeItem("reconnect_player_id");
 }
 
-// Xử lý dọn dẹp biến và đồng bộ hóa rời phòng
 async function handleRoomExit() {
     if (!Net.roomId) return;
     try {
         if (Net.isHost) {
-            // Xóa hoàn toàn node phòng trên Firebase để giải phóng bộ nhớ máy chủ
             await set(ref(db, `rooms/${Net.roomId}`), null);
         } else {
-            // Xóa node thông tin người chơi hiện tại khỏi danh sách thành viên phòng
             await set(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}`), null);
         }
     } catch (err) {
-        console.error("Lỗi khi gửi lệnh dọn dẹp phòng rác lên Firebase:", err);
+        console.error("Lỗi khi rời phòng:", err);
     } finally {
         cleanSessionStorage();
         handleLocalEvictionCleanup();
@@ -409,7 +411,6 @@ function handleLocalEvictionCleanup() {
     document.getElementById("lobby-screen").classList.remove("hidden");
     document.getElementById("login-form-panel").classList.remove("hidden");
     
-    // Reset sạch các trường nhập mã phòng
     document.querySelectorAll(".code-input").forEach(input => input.value = "");
 }
 
@@ -420,14 +421,12 @@ function listenToRoom() {
     clearActiveListeners();
     setupActivePlayersPresence();
 
-    // Khởi động hệ thống thăm dò tỷ lệ dự đoán phe thắng
     setupSpectatorWinPoll();
 
     const roomRef = ref(db, `rooms/${Net.roomId}`);
     const unsubRoom = onValue(roomRef, (snapshot) => {
         if (!snapshot.exists()) {
-            // Trường hợp phòng đã bị hủy bởi chủ phòng
-            showToast("Phòng chơi đã bị hủy bởi chủ phòng!", "danger");
+            showToast("Phòng chơi đã bị hủy bởi Quản trò!", "danger");
             handleLocalEvictionCleanup();
             return;
         }
@@ -436,9 +435,25 @@ function listenToRoom() {
         
         window.G.day = roomData.meta.day || 0;
         window.G.phase = roomData.meta.phase || "setup";
+        window.G.mayorId = roomData.meta.mayorId || null;
         window.G.players = Object.values(roomData.players || {});
         window.G.roleCounts = roomData.roleCounts || {};
         Net.players = roomData.players || {};
+
+        // Đồng bộ hóa Bộ đếm thời gian đếm ngược (Countdown Timer)
+        if (roomData.meta.timerEndTime && roomData.meta.timerDuration) {
+            StateMachine.syncPhaseTimer(roomData.meta.timerEndTime, roomData.meta.timerDuration);
+        }
+
+        // Cập nhật tên Trưởng Làng lên UI
+        const mayorNameEl = document.getElementById("mayor-name");
+        if (mayorNameEl) {
+            if (roomData.meta.mayorId && roomData.players[roomData.meta.mayorId]) {
+                mayorNameEl.innerText = roomData.players[roomData.meta.mayorId].name;
+            } else {
+                mayorNameEl.innerText = "Chưa có";
+            }
+        }
 
         renderPlayersGridSmartly();
 
@@ -446,7 +461,6 @@ function listenToRoom() {
         const lobbyConnectedEl = document.getElementById("lobby-connected-count");
         if (lobbyConnectedEl) lobbyConnectedEl.innerText = connectedCount;
 
-        // KIỂM TRA ĐIỀU KIỆN CHUYỂN GIAO DIỆN PHÙ HỢP TRÁNH TREO LOBBY HANG
         const isSetupPhaseInLobby = (roomData.meta.phase === "setup" && !roomData.meta.started);
 
         if (isSetupPhaseInLobby) {
@@ -458,7 +472,6 @@ function listenToRoom() {
                 document.getElementById("btn-host-start-setup").disabled = !allReady;
             }
         } else {
-            // Khi phase đã thay đổi (khác "setup" hoặc "started === true"), kích hoạt chuyển tiếp màn hình
             if (document.body.getAttribute("data-view") === "lobby") {
                 transitionToGameScreen(roomData);
             }
@@ -542,17 +555,14 @@ function transitionToGameScreen(roomData) {
     } else {
         document.getElementById("gm-timeline-container").classList.add("hidden");
         document.getElementById("player-mailbox-container").classList.remove("hidden");
-        
-        // Kích hoạt bộ lọc danh mục mật thư của người chơi
         setupMailboxCategoryFilters();
     }
     
-    // Tự động nhảy Tab 3 (Bàn chơi - Board) trên thanh di động để người chơi nhìn thấy bàn cờ tức thì
     window.UI_Module.switchTab(3);
 }
 
 // ==========================================
-// 4. QUẢN LÝ LAYOUT CHUYỂN PHA ĐÊM/NGÀY & KHÓA CHAT
+// 4. QUẢN LÝ LAYOUT CHUYỂN PHA VÀ MỞ KÊNH CHAT
 // ==========================================
 function syncLayoutBasedOnRoleAndStatus(roomData) {
     const mySelf = Net.players[Net.playerId];
@@ -574,7 +584,7 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
         if (Net.currentChannel === "public") {
             if (chatInputField) {
                 chatInputField.disabled = true;
-                chatInputField.placeholder = "Đêm đã buông xuống, toàn làng đang ngủ say... Hãy giữ im lặng!";
+                chatInputField.placeholder = "Màn đêm đã buông xuống... Hãy giữ im lặng!";
             }
             if (chatSendBtn) chatSendBtn.disabled = true;
         } else {
@@ -603,7 +613,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             }
         }
     } else {
-        // Cô lập hoàn toàn kênh mật ban ngày tránh rò rỉ thông tin
         const dayBannedChannels = ["wolf", "couple", "prime", "vampire", "reaper"];
         if (dayBannedChannels.includes(Net.currentChannel)) {
             Net.currentChannel = "public";
@@ -619,13 +628,13 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             if (mySelf.isSilencerMuted) {
                 if (chatInputField) {
                     chatInputField.disabled = true;
-                    chatInputField.placeholder = "Bạn đang bị câm lặng (Muted) hôm nay... Im lặng!";
+                    chatInputField.placeholder = "Bạn bị câm lặng hôm nay... Im lặng!";
                 }
                 if (chatSendBtn) chatSendBtn.disabled = true;
             } else {
                 if (chatInputField) {
                     chatInputField.disabled = false;
-                    chatInputField.placeholder = "Thảo luận công khai cùng làng...";
+                    chatInputField.placeholder = "Thảo luận công khai...";
                 }
                 if (chatSendBtn) chatSendBtn.disabled = false;
             }
@@ -633,7 +642,7 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
             if (Net.currentChannel === "graveyard") {
                 if (chatInputField) {
                     chatInputField.disabled = false;
-                    chatInputField.placeholder = "Linh hồn thảo luận ngầm...";
+                    chatInputField.placeholder = "Linh hồn trò chuyện ngầm...";
                 }
                 if (chatSendBtn) chatSendBtn.disabled = false;
             } else {
@@ -644,14 +653,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
                 if (chatSendBtn) chatSendBtn.disabled = true;
             }
         }
-
-        if (Net.currentChannel !== "public" && Net.currentChannel !== "graveyard") {
-            if (chatInputField) {
-                chatInputField.disabled = true;
-                chatInputField.placeholder = "Kênh phe phái ban ngày chỉ đọc...";
-            }
-            if (chatSendBtn) chatSendBtn.disabled = true;
-        }
     }
 
     const forceDayBtn = document.getElementById("btn-gm-force-day");
@@ -659,6 +660,13 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
         forceDayBtn?.classList.remove("hidden");
     } else {
         forceDayBtn?.classList.add("hidden");
+    }
+
+    const triggerMayorBtn = document.getElementById("btn-gm-trigger-mayor");
+    if (Net.isHost && phase === "day" && roomData.meta.day === 1 && !roomData.meta.mayorId) {
+        triggerMayorBtn?.classList.remove("hidden");
+    } else {
+        triggerMayorBtn?.classList.add("hidden");
     }
 
     const resolveVoteBtn = document.getElementById("btn-gm-resolve-vote");
@@ -705,9 +713,9 @@ function updateSovereignStatusAndGuide(roomData) {
 
     if (scriptText) {
         if (phase === "night") {
-            scriptText.innerText = "Đêm tối ma mị bao phủ toàn quốc... Thần dân và muông thú hãy nhắm mắt đi ngủ!";
+            scriptText.innerText = "Đêm tối bao phủ... Thần dân và muông thú hãy nhắm mắt đi ngủ!";
         } else {
-            scriptText.innerText = "Bình minh hé rạng! Hãy thảo luận tự do tìm kiếm dấu vết Ma Sói ẩn giấu.";
+            scriptText.innerText = "Bình minh hé rạng! Hãy thảo luận tự do vạch mặt kẻ thù.";
         }
     }
 }
@@ -720,12 +728,12 @@ function renderDynamicActionControls(roomData, mySelf) {
 
     if (phase === "night") {
         if (!mySelf.alive) {
-            controlPanel.innerHTML = `<p style="color:var(--log-text); font-style:italic;">Bạn đã hy sinh. Đang theo dõi ván đấu dưới dạng linh hồn...</p>`;
+            controlPanel.innerHTML = `<p style="color:var(--log-text); font-style:italic;">Bạn đã hy sinh. Theo dõi ván đấu dưới dạng linh hồn...</p>`;
             return;
         }
 
         if (mySelf.turnEnded) {
-            controlPanel.innerHTML = `<p style="color:var(--success); font-weight:bold; animation: blinker 1.5s infinite;">Đã xác nhận kết thúc lượt! Đang ngủ say chờ ngày dậy...</p>`;
+            controlPanel.innerHTML = `<p style="color:var(--success); font-weight:bold; animation: blinker 1.5s infinite;">Đã xong lượt! Đang ngủ say chờ ngày dậy...</p>`;
             return;
         }
 
@@ -750,7 +758,7 @@ function renderDynamicActionControls(roomData, mySelf) {
                     phrase: phrase,
                     timestamp: Date.now()
                 });
-                showToast("Đã ghi nhận mục tiêu hành động đêm của bạn!", "success");
+                showToast("Đã ghi nhận mục tiêu hành động đêm!", "success");
             });
         });
 
@@ -784,7 +792,7 @@ function PASSIVE_NIGHT_ROLES_CHECK(role) {
 }
 
 // ==========================================
-// 5. ĐỒNG BỘ TIẾN TRÌNH BIỂU QUYẾT TREO CỔ (TRIAL STAGE)
+// 5. CÁC PHA XỬ ÁN & BẦU TRƯỞNG LÀNG (TRIAL PHASES)
 // ==========================================
 function syncTrialPhases(roomData) {
     const trial = roomData.trial || { stage: "none", accusedId: null };
@@ -796,7 +804,13 @@ function syncTrialPhases(roomData) {
     if (trial.stage === "none") {
         stageContainer.classList.add("hidden");
         document.getElementById("vote-modal").style.display = "none";
+        document.getElementById("mayor-modal").style.display = "none";
         document.getElementById("trial-vote-progress-wrapper")?.classList.add("hidden");
+        return;
+    }
+
+    if (trial.stage === "mayor_election") {
+        openMayorElectionModal(roomData);
         return;
     }
 
@@ -829,6 +843,48 @@ function syncTrialPhases(roomData) {
     }
 }
 
+function openMayorElectionModal(roomData) {
+    const modal = document.getElementById("mayor-modal");
+    const grid = document.getElementById("mayor-candidates-grid");
+    if (!modal || !grid) return;
+
+    grid.innerHTML = "";
+    modal.style.display = "flex";
+
+    const alivePlayers = Object.values(roomData.players || {}).filter(p => p.alive);
+    let selectedCandidateId = null;
+
+    alivePlayers.forEach(p => {
+        const btn = document.createElement("div");
+        btn.className = "target-btn-box";
+        btn.innerHTML = `<span class="name">${p.name}</span>`;
+
+        btn.addEventListener("click", () => {
+            document.querySelectorAll("#mayor-candidates-grid .target-btn-box").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            selectedCandidateId = p.id;
+        });
+
+        grid.appendChild(btn);
+    });
+
+    document.getElementById("btn-mayor-skip").onclick = () => {
+        set(ref(db, `rooms/${Net.roomId}/mayor_votes/${Net.playerId}`), "skip");
+        modal.style.display = "none";
+        showToast("Bạn đã bỏ phiếu trắng cho chức Trưởng Làng!", "info");
+    };
+
+    document.getElementById("btn-mayor-submit").onclick = () => {
+        if (!selectedCandidateId) {
+            showToast("Vui lòng chọn ứng viên Trưởng Làng!", "warning");
+            return;
+        }
+        set(ref(db, `rooms/${Net.roomId}/mayor_votes/${Net.playerId}`), selectedCandidateId);
+        modal.style.display = "none";
+        showToast("Đã gửi phiếu bầu Trưởng Làng!", "success");
+    };
+}
+
 function renderDefenseTypingPanel(isAccused, accusedName = "") {
     const controlPanel = document.getElementById("controls");
     if (!controlPanel) return;
@@ -836,7 +892,7 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
     if (isAccused) {
         controlPanel.innerHTML = `
             <div style="background:var(--bg-item); padding:15px; border-radius:10px; border:2px solid var(--accent)">
-                <textarea id="defense-typing-area" placeholder="Nhập lời biện hộ cứu rỗi bản thân của bạn tại đây..." style="width:100%; height:80px; background:var(--bg-main); color:white; border-radius:6px; padding:8px; border:1px solid var(--border-color);"></textarea>
+                <textarea id="defense-typing-area" placeholder="Nhập lời biện hộ cứu rỗi bản thân..." style="width:100%; height:80px; background:var(--bg-main); color:white; border-radius:6px; padding:8px; border:1px solid var(--border-color);"></textarea>
                 <button id="btn-submit-defense-speech" class="btn-success w-100" style="margin-top:10px;">Gửi Lời Biện Hộ</button>
             </div>
         `;
@@ -892,7 +948,7 @@ function openSplitScreenVoteModal(accusedId, roomData) {
         if (voter && voter.alive) {
             const chip = document.createElement("div");
             chip.className = "voter-avatar-chip";
-            chip.innerText = voter.name;
+            chip.innerText = voter.name + (voterId === roomData.meta?.mayorId ? " 👑" : "");
 
             if (voteValue === "ACQUIT") {
                 countAcquit++;
@@ -935,7 +991,7 @@ function openSplitScreenVoteModal(accusedId, roomData) {
 }
 
 // ==========================================
-// HỆ THỐNG HÒM THƯ (MAILBOX SYSTEM)
+// 6. HỆ THỐNG HÒM THƯ (MAILBOX SYSTEM)
 // ==========================================
 function renderMailbox(mails) {
     const container = document.getElementById("mailbox-list");
@@ -1025,8 +1081,7 @@ function setupParchmentNavigation() {
     btnPrev.addEventListener("click", () => {
         if (currentMailIndex > 0) {
             currentMailIndex--;
-            const prevMail = openedMailsList[currentMailIndex];
-            openParchmentMail(prevMail);
+            openParchmentMail(openedMailsList[currentMailIndex]);
         } else {
             showToast("Đây là mật thư đầu tiên!", "info");
         }
@@ -1035,8 +1090,7 @@ function setupParchmentNavigation() {
     btnNext.addEventListener("click", () => {
         if (currentMailIndex < openedMailsList.length - 1) {
             currentMailIndex++;
-            const nextMail = openedMailsList[currentMailIndex];
-            openParchmentMail(nextMail);
+            openParchmentMail(openedMailsList[currentMailIndex]);
         } else {
             showToast("Đây là mật thư cuối cùng!", "info");
         }
@@ -1068,7 +1122,7 @@ function setupMailboxCategoryFilters() {
                     updates[`rooms/${Net.roomId}/players/${Net.playerId}/mailbox/${id}/isRead`] = true;
                 });
                 await update(ref(db), updates);
-                showToast("Đã đánh dấu đã đọc toàn bộ mật thư!", "success");
+                showToast("Đã đánh dấu đọc tất cả mật thư!", "success");
             }
         } catch (err) {
             console.error(err);
@@ -1077,7 +1131,7 @@ function setupMailboxCategoryFilters() {
 }
 
 // ==========================================
-// 6. KHÁN GIẢ & KÊNH CHAT BẢO MẬT ĐÊM
+// 7. KÊNH THẢO LUẬN & TRUYỀN TIN BẢO MẬT
 // ==========================================
 function setupChatEngine() {
     const btnSend = document.getElementById("btn-chat-send");
@@ -1189,7 +1243,7 @@ function setupSpectatorWinPoll() {
         document.getElementById(btn.id)?.addEventListener("click", async () => {
             const mySelf = Net.players[Net.playerId];
             if (mySelf && mySelf.alive) {
-                showToast("Bạn vẫn đang sống, hãy tập trung thảo luận!", "warning");
+                showToast("Bạn vẫn còn sống, hãy tập trung thảo luận!", "warning");
                 return;
             }
             await set(ref(db, `rooms/${Net.roomId}/prediction_poll/${Net.playerId}`), btn.faction);
@@ -1227,7 +1281,7 @@ function setupSpectatorWinPoll() {
 }
 
 // ==========================================
-// 4. KHU VỰC HIỂN THỊ LƯỚI GRID NGƯỜI CHƠI (DOM DIFFING - TRÁNH NHẤP NHÁY)
+// 8. RENDER BÀN CỜ NGƯỜI CHƠI (DOM DIFFING TRÁNH GIẬT/NHẤP NHÁY)
 // ==========================================
 function renderPlayersGridSmartly() {
     const grid = document.getElementById("game-players-grid");
@@ -1285,8 +1339,16 @@ function renderPlayersGridSmartly() {
 
         card.className = `player-grid-card ${p.alive ? "" : "dead"}`;
         
-        card.querySelectorAll(".wolf-votes").forEach(el => el.remove());
+        card.querySelectorAll(".wolf-votes, .mayor-star").forEach(el => el.remove());
         
+        // Gán ngôi sao Trưởng Làng nếu có
+        if (p.id === window.G.mayorId) {
+            const star = document.createElement("span");
+            star.className = "mayor-star";
+            star.innerText = "👑";
+            card.appendChild(star);
+        }
+
         applyDecorativeClasses(p, card);
         delete existingCardsMap[p.id];
     });
@@ -1353,7 +1415,7 @@ function renderGMLogs(logs) {
 }
 
 // ==========================================
-// 5. CÁC TIỆN ÍCH HOẠT ĐỘNG KHÁC
+// 9. CÁC TIỆN ÍCH HOẠT ĐỘNG KHÁC
 // ==========================================
 function copyRoomId() {
     if (!Net.roomId) return;
@@ -1399,8 +1461,8 @@ async function hostStartSetup() {
             phase: "day",
             day: 0
         });
-        showToast("Thiết lập phòng hoàn tất! Hãy tiến hành phân phát vai trò.", "success");
+        showToast("Thiết lập hoàn tất! Hãy tiến hành phân phát vai trò.", "success");
     } catch (err) {
-        console.error("Lỗi đồng bộ hóa GM bắt đầu:", err);
+        console.error("Lỗi đồng bộ Quản trò bắt đầu:", err);
     }
 }
