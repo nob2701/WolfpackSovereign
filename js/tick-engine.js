@@ -142,11 +142,60 @@ export const TickEngine = {
             });
         }
 
+        // 1.3 Song Trùng (Doppelganger) Kế Thừa Trực Tiếp
+        actionBuffer.forEach(act => {
+            if (act.role === "doppelganger" && act.actionType === "copy_role") {
+                const targetPlayer = playersMap[act.targetId];
+                if (targetPlayer && !targetPlayer.alive) {
+                    initPlayerState(act.srcId);
+                    playerStateUpdates[act.srcId].role = targetPlayer.role;
+                    playerStateUpdates[act.srcId].realFaction = targetPlayer.realFaction;
+                    initMailbox(act.srcId);
+                    mailboxDeliveries[act.srcId].push({
+                        title: "[🎭] SONG TRÙNG BIẾN HÌNH",
+                        content: `Đối tượng [${targetPlayer.name}] đã tử vong! Bạn kế thừa vai trò [${targetPlayer.role.toUpperCase()}] của họ.`
+                    });
+                }
+            }
+        });
+
         // ==========================================
-        // TICK 2: ĐÁNH TRÁO, ĐIỀU HƯỚNG VÀ ĐẶT BẪY
+        // TICK 2: TRÁO ĐỔI VAI TRÒ, HOÁN ĐỔI NHÂN DẠNG VÀ BẮT BẪY
         // ==========================================
         
-        // 2.1 Sói Ảo Ảnh (Phantom Wolf) Hoán Đổi Nhãn Dạng
+        // 2.1 Tên Trộm (Thief) Đổi Bài Đêm 1
+        actionBuffer.forEach(act => {
+            if (act.role === "thief" && act.actionType === "swap_role") {
+                const targetPlayer = playersMap[act.targetId];
+                if (targetPlayer && targetPlayer.alive) {
+                    initPlayerState(act.srcId);
+                    initPlayerState(act.targetId);
+
+                    const tempRole = targetPlayer.role;
+                    const tempFaction = targetPlayer.realFaction;
+
+                    playerStateUpdates[act.srcId].role = tempRole;
+                    playerStateUpdates[act.srcId].realFaction = tempFaction;
+
+                    playerStateUpdates[act.targetId].role = "villager";
+                    playerStateUpdates[act.targetId].realFaction = "villager";
+
+                    initMailbox(act.srcId);
+                    mailboxDeliveries[act.srcId].push({
+                        title: "[🦹] TRỘM VAI TRÒ THÀNH CÔNG",
+                        content: `Bạn đã ăn trộm vai trò của [${targetPlayer.name}]. Vai trò mới của bạn là: [${tempRole.toUpperCase()}].`
+                    });
+
+                    initMailbox(act.targetId);
+                    mailboxDeliveries[act.targetId].push({
+                        title: "[🦹] BỊ TRỘM VAI TRÒ",
+                        content: "Tên Trộm đã ghé thăm nhà bạn đêm qua và cuống phăng vai trò của bạn! Bạn trở thành DÂN LÀNG."
+                    });
+                }
+            }
+        });
+
+        // 2.2 Sói Ảo Ảnh (Phantom Wolf) Hoán Đổi Nhãn Dạng
         actionBuffer.forEach(act => {
             if (act.role === "phantomWolf" && act.actionType === "identity_swap") {
                 identitySwaps[act.targetId] = act.secondaryId;
@@ -173,7 +222,7 @@ export const TickEngine = {
             }
         });
 
-        // 2.2 Kẻ Thao Túng (Manipulator) Bẻ Hướng Kỹ Năng
+        // 2.3 Kẻ Thao Túng (Manipulator) Bẻ Hướng Kỹ Năng
         actionBuffer.forEach(act => {
             if (act.role === "manipulator" && act.actionType === "redirect") {
                 actionBuffer.forEach(subAct => {
@@ -189,7 +238,7 @@ export const TickEngine = {
             }
         });
 
-        // 2.3 Kẻ Thanh Trừng (Eradicator) Đặt Bẫy Thép
+        // 2.4 Kẻ Thanh Trừng (Eradicator) Đặt Bẫy Thép
         actionBuffer.forEach(act => {
             if (act.role === "eradicator" && act.actionType === "set_trap") {
                 trappedPlayers[act.srcId] = [act.targetId, act.secondaryId];
@@ -202,7 +251,7 @@ export const TickEngine = {
         });
 
         // ==========================================
-        // TICK 3: BẢO VỆ, LÁ CHẮN VÀ GƯƠNG PHẢN CHIẾU
+        // TICK 3: BẢO VỆ, LÁ CHẮN, KHẾ ƯỚC VÀ GƯƠNG PHẢN CHIẾU
         // ==========================================
         
         // 3.1 Bảo Vệ (Guard) Tuần Tra
@@ -343,8 +392,8 @@ export const TickEngine = {
             }
         });
 
-        // Loại bỏ các lệnh hành động bị khóa phép
-        actionBuffer = actionBuffer.filter(act => !blockedCasters.has(act.srcId));
+        // Loại bỏ các lệnh hành động bị khóa phép bởi Băng Tuyết hoặc Phong Ấn
+        actionBuffer = actionBuffer.filter(act => !blockedCasters.has(act.srcId) && !frozenPlayers.has(act.srcId));
 
         // ==========================================
         // TICK 5: SE DUYÊN, THU PHỤC VÀ BIẾN ĐỔI PHE
@@ -480,7 +529,7 @@ export const TickEngine = {
 
         // 6.2 Gom sát thương từ Ma Sói, Sát Nhân, Kẻ Báo Thù, Mèo, Kẻ Mạo Danh
         actionBuffer.forEach(act => {
-            if (act.role === "wolf" || act.actionType === "wolf_bite") {
+            if (act.role === "wolf" || act.actionType === "wolf_bite" || act.role === "wolfBoss" || act.role === "loneWolf") {
                 damageQueue.push({ targetId: act.targetId, sourceRole: "wolf" });
             }
             if (act.role === "serialKiller" && act.actionType === "serial_kill") {
@@ -542,6 +591,17 @@ export const TickEngine = {
         damageQueue.forEach(dmg => {
             const { targetId, sourceRole } = dmg;
 
+            // Sát Nhân (Serial Killer) đâm xuyên lá chắn Bảo Vệ
+            if (sourceRole === "serialKiller") {
+                deathsSet.add(targetId);
+                initMailbox(targetId);
+                mailboxDeliveries[targetId].push({
+                    title: "[🔪] NHÁT ĐÂM SÁT NHÂN",
+                    content: "Nhát đâm cuồng loạn của Sát Nhân đã găm thẳng vào tim bạn, xuyên qua mọi lá chắn!"
+                });
+                return;
+            }
+
             // Phù Thủy Cứu -> Hủy sát thương
             if (targetId === witchHealTarget) {
                 initMailbox(targetId);
@@ -595,7 +655,7 @@ export const TickEngine = {
                         initMailbox(partner.id);
                         mailboxDeliveries[partner.id].push({
                             title: "[💘] TÌNH YÊU BẤT TỬ",
-                            content: `Người tình [${p.name}] của bạn đã gục ngã! Trái tim bạn tan vỡ và chết theo gieo mình tự sát.`
+                            content: `Người tình [${p.name}] của bạn đã gục ngã! Trái tim bạn tan vỡ và gieo mình tự sát chết theo.`
                         });
                     }
                 });
@@ -647,7 +707,7 @@ export const TickEngine = {
         });
 
         // ==========================================
-        // TICK 8: TRUY XUẤT THÔNG TIN VÀ SOI VAI TRÒ
+        // TICK 8: TRUY XUẤT THÔNG TIN, SOI VAI TRÒ VÀ ĐỒNG BỘ CHANNEL
         // ==========================================
         actionBuffer.forEach(act => {
             // Tiên Tri (Seer)
@@ -679,6 +739,19 @@ export const TickEngine = {
                         content: `Soi thấu ngụy trang! Vai trò thực của ${playersMap[originalTarget]?.name} là: [${realRoleName}] (Phe ${realFactionName}).`
                     });
                 }
+            }
+
+            // Cảnh Sát Trưởng (Police)
+            if (act.role === "police" && act.actionType === "check_weapon") {
+                const targetPlayer = playersMap[act.targetId];
+                const dangerousRoles = ["hunter", "serialKiller", "arsonist", "witch", "impostor", "wolf"];
+                const hasWeapon = targetPlayer && dangerousRoles.includes(targetPlayer.role);
+
+                initMailbox(act.srcId);
+                mailboxDeliveries[act.srcId].push({
+                    title: "[🔫] KẾT QUẢ TẦM SOÁT",
+                    content: `Kiểm tra hành trang của [${targetPlayer?.name}]: ${hasWeapon ? "PHÁT HIỆN VŨ KHÍ TẤN CÔNG ⚠️" : "AN TOÀN KHÔNG VŨ KHÍ ✅"}.`
+                });
             }
 
             // Pháp Sư Sói (Wolf Mage)

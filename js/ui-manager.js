@@ -1,4 +1,5 @@
 import { db, ref, set, get, update } from "./firebase-config.js";
+import { getRoleName, getRoleDesc, PASSIVE_ROLES, ACTIVE_NIGHT_ROLES } from "./game-logic.js";
 
 // ==========================================
 // 1. QUẢN LÝ TRÌNH TỰ VÀ HÀNG CHỜ MODALS (MODAL STACK MANAGER)
@@ -174,10 +175,16 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         instruction.innerText = `Kỹ năng yêu cầu chọn đủ ${maxSelections} mục tiêu. Đã chọn: 0/${maxSelections}`;
     }
 
-    const validTargets = playersList.filter(p => p.alive && p.id !== Net.playerId);
+    // Lọc ra các mục tiêu còn sống (Cho phép chọn người chết đối với Doppelganger)
+    let validTargets = [];
+    if (role === "doppelganger") {
+        validTargets = playersList.filter(p => !p.alive && p.id !== Net.playerId);
+    } else {
+        validTargets = playersList.filter(p => p.alive && p.id !== Net.playerId);
+    }
 
     if (validTargets.length === 0) {
-        showToast("Không tìm thấy mục tiêu hợp lệ nào còn sống!", "danger");
+        showToast("Không tìm thấy mục tiêu hợp lệ nào!", "danger");
         return;
     }
 
@@ -248,6 +255,16 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         renderModifiers([
             { id: "tear", label: "🐾 Xé Xác" },
             { id: "seal", label: "🔒 Phong Ấn" }
+        ]);
+    } else if (role === "police") {
+        modifiersBox.classList.remove("hidden");
+        renderModifiers([
+            { id: "check_weapon", label: "🔫 Kiểm Tra Vũ Khí" }
+        ]);
+    } else if (role === "thief") {
+        modifiersBox.classList.remove("hidden");
+        renderModifiers([
+            { id: "swap_role", label: "🦹 Trộm Vai Trò" }
         ]);
     }
 
@@ -320,7 +337,118 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
 }
 
 // ==========================================
-// 6. ĐỒNG BỘ THANH ĐIỀU HƯỚNG DI ĐỘNG (MOBILE TABS)
+// 6. POPUP THỢ SĂN BẮN TRẢ THÙ VỚI COUNTDOWN CHỐNG ĐƠ GAME
+// ==========================================
+export function openHunterRevengeModal(alivePlayers, onFireCallback) {
+    const modal = document.getElementById("hunter-revenge-modal");
+    const grid = document.getElementById("hunter-targets-grid");
+    const submitBtn = document.getElementById("btn-hunter-fire-submit");
+    if (!modal || !grid || !submitBtn) return;
+
+    grid.innerHTML = "";
+    modal.style.display = "flex";
+    let selectedTargetId = null;
+
+    alivePlayers.forEach(p => {
+        const btn = document.createElement("div");
+        btn.className = "target-btn-box";
+        btn.innerHTML = `<span class="name">${p.name}</span>`;
+
+        btn.addEventListener("click", () => {
+            document.querySelectorAll("#hunter-targets-grid .target-btn-box").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            selectedTargetId = p.id;
+        });
+
+        grid.appendChild(btn);
+    });
+
+    // Countdown 15s tự động cướp súng nếu AFK
+    let secondsLeft = 15;
+    const timerTag = document.createElement("p");
+    timerTag.style.color = "var(--accent)";
+    timerTag.style.fontWeight = "bold";
+    timerTag.style.textAlign = "center";
+    timerTag.innerText = `⏱️ Thời gian bóp cò còn lại: ${secondsLeft}s`;
+    
+    if (!modal.querySelector(".hunter-timer-display")) {
+        timerTag.className = "hunter-timer-display";
+        modal.querySelector(".custom-modal").appendChild(timerTag);
+    }
+
+    const interval = setInterval(() => {
+        secondsLeft--;
+        const disp = modal.querySelector(".hunter-timer-display");
+        if (disp) disp.innerText = `⏱️ Thời gian bóp cò còn lại: ${secondsLeft}s`;
+
+        if (secondsLeft <= 0) {
+            clearInterval(interval);
+            modal.style.display = "none";
+            if (!selectedTargetId && alivePlayers.length > 0) {
+                selectedTargetId = alivePlayers[Math.floor(Math.random() * alivePlayers.length)].id;
+            }
+            if (onFireCallback && selectedTargetId) onFireCallback(selectedTargetId);
+        }
+    }, 1000);
+
+    submitBtn.onclick = () => {
+        if (!selectedTargetId) {
+            showToast("Vui lòng chọn 1 mục tiêu để nổ súng hạ sát!", "warning");
+            return;
+        }
+        clearInterval(interval);
+        modal.style.display = "none";
+        if (onFireCallback) onFireCallback(selectedTargetId);
+    };
+}
+
+// ==========================================
+// 7. POPUP DI NGÔN CHUYỂN GIAO TRƯỞNG LÀNG
+// ==========================================
+export function openMayorSuccessionModal(alivePlayers, onPassCallback) {
+    const modal = document.getElementById("mayor-modal");
+    const grid = document.getElementById("mayor-candidates-grid");
+    if (!modal || !grid) return;
+
+    grid.innerHTML = "";
+    modal.style.display = "flex";
+    
+    const title = modal.querySelector("h3");
+    if (title) title.innerText = "👑 DI NGÔN TRAO VƯƠNG MIỆN TRƯỞNG LÀNG";
+
+    let selectedCandidateId = null;
+
+    alivePlayers.forEach(p => {
+        const btn = document.createElement("div");
+        btn.className = "target-btn-box";
+        btn.innerHTML = `<span class="name">${p.name}</span>`;
+
+        btn.addEventListener("click", () => {
+            document.querySelectorAll("#mayor-candidates-grid .target-btn-box").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            selectedCandidateId = p.id;
+        });
+
+        grid.appendChild(btn);
+    });
+
+    document.getElementById("btn-mayor-submit").onclick = () => {
+        if (!selectedCandidateId) {
+            showToast("Vui lòng chọn người kế vị Trưởng Làng!", "warning");
+            return;
+        }
+        modal.style.display = "none";
+        if (onPassCallback) onPassCallback(selectedCandidateId);
+    };
+
+    document.getElementById("btn-mayor-skip").onclick = () => {
+        modal.style.display = "none";
+        showToast("Bạn chọn không chuyển giao chức vị Trưởng Làng!", "info");
+    };
+}
+
+// ==========================================
+// 8. ĐỒNG BỘ THANH ĐIỀU HƯỚNG DI ĐỘNG (MOBILE TABS)
 // ==========================================
 export function initMobileTabSync() {
     const tabSelectors = ["nav-tab1", "nav-tab2", "nav-tab3", "nav-tab4", "nav-tab5"];
@@ -343,7 +471,7 @@ export function initMobileTabSync() {
 }
 
 // ==========================================
-// 7. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ MẬT
+// 9. CƠ CHẾ CHẠM GIỮ XEM VAI TRÒ MẬT
 // ==========================================
 export function setupIdentityCardHoldGesture() {
     const idCard = document.getElementById("player-identity-card");
@@ -392,7 +520,7 @@ export function setupIdentityCardHoldGesture() {
 }
 
 // ==========================================
-// 8. BẢNG TRẠNG THÁI / LÝ LỊCH (BOTTOM SHEET)
+// 10. BẢNG TRẠNG THÁI / LÝ LỊCH (BOTTOM SHEET)
 // ==========================================
 export function showPlayerBottomSheet(playerData, isGM = false) {
     const Net = window.Net;
@@ -421,7 +549,7 @@ export function showPlayerBottomSheet(playerData, isGM = false) {
         <div class="switch-row">
             <span class="switch-label">Vai Trò Ghi Nhận:</span>
             <span style="font-weight: bold; color: var(--accent);">
-                ${hasRightToSeeRole ? window.getRoleName(playerData.role).toUpperCase() : "❓ ĐANG ẨN GIẤU"}
+                ${hasRightToSeeRole ? getRoleName(playerData.role).toUpperCase() : "❓ ĐANG ẨN GIẤU"}
             </span>
         </div>
 
@@ -506,7 +634,7 @@ function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
 }
 
 // ==========================================
-// 9. HOẠT ẢNH BÚA TÒA ÁN
+// 11. HOẠT ẢNH BÚA TÒA ÁN
 // ==========================================
 export function runGavelStrikeAnimation(decisionText, callback) {
     const overlay = document.getElementById("gavel-animation-overlay");
@@ -530,7 +658,7 @@ export function runGavelStrikeAnimation(decisionText, callback) {
 }
 
 // ==========================================
-// 10. HỆ THỐNG PHÁT ÂM THANH (AUDIO SFX & BGM)
+// 12. HỆ THỐNG PHÁT ÂM THANH (AUDIO SFX & BGM)
 // ==========================================
 export function playSFX(sfxName) {
     const sfxPlayer = document.getElementById("sfx-player");

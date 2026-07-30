@@ -3,9 +3,12 @@ import {
 } from "./firebase-config.js";
 import { StateMachine } from "./state-machine.js";
 import { 
-    openTargetSelection, ModalManager, initMobileTabSync, showPlayerBottomSheet, setupSoundSettings, showToast, askConfirm
+    openTargetSelection, ModalManager, initMobileTabSync, showPlayerBottomSheet, 
+    setupSoundSettings, showToast, askConfirm, openMayorSuccessionModal 
 } from "./ui-manager.js";
-import { ROLE_DB, ROLE_ICONS, FACTION_ICONS, getRoleName } from "./game-logic.js";
+import { 
+    ROLE_DB, ROLE_ICONS, FACTION_ICONS, getRoleName, PASSIVE_ROLES, ACTIVE_NIGHT_ROLES 
+} from "./game-logic.js";
 
 // Trạng thái mạng và đồng bộ cục bộ của Client
 export const Net = {
@@ -133,7 +136,7 @@ function initLobbyEngine() {
     if (btnLeaveRoom) {
         btnLeaveRoom.addEventListener("click", () => {
             const confirmMsg = Net.isHost 
-                ? "Bạn có chắc chắn muốn HỦY PHÒNG này? Tất cả người chơi khác sẽ bị đẩy ra ngoài sảnh chờ."
+                ? "Bạn có chắc chắn muốn HỦY PHÒNG này? Quyền Quản trò sẽ chuyển giao hoặc phòng bị giải tán."
                 : "Bạn có chắc chắn muốn RỜI KHỎI PHÒNG này?";
             askConfirm(confirmMsg, async () => {
                 await handleRoomExit();
@@ -229,7 +232,8 @@ async function createRoom() {
         role: "villager",
         realFaction: "villager",
         turnEnded: false,
-        hasSeenRole: false
+        hasSeenRole: false,
+        joinedTime: Date.now()
     };
 
     const initialRoomState = {
@@ -291,7 +295,8 @@ async function joinRoom(roomId, name = Net.playerName) {
             role: "villager",
             realFaction: "villager",
             turnEnded: false,
-            hasSeenRole: false
+            hasSeenRole: false,
+            joinedTime: Date.now()
         };
 
         await set(playerRef, playerData);
@@ -385,7 +390,19 @@ async function handleRoomExit() {
     if (!Net.roomId) return;
     try {
         if (Net.isHost) {
-            await set(ref(db, `rooms/${Net.roomId}`), null);
+            const activePlayers = Object.values(Net.players).filter(p => p.id !== Net.playerId && p.isConnected);
+            if (activePlayers.length > 0) {
+                // Tự động chuyển quyền Host cho người gia nhập sớm nhất còn kết nối
+                activePlayers.sort((a, b) => (a.joinedTime || 0) - (b.joinedTime || 0));
+                const newHost = activePlayers[0];
+                const updates = {};
+                updates[`rooms/${Net.roomId}/meta/hostId`] = newHost.id;
+                updates[`rooms/${Net.roomId}/players/${newHost.id}/isHost`] = true;
+                updates[`rooms/${Net.roomId}/players/${Net.playerId}`] = null;
+                await update(ref(db), updates);
+            } else {
+                await set(ref(db, `rooms/${Net.roomId}`), null);
+            }
         } else {
             await set(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}`), null);
         }
@@ -415,7 +432,7 @@ function handleLocalEvictionCleanup() {
 }
 
 // ==========================================
-// 3. ĐỒNG BỘ THỜI GIAN THỰC TỪ FIREBASE
+// 3. ĐỒNG BỘ THỜI GIAN THỰC TỪ FIREBASE & HOST FAILOVER
 // ==========================================
 function listenToRoom() {
     clearActiveListeners();
@@ -426,13 +443,34 @@ function listenToRoom() {
     const roomRef = ref(db, `rooms/${Net.roomId}`);
     const unsubRoom = onValue(roomRef, (snapshot) => {
         if (!snapshot.exists()) {
-            showToast("Phòng chơi đã bị hủy bởi Quản trò!", "danger");
+            showToast("Phòng chơi đã bị hủy hoặc kết thúc!", "danger");
             handleLocalEvictionCleanup();
             return;
         }
         
         const roomData = snapshot.val();
         
+        // KIỂM TRA & TỰ ĐỘNG CẬP NHẬT QUYỀN HOST KHI HOST CŨ RỚT MẠNG
+        if (roomData.meta?.hostId === Net.playerId) {
+            Net.isHost = true;
+        } else if (roomData.players && roomData.players[Net.playerId]?.isHost) {
+            Net.isHost = true;
+        } else {
+            Net.isHost = false;
+            // Kiểm tra xem Host hiện tại có rớt mạng không
+            const currentHost = roomData.players ? roomData.players[roomData.meta?.hostId] : null;
+            if (!currentHost || currentHost.isConnected === false) {
+                const onlinePlayers = Object.values(roomData.players || {}).filter(p => p.isConnected);
+                onlinePlayers.sort((a, b) => (a.joinedTime || 0) - (b.joinedTime || 0));
+                if (onlinePlayers.length > 0 && onlinePlayers[0].id === Net.playerId) {
+                    Net.isHost = true;
+                    update(ref(db, `rooms/${Net.roomId}/meta`), { hostId: Net.playerId });
+                    update(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}`), { isHost: true });
+                    showToast("Bạn đã trở thành QUẢN TRÒ mới của phòng chơi!", "success");
+                }
+            }
+        }
+
         window.G.day = roomData.meta.day || 0;
         window.G.phase = roomData.meta.phase || "setup";
         window.G.mayorId = roomData.meta.mayorId || null;
@@ -440,7 +478,7 @@ function listenToRoom() {
         window.G.roleCounts = roomData.roleCounts || {};
         Net.players = roomData.players || {};
 
-        // Đồng bộ hóa Bộ đếm thời gian đếm ngược (Countdown Timer)
+        // Đồng bộ hóa Bộ đếm thời gian đếm ngược
         if (roomData.meta.timerEndTime && roomData.meta.timerDuration) {
             StateMachine.syncPhaseTimer(roomData.meta.timerEndTime, roomData.meta.timerDuration);
         }
@@ -697,7 +735,7 @@ function updatePlayerIdentityCard(mySelf) {
     idRoleVal.innerText = getRoleName(mySelf.role).toUpperCase();
     idFactionVal.innerText = mySelf.realFaction.toUpperCase();
 
-    const skills = ROLE_DB[mySelf.role]?.faction === "wolf" ? "Phe phái Ma Sói: Đồng tâm cắn phá vào ban đêm." : "Phe Làng: Thảo luận tìm kiếm Ma Sói ban ngày.";
+    const skills = ROLE_DB[mySelf.role]?.faction === "wolf" ? "Phe phái Ma Sói: Đồng tâm cắn phá vào ban đêm." : "Phe Làng/Khác: Thảo luận tìm kiếm phe Ma Sói ban ngày.";
     idSkillsSummary.innerText = skills;
 }
 
@@ -737,12 +775,12 @@ function renderDynamicActionControls(roomData, mySelf) {
             return;
         }
 
-        const hasSkill = !PASSIVE_NIGHT_ROLES_CHECK(mySelf.role);
+        const isPassiveRole = PASSIVE_ROLES.includes(mySelf.role);
         const rIcon = ROLE_ICONS[mySelf.role] || "🔮";
 
         let buttonHTML = `
             <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
-                ${hasSkill ? `<button id="btn-use-skill" class="btn-accent w-100">${rIcon} KÍCH HOẠT KỸ NĂNG ĐÊM</button>` : `<p style="color:var(--log-text);">Bạn là vai trò thụ động. Hãy yên lặng đi ngủ.</p>`}
+                ${!isPassiveRole ? `<button id="btn-use-skill" class="btn-accent w-100">${rIcon} KÍCH HOẠT KỸ NĂNG ĐÊM</button>` : `<p style="color:var(--log-text);">Bạn là vai trò thụ động. Hãy yên lặng đi ngủ.</p>`}
                 <button id="btn-end-turn" class="btn-success w-100">💤 XÁC NHẬN KẾT THÚC LƯỢT</button>
             </div>
         `;
@@ -785,10 +823,6 @@ function renderDynamicActionControls(roomData, mySelf) {
             });
         });
     }
-}
-
-function PASSIVE_NIGHT_ROLES_CHECK(role) {
-    return ["villager", "clown", "idiot", "ghost", "halfWolf", "apprenticeSeer", "doppelganger", "lostChild"].includes(role);
 }
 
 // ==========================================
