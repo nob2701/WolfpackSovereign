@@ -2,9 +2,8 @@
  * =========================================================================
  * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE
  * =========================================================================
- * Tệp điều phối trung tâm ứng dụng. Quản lý kết nối Firebase Realtime,
- * Sảnh chờ Lobby, Chuyển giao Host tự động, Render Bàn Cờ Thần Dân DOM Diffing,
- * Hòm Mật Thư Giấy Da, Kênh Thảo Luận Multi-Channel và Bảng Quản Trò Tối Cao.
+ * Tệp điều phối trung tâm ứng dụng. Tích hợp bộ bọc an toàn chống treo web,
+ * giải phóng Splash Screen tự động, quản lý Sảnh Chờ, Host Failover & Chat.
  */
 
 import { 
@@ -42,31 +41,39 @@ let spectatorPollConfigured = false;
 let openedMailsList = [];
 let currentMailIndex = -1;
 
-// KHỞI CHẠY KHÔNG GIAN TRÒ CHƠI CHUNG KHI DOM SẴN SÀNG
+// KHỞI CHẠY KHÔNG GIAN TRÒ CHƠI CHUNG AN TOÀN
 document.addEventListener("DOMContentLoaded", () => {
-    initLobbyEngine();
-    setupCodeInputNavigation();
-    initMobileTabSync();
-    setupSoundSettings();
-    setupChatEngine();
-    setupParchmentNavigation();
-    setupGMConsoleListeners();
-    dismissSplashScreen();
-    
-    // Tự động khôi phục phiên chơi cũ khi F5 rớt mạng
-    attemptSessionReconnection();
+    try {
+        initLobbyEngine();
+        setupCodeInputNavigation();
+        initMobileTabSync();
+        setupSoundSettings();
+        setupChatEngine();
+        setupParchmentNavigation();
+        setupGMConsoleListeners();
+    } catch (err) {
+        console.warn("⚠️ [Khởi tạo DOM] Có cảnh báo trong quá trình gán sự kiện:", err.message);
+    } finally {
+        // Đảm bảo Splash Screen LUÔN LUÔN được ẩn sau 1.2s không bao giờ bị treo
+        dismissSplashScreen();
+        // Tự động khôi phục phiên chơi cũ nếu có
+        attemptSessionReconnection();
+    }
 });
 
-// Gỡ bỏ màn hình chờ Splash Screen
+// Gỡ bỏ màn hình chờ Splash Screen An Toàn
 function dismissSplashScreen() {
     const splash = document.getElementById("splash-screen");
-    if (splash) {
-        const dismiss = () => {
-            splash.classList.add("hidden");
-        };
-        splash.addEventListener("click", dismiss);
-        setTimeout(dismiss, 1200);
-    }
+    if (!splash) return;
+
+    const hideSplash = () => {
+        splash.classList.add("hidden");
+        splash.style.display = "none";
+    };
+
+    splash.addEventListener("click", hideSplash);
+    // Tự động giải phóng sau 1.2 giây
+    setTimeout(hideSplash, 1200);
 }
 
 // Giải phóng bộ nhớ của toàn bộ các Listener cũ
@@ -105,8 +112,8 @@ function initLobbyEngine() {
         const truncatedName = savedName.substring(0, 10);
         nameInput.value = truncatedName;
         Net.playerName = truncatedName;
-        btnInitialJoin.disabled = truncatedName.length < 2;
-        btnCreate.disabled = truncatedName.length < 2;
+        if (btnInitialJoin) btnInitialJoin.disabled = truncatedName.length < 2;
+        if (btnCreate) btnCreate.disabled = truncatedName.length < 2;
     }
 
     if (nameInput) {
@@ -114,8 +121,8 @@ function initLobbyEngine() {
             const cleanName = nameInput.value.trim().replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, "").substring(0, 10);
             nameInput.value = cleanName;
             const isValid = cleanName.length >= 2 && cleanName.length <= 10;
-            btnInitialJoin.disabled = !isValid;
-            btnCreate.disabled = !isValid;
+            if (btnInitialJoin) btnInitialJoin.disabled = !isValid;
+            if (btnCreate) btnCreate.disabled = !isValid;
             Net.playerName = cleanName;
         });
     }
@@ -123,16 +130,16 @@ function initLobbyEngine() {
     if (btnInitialJoin) {
         btnInitialJoin.addEventListener("click", () => {
             localStorage.setItem("online_player_name", Net.playerName);
-            document.getElementById("login-form-panel").classList.add("hidden");
-            document.getElementById("join-code-panel").classList.remove("hidden");
+            document.getElementById("login-form-panel")?.classList.add("hidden");
+            document.getElementById("join-code-panel")?.classList.remove("hidden");
             NavigationStack.push("join-code-panel");
         });
     }
 
     if (btnBackToLogin) {
         btnBackToLogin.addEventListener("click", () => {
-            document.getElementById("join-code-panel").classList.add("hidden");
-            document.getElementById("login-form-panel").classList.remove("hidden");
+            document.getElementById("join-code-panel")?.classList.add("hidden");
+            document.getElementById("login-form-panel")?.classList.remove("hidden");
             NavigationStack.pop();
         });
     }
@@ -141,7 +148,8 @@ function initLobbyEngine() {
     if (btnJoinSubmit) btnJoinSubmit.addEventListener("click", () => {
         let code = "";
         for (let i = 1; i <= 6; i++) {
-            code += document.getElementById(`code-${i}`).value;
+            const el = document.getElementById(`code-${i}`);
+            if (el) code += el.value;
         }
         if (code.length === 6) {
             joinRoom(code.toUpperCase());
@@ -173,28 +181,24 @@ function initLobbyEngine() {
 }
 
 function setupGMConsoleListeners() {
-    // Nút Bắt Đầu Bầu Trưởng Làng của Quản trò
     document.getElementById("btn-gm-trigger-mayor")?.addEventListener("click", () => {
         askConfirm("Kích hoạt cuộc bầu chọn Trưởng Làng ngay bây giờ?", () => {
             StateMachine.startMayorElection();
         });
     });
 
-    // Sự kiện cưỡng chế sang ngày của GM
     document.getElementById("btn-gm-force-day")?.addEventListener("click", () => {
         askConfirm("Cưỡng chế chuyển sang BAN NGÀY lập tức? Mọi hành động đêm chưa chọn sẽ bị bỏ qua!", () => {
             StateMachine.forceTransitionToDay();
         });
     });
 
-    // Sự kiện Quản trò chốt kết quả biểu quyết thủ công
     document.getElementById("btn-gm-resolve-vote")?.addEventListener("click", () => {
         askConfirm("Chốt kết quả bỏ phiếu xử án treo cổ ngay lập tức?", () => {
             StateMachine.resolveVotingOutcome();
         });
     });
 
-    // Nút Thêm 15s Thời Gian
     document.getElementById("btn-gm-add-time")?.addEventListener("click", async () => {
         if (!Net.isHost) return;
         const metaRef = ref(db, `rooms/${Net.roomId}/meta`);
@@ -346,23 +350,25 @@ async function joinRoom(roomId, name = Net.playerName) {
 }
 
 function enterLobbyMode() {
-    document.getElementById("login-form-panel").classList.add("hidden");
-    document.getElementById("join-code-panel").classList.add("hidden");
-    document.getElementById("lobby-room-status").classList.remove("hidden");
-    document.getElementById("current-room-display").innerText = Net.roomId;
+    document.getElementById("login-form-panel")?.classList.add("hidden");
+    document.getElementById("join-code-panel")?.classList.add("hidden");
+    document.getElementById("lobby-room-status")?.classList.remove("hidden");
+    
+    const displayCode = document.getElementById("current-room-display");
+    if (displayCode) displayCode.innerText = Net.roomId;
 
     const hostCtrl = document.getElementById("lobby-host-controls");
     const playerCtrl = document.getElementById("lobby-player-controls");
     const waitingMsg = document.getElementById("lobby-waiting-msg");
 
     if (Net.isHost) {
-        hostCtrl.classList.remove("hidden");
-        playerCtrl.classList.add("hidden");
-        waitingMsg.classList.add("hidden");
+        hostCtrl?.classList.remove("hidden");
+        playerCtrl?.classList.add("hidden");
+        waitingMsg?.classList.add("hidden");
     } else {
-        hostCtrl.classList.add("hidden");
-        playerCtrl.classList.remove("hidden");
-        waitingMsg.classList.remove("hidden");
+        hostCtrl?.classList.add("hidden");
+        playerCtrl?.classList.remove("hidden");
+        waitingMsg?.classList.remove("hidden");
     }
 }
 
@@ -375,7 +381,7 @@ function setupActivePlayersPresence() {
     onDisconnect(connectionRef).set(false);
 }
 
-// KHÔI PHỤC PHIÊN CHƠI KHI F5
+// KHÔI PHỤC PHIÊN CHƠI KHI F5 VỚI TIMEOUT BẢO VỆ
 async function attemptSessionReconnection() {
     const savedRoomId = localStorage.getItem("reconnect_room_id");
     const savedPlayerId = localStorage.getItem("reconnect_player_id");
@@ -383,6 +389,11 @@ async function attemptSessionReconnection() {
     if (savedRoomId && savedPlayerId) {
         const overlay = document.getElementById("reconnect-overlay");
         if (overlay) overlay.style.display = "flex";
+
+        // Tự động tắt overlay sau 2.5s nếu mạng chậm để không kẹt UI
+        const safeTimeout = setTimeout(() => {
+            if (overlay) overlay.style.display = "none";
+        }, 2500);
 
         try {
             const roomRef = ref(db, `rooms/${savedRoomId}`);
@@ -414,6 +425,7 @@ async function attemptSessionReconnection() {
             console.error("Lỗi phục hồi kết nối tự động:", err);
             cleanSessionStorage();
         } finally {
+            clearTimeout(safeTimeout);
             if (overlay) overlay.style.display = "none";
         }
     }
@@ -460,11 +472,11 @@ function handleLocalEvictionCleanup() {
     Net.isHost = false;
     
     document.body.setAttribute("data-view", "lobby");
-    document.getElementById("lobby-room-status").classList.add("hidden");
-    document.getElementById("join-code-panel").classList.add("hidden");
-    document.getElementById("game-screen").classList.add("hidden");
-    document.getElementById("lobby-screen").classList.remove("hidden");
-    document.getElementById("login-form-panel").classList.remove("hidden");
+    document.getElementById("lobby-room-status")?.classList.add("hidden");
+    document.getElementById("join-code-panel")?.classList.add("hidden");
+    document.getElementById("game-screen")?.classList.add("hidden");
+    document.getElementById("lobby-screen")?.classList.remove("hidden");
+    document.getElementById("login-form-panel")?.classList.remove("hidden");
     
     document.querySelectorAll(".code-input").forEach(input => input.value = "");
 }
@@ -544,10 +556,12 @@ function listenToRoom() {
             if (Net.isHost) {
                 const otherPlayers = window.G.players.filter(p => p.id !== Net.playerId);
                 const allReady = otherPlayers.length > 0 && otherPlayers.every(p => p.isReady);
-                document.getElementById("btn-host-start-setup").disabled = !allReady;
+                const btnStart = document.getElementById("btn-host-start-setup");
+                if (btnStart) btnStart.disabled = !allReady;
             }
         } else {
-            if (document.body.getAttribute("data-view") === "lobby" || !document.getElementById("lobby-screen").classList.contains("hidden")) {
+            const lobbyScreen = document.getElementById("lobby-screen");
+            if (document.body.getAttribute("data-view") === "lobby" || (lobbyScreen && !lobbyScreen.classList.contains("hidden"))) {
                 transitionToGameScreen(roomData);
             }
 
@@ -621,18 +635,18 @@ function renderLobbyPlayersList() {
 
 function transitionToGameScreen(roomData) {
     document.body.setAttribute("data-view", "game");
-    document.getElementById("lobby-screen").classList.add("hidden");
-    document.getElementById("game-screen").classList.remove("hidden");
+    document.getElementById("lobby-screen")?.classList.add("hidden");
+    document.getElementById("game-screen")?.classList.remove("hidden");
 
     if (Net.isHost) {
-        document.getElementById("gm-timeline-container").classList.remove("hidden");
-        document.getElementById("player-mailbox-container").classList.add("hidden");
+        document.getElementById("gm-timeline-container")?.classList.remove("hidden");
+        document.getElementById("player-mailbox-container")?.classList.add("hidden");
         document.getElementById("gm-master-console")?.classList.remove("hidden");
         document.getElementById("col-roles-container")?.classList.remove("hidden");
         document.getElementById("chat-subpanel")?.classList.add("hidden");
     } else {
-        document.getElementById("gm-timeline-container").classList.add("hidden");
-        document.getElementById("player-mailbox-container").classList.remove("hidden");
+        document.getElementById("gm-timeline-container")?.classList.add("hidden");
+        document.getElementById("player-mailbox-container")?.classList.remove("hidden");
         document.getElementById("gm-master-console")?.classList.add("hidden");
         document.getElementById("col-roles-container")?.classList.add("hidden");
         document.getElementById("chat-subpanel")?.classList.remove("hidden");
@@ -858,9 +872,11 @@ function syncTrialPhases(roomData) {
     steps.forEach(st => document.getElementById(st)?.classList.remove("active"));
 
     if (trial.stage === "none") {
-        stageContainer.classList.add("hidden");
-        document.getElementById("vote-modal").style.display = "none";
-        document.getElementById("mayor-modal").style.display = "none";
+        stageContainer?.classList.add("hidden");
+        const voteModal = document.getElementById("vote-modal");
+        const mayorModal = document.getElementById("mayor-modal");
+        if (voteModal) voteModal.style.display = "none";
+        if (mayorModal) mayorModal.style.display = "none";
         document.getElementById("trial-vote-progress-wrapper")?.classList.add("hidden");
         return;
     }
@@ -870,14 +886,14 @@ function syncTrialPhases(roomData) {
         return;
     }
 
-    stageContainer.classList.remove("hidden");
+    stageContainer?.classList.remove("hidden");
 
     if (trial.stage === "nomination") {
-        document.getElementById("step-ind-1").classList.add("active");
+        document.getElementById("step-ind-1")?.classList.add("active");
     }
 
     if (trial.stage === "defense") {
-        document.getElementById("step-ind-2").classList.add("active");
+        document.getElementById("step-ind-2")?.classList.add("active");
         const accusedName = Net.players[trial.accusedId]?.name || "Bị cáo";
         
         if (Net.playerId === trial.accusedId) {
@@ -888,14 +904,15 @@ function syncTrialPhases(roomData) {
     }
 
     if (trial.stage === "vote") {
-        document.getElementById("step-ind-2").classList.add("active");
-        document.getElementById("step-ind-3").classList.add("active");
+        document.getElementById("step-ind-2")?.classList.add("active");
+        document.getElementById("step-ind-3")?.classList.add("active");
         openSplitScreenVoteModal(trial.accusedId, roomData);
     }
 
     if (trial.stage === "verdict") {
-        document.getElementById("step-ind-4").classList.add("active");
-        document.getElementById("vote-modal").style.display = "none";
+        document.getElementById("step-ind-4")?.classList.add("active");
+        const voteModal = document.getElementById("vote-modal");
+        if (voteModal) voteModal.style.display = "none";
     }
 }
 
@@ -924,21 +941,27 @@ function openMayorElectionModal(roomData) {
         grid.appendChild(btn);
     });
 
-    document.getElementById("btn-mayor-skip").onclick = () => {
-        set(ref(db, `rooms/${Net.roomId}/mayor_votes/${Net.playerId}`), "skip");
-        modal.style.display = "none";
-        showToast("Bạn đã bỏ phiếu trắng cho chức Trưởng Làng!", "info");
-    };
+    const skipBtn = document.getElementById("btn-mayor-skip");
+    if (skipBtn) {
+        skipBtn.onclick = () => {
+            set(ref(db, `rooms/${Net.roomId}/mayor_votes/${Net.playerId}`), "skip");
+            modal.style.display = "none";
+            showToast("Bạn đã bỏ phiếu trắng cho chức Trưởng Làng!", "info");
+        };
+    }
 
-    document.getElementById("btn-mayor-submit").onclick = () => {
-        if (!selectedCandidateId) {
-            showToast("Vui lòng chọn ứng viên Trưởng Làng!", "warning");
-            return;
-        }
-        set(ref(db, `rooms/${Net.roomId}/mayor_votes/${Net.playerId}`), selectedCandidateId);
-        modal.style.display = "none";
-        showToast("Đã gửi phiếu bầu Trưởng Làng!", "success");
-    };
+    const submitBtn = document.getElementById("btn-mayor-submit");
+    if (submitBtn) {
+        submitBtn.onclick = () => {
+            if (!selectedCandidateId) {
+                showToast("Vui lòng chọn ứng viên Trưởng Làng!", "warning");
+                return;
+            }
+            set(ref(db, `rooms/${Net.roomId}/mayor_votes/${Net.playerId}`), selectedCandidateId);
+            modal.style.display = "none";
+            showToast("Đã gửi phiếu bầu Trưởng Làng!", "success");
+        };
+    }
 }
 
 function renderDefenseTypingPanel(isAccused, accusedName = "") {
@@ -954,11 +977,13 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
         `;
         
         const area = document.getElementById("defense-typing-area");
-        area.addEventListener("input", () => {
-            update(ref(db, `rooms/${Net.roomId}/trial`), {
-                accusedText: area.value
+        if (area) {
+            area.addEventListener("input", () => {
+                update(ref(db, `rooms/${Net.roomId}/trial`), {
+                    accusedText: area.value
+                });
             });
-        });
+        }
 
         document.getElementById("btn-submit-defense-speech")?.addEventListener("click", () => {
             update(ref(db, `rooms/${Net.roomId}/trial`), {
@@ -988,12 +1013,12 @@ function openSplitScreenVoteModal(accusedId, roomData) {
     modal.style.display = "flex";
 
     const title = document.getElementById("vote-modal-title");
-    title.innerText = `PHÁN QUYẾT SỐ PHẬN: ${Net.players[accusedId]?.name?.toUpperCase()}`;
+    if (title) title.innerText = `PHÁN QUYẾT SỐ PHẬN: ${Net.players[accusedId]?.name?.toUpperCase()}`;
 
     const listAcquit = document.getElementById("list-voters-acquit");
     const listExecute = document.getElementById("list-voters-execute");
-    listAcquit.innerHTML = "";
-    listExecute.innerHTML = "";
+    if (listAcquit) listAcquit.innerHTML = "";
+    if (listExecute) listExecute.innerHTML = "";
 
     const votes = roomData.votes || {};
     let countAcquit = 0;
@@ -1008,16 +1033,18 @@ function openSplitScreenVoteModal(accusedId, roomData) {
 
             if (voteValue === "ACQUIT") {
                 countAcquit++;
-                listAcquit.appendChild(chip);
+                if (listAcquit) listAcquit.appendChild(chip);
             } else if (voteValue === "EXECUTE") {
                 countExecute++;
-                listExecute.appendChild(chip);
+                if (listExecute) listExecute.appendChild(chip);
             }
         }
     });
 
-    document.getElementById("count-acquit").innerText = countAcquit;
-    document.getElementById("count-execute").innerText = countExecute;
+    const cntAcquit = document.getElementById("count-acquit");
+    const cntExecute = document.getElementById("count-execute");
+    if (cntAcquit) cntAcquit.innerText = countAcquit;
+    if (cntExecute) cntExecute.innerText = countExecute;
 
     const progressWrapper = document.getElementById("trial-vote-progress-wrapper");
     const progressFill = document.getElementById("trial-vote-progress-fill");
@@ -1033,17 +1060,23 @@ function openSplitScreenVoteModal(accusedId, roomData) {
         progressFill.style.width = `${pct}%`;
     }
 
-    document.getElementById("btn-vote-acquit").onclick = () => {
-        const mySelf = Net.players[Net.playerId];
-        if (mySelf && !mySelf.alive) return;
-        set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "ACQUIT");
-    };
+    const btnAcquit = document.getElementById("btn-vote-acquit");
+    if (btnAcquit) {
+        btnAcquit.onclick = () => {
+            const mySelf = Net.players[Net.playerId];
+            if (mySelf && !mySelf.alive) return;
+            set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "ACQUIT");
+        };
+    }
 
-    document.getElementById("btn-vote-execute").onclick = () => {
-        const mySelf = Net.players[Net.playerId];
-        if (mySelf && !mySelf.alive) return;
-        set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "EXECUTE");
-    };
+    const btnExecute = document.getElementById("btn-vote-execute");
+    if (btnExecute) {
+        btnExecute.onclick = () => {
+            const mySelf = Net.players[Net.playerId];
+            if (mySelf && !mySelf.alive) return;
+            set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "EXECUTE");
+        };
+    }
 }
 
 // ==========================================
@@ -1123,9 +1156,12 @@ function openParchmentMail(mail) {
         isRead: true
     });
 
-    document.getElementById("btn-close-parchment").onclick = () => {
-        modal.style.display = "none";
-    };
+    const closeBtn = document.getElementById("btn-close-parchment");
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.style.display = "none";
+        };
+    }
 }
 
 function setupParchmentNavigation() {
@@ -1492,8 +1528,10 @@ function updateBalanceAndCountsUI() {
     const pCountDisp = document.getElementById('player-count-display');
     if (pCountDisp) pCountDisp.innerText = window.G.players.length;
 
-    window.UI_Module.updateBalanceUI();
-    window.UI_Module.updateActiveRolesSummary();
+    if (window.UI_Module) {
+        window.UI_Module.updateBalanceUI();
+        window.UI_Module.updateActiveRolesSummary();
+    }
 }
 
 async function toggleReadyState() {
