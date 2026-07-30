@@ -1,7 +1,20 @@
+/**
+ * =========================================================================
+ * WOLFPACK SOVEREIGN v47.0 - DETERMINISTIC 8-TICK RESOLUTION ENGINE
+ * =========================================================================
+ * Bộ máy phân giải kỹ năng ban đêm theo thứ tự ưu tiên 8 Ticks (Priority Order).
+ * Giải quyết toàn bộ hiệu ứng phản xạ gương, bẫy sắt, chuyển hóa, tịnh hóa,
+ * lá chắn bảo vệ, độc dược và di ngôn nổ súng tử vong.
+ */
+
 import { db, ref, get } from "./firebase-config.js";
 
 export const TickEngine = {
-    // PHÂN GIẢI TOÀN BỘ HÀNH ĐỘNG ĐÊM ĐỒNG THỜI (DETERMINISTIC 8-TICK PRIORITY RESOLUTION)
+    /**
+     * PHÂN GIẢI TOÀN BỘ HÀNH ĐỘNG ĐÊM ĐỒNG THỜI (8-TICK PRIORITY RESOLUTION)
+     * @param {string} roomId - Mã phòng chơi 6 ký tự
+     * @returns {Promise<{deaths: Array<string>, mailboxDeliveries: Object, playerStateUpdates: Object}>}
+     */
     async resolveNightActions(roomId) {
         const roomRef = ref(db, `rooms/${roomId}`);
         const snapshot = await get(roomRef);
@@ -13,8 +26,9 @@ export const TickEngine = {
         const roomData = snapshot.val();
         const playersMap = roomData.players || {};
         const playersList = Object.values(playersMap);
+        const currentDay = roomData.meta?.day || 1;
 
-        // Khởi tạo tập dữ liệu ghi nhận sau phân giải
+        // Tập dữ liệu ghi nhận sau phân giải
         const deathsSet = new Set();
         const mailboxDeliveries = {}; 
         const playerStateUpdates = {}; 
@@ -27,7 +41,7 @@ export const TickEngine = {
             if (!playerStateUpdates[pid]) playerStateUpdates[pid] = {};
         };
 
-        // RESET SẠCH BÙA CHÚ TẠM THỜI CỦA ĐÊM TRƯỚC (Tránh dính bùa vĩnh viễn)
+        // RESET BÙA CHÚ TẠM THỜI CỦA ĐÊM TRƯỚC (Tránh dính bùa vĩnh viễn)
         playersList.forEach(p => {
             initPlayerState(p.id);
             playerStateUpdates[p.id].isSeerScanned = false;
@@ -61,7 +75,7 @@ export const TickEngine = {
             playerStateUpdates[p.id].isReaperCorpse = false;
         });
 
-        // Thu thập toàn bộ hành động từ các người chơi còn sống
+        // Thu thập toàn bộ hành động đêm từ người chơi còn sống
         let actionBuffer = [];
         playersList.forEach(p => {
             if (p.alive && p.targetSelection) {
@@ -69,21 +83,21 @@ export const TickEngine = {
                     srcId: p.id,
                     role: p.role,
                     actionType: p.targetSelection.actionType, 
-                    targetId: p.targetSelection.targetId,
+                    targetId: p.targetSelection.targetId || null,
                     secondaryId: p.targetSelection.secondaryId || null,
                     phrase: p.targetSelection.phrase || ""
                 });
             }
         });
 
-        // Lọc bỏ hành động nhắm vào người không tồn tại
+        // Lọc bỏ hành động nhắm vào ID không tồn tại
         actionBuffer = actionBuffer.filter(act => {
             if (act.targetId && !playersMap[act.targetId]) return false;
             if (act.secondaryId && !playersMap[act.secondaryId]) return false;
             return true;
         });
 
-        // Tập hợp cấu trúc định tuyến kỹ năng
+        // Cấu trúc theo dõi trạng thái tương tác
         const purifiedPlayers = new Set();      
         const identitySwaps = {};              
         const trappedPlayers = {};             
@@ -103,25 +117,28 @@ export const TickEngine = {
         
         // 1.1 Thiên Sứ (Angel) Tịnh Hóa
         actionBuffer.forEach(act => {
-            if (act.role === "angel" && act.actionType === "purify") {
-                purifiedPlayers.add(act.targetId);
-                
-                initPlayerState(act.targetId);
-                playerStateUpdates[act.targetId].isPetroled = false;
-                playerStateUpdates[act.targetId].isAngelPurified = true;
+            if (act.role === "angel" && (act.actionType === "purify" || act.actionType === "angel_purify")) {
+                if (act.targetId) {
+                    purifiedPlayers.add(act.targetId);
+                    
+                    initPlayerState(act.targetId);
+                    playerStateUpdates[act.targetId].isPetroled = false;
+                    playerStateUpdates[act.targetId].isAngelPurified = true;
+                    playerStateUpdates[act.targetId].isSilencerMuted = false;
 
-                initMailbox(act.srcId);
-                mailboxDeliveries[act.srcId].push({
-                    title: "[👼] SỨ MỆNH KHAI SÁNG",
-                    content: `Bạn đã tịnh hóa thành công cho ${playersMap[act.targetId]?.name}, loại bỏ hoàn toàn bùa chú bất lợi khỏi linh hồn họ.`
-                });
-                
-                initMailbox(act.targetId);
-                mailboxDeliveries[act.targetId].push({
-                    title: "[👼] ÁNH SÁNG TỊNH HÓA",
-                    content: "Một vầng hào quang ấm áp rọi xuống thể xác bạn. Toàn bộ bùa chú câm lặng, phong ấn hay xăng dầu bám trên người bạn đã bị Thiên Sứ gột rửa sạch sẽ!",
-                    category: "system"
-                });
+                    initMailbox(act.srcId);
+                    mailboxDeliveries[act.srcId].push({
+                        title: "[👼] SỨ MỆNH KHAI SÁNG",
+                        content: `Bạn đã tịnh hóa thành công cho ${playersMap[act.targetId]?.name}, loại bỏ hoàn toàn bùa chú bất lợi khỏi linh hồn họ.`
+                    });
+                    
+                    initMailbox(act.targetId);
+                    mailboxDeliveries[act.targetId].push({
+                        title: "[👼] ÁNH SÁNG TỊNH HÓA",
+                        content: "Một vầng hào quang ấm áp rọi xuống thể xác bạn. Toàn bộ bùa chú câm lặng, phong ấn hay xăng dầu bám trên người bạn đã bị Thiên Sứ gột rửa sạch sẽ!",
+                        category: "system"
+                    });
+                }
             }
         });
 
@@ -142,9 +159,26 @@ export const TickEngine = {
             });
         }
 
-        // 1.3 Song Trùng (Doppelganger) Kế Thừa Trực Tiếp
+        // 1.3 Kế thừa Tử Thần Tập Sự (Apprentice Reaper)
+        const activeReapers = playersList.filter(p => p.role === "reaper" && p.alive);
+        if (activeReapers.length === 0) {
+            playersList.forEach(p => {
+                if (p.role === "apprenticeReaper" && p.alive) {
+                    initPlayerState(p.id);
+                    playerStateUpdates[p.id].role = "reaper";
+                    initMailbox(p.id);
+                    mailboxDeliveries[p.id].push({
+                        title: "[💀] KẾ THỪA LƯỠI HÁI TỬ THẦN",
+                        content: "Tử Thần tiền nhiệm đã ngã xuống! Bạn chính thức nắm giữ chiếc Lưỡi Hái Tối Cao.",
+                        category: "system"
+                    });
+                }
+            });
+        }
+
+        // 1.4 Song Trùng (Doppelganger) Kế Thừa Trực Tiếp
         actionBuffer.forEach(act => {
-            if (act.role === "doppelganger" && act.actionType === "copy_role") {
+            if (act.role === "doppelganger" && act.actionType === "copy_role" && act.targetId) {
                 const targetPlayer = playersMap[act.targetId];
                 if (targetPlayer && !targetPlayer.alive) {
                     initPlayerState(act.srcId);
@@ -159,13 +193,31 @@ export const TickEngine = {
             }
         });
 
+        // 1.5 Kẻ Phản Bội (Traitor) Thức Tỉnh Khi Bầy Sói Chết Hết
+        const activeWolves = playersList.filter(p => p.alive && p.realFaction === "wolf" && p.role !== "traitor");
+        if (activeWolves.length === 0) {
+            playersList.forEach(p => {
+                if (p.role === "traitor" && p.alive) {
+                    initPlayerState(p.id);
+                    playerStateUpdates[p.id].role = "wolfBoss";
+                    playerStateUpdates[p.id].realFaction = "wolf";
+                    initMailbox(p.id);
+                    mailboxDeliveries[p.id].push({
+                        title: "[🐺] SỰ THỨC TỈNH CỦA KẺ PHẢN BỘI",
+                        content: "Toàn bộ đồng bọn Ma Sói đã bị tiêu diệt! Bạn chính thức thức tỉnh bản năng Ma Sói và trở thành SÓI TRÙM mới.",
+                        category: "system"
+                    });
+                }
+            });
+        }
+
         // ==========================================
         // TICK 2: TRÁO ĐỔI VAI TRÒ, HOÁN ĐỔI NHÂN DẠNG VÀ BẮT BẪY
         // ==========================================
         
         // 2.1 Tên Trộm (Thief) Đổi Bài Đêm 1
         actionBuffer.forEach(act => {
-            if (act.role === "thief" && act.actionType === "swap_role") {
+            if (act.role === "thief" && act.actionType === "swap_role" && currentDay === 1 && act.targetId) {
                 const targetPlayer = playersMap[act.targetId];
                 if (targetPlayer && targetPlayer.alive) {
                     initPlayerState(act.srcId);
@@ -195,9 +247,9 @@ export const TickEngine = {
             }
         });
 
-        // 2.2 Sói Ảo Ảnh (Phantom Wolf) Hoán Đổi Nhãn Dạng
+        // 2.2 Sói Ảo Ảnh (Phantom Wolf) Hoán Đổi Nhân Dạng
         actionBuffer.forEach(act => {
-            if (act.role === "phantomWolf" && act.actionType === "identity_swap") {
+            if (act.role === "phantomWolf" && act.actionType === "identity_swap" && act.targetId && act.secondaryId) {
                 identitySwaps[act.targetId] = act.secondaryId;
                 identitySwaps[act.secondaryId] = act.targetId;
                 initMailbox(act.srcId);
@@ -208,10 +260,10 @@ export const TickEngine = {
             }
         });
 
-        // Áp dụng tráo đổi nhân dạng lên các kỹ năng còn lại
+        // Áp dụng tráo đổi nhân dạng lên mục tiêu của các kỹ năng khác
         actionBuffer.forEach(act => {
             if (act.role !== "phantomWolf") {
-                if (identitySwaps[act.targetId]) {
+                if (act.targetId && identitySwaps[act.targetId]) {
                     act.targetId = identitySwaps[act.targetId];
                     initPlayerState(act.srcId);
                     playerStateUpdates[act.srcId].isPhantomSwapped = true;
@@ -224,7 +276,7 @@ export const TickEngine = {
 
         // 2.3 Kẻ Thao Túng (Manipulator) Bẻ Hướng Kỹ Năng
         actionBuffer.forEach(act => {
-            if (act.role === "manipulator" && act.actionType === "redirect") {
+            if (act.role === "manipulator" && act.actionType === "redirect" && act.targetId && act.secondaryId) {
                 actionBuffer.forEach(subAct => {
                     if (subAct.srcId === act.targetId) {
                         subAct.targetId = act.secondaryId; 
@@ -240,12 +292,12 @@ export const TickEngine = {
 
         // 2.4 Kẻ Thanh Trừng (Eradicator) Đặt Bẫy Thép
         actionBuffer.forEach(act => {
-            if (act.role === "eradicator" && act.actionType === "set_trap") {
-                trappedPlayers[act.srcId] = [act.targetId, act.secondaryId];
+            if (act.role === "eradicator" && act.actionType === "set_trap" && act.targetId) {
+                trappedPlayers[act.srcId] = [act.targetId, act.secondaryId].filter(id => id !== null);
                 initMailbox(act.srcId);
                 mailboxDeliveries[act.srcId].push({
                     title: "[⚔️] PHÒNG THỦ THANH TRỪNG",
-                    content: `Đã thiết lập bẫy phòng thủ giám sát 2 mục tiêu: ${playersMap[act.targetId]?.name} & ${playersMap[act.secondaryId]?.name}.`
+                    content: `Đã thiết lập bẫy phòng thủ giám sát mục tiêu.`
                 });
             }
         });
@@ -256,7 +308,7 @@ export const TickEngine = {
         
         // 3.1 Bảo Vệ (Guard) Tuần Tra
         actionBuffer.forEach(act => {
-            if (act.role === "guard" && act.actionType === "protect") {
+            if (act.role === "guard" && act.actionType === "protect" && act.targetId) {
                 protectedPlayers.add(act.targetId);
                 initPlayerState(act.targetId);
                 playerStateUpdates[act.targetId].isProtected = true;
@@ -269,7 +321,7 @@ export const TickEngine = {
             }
 
             // 3.2 Chủ Thần (Prime) Lập Khế Ước
-            if (act.role === "prime" && act.actionType === "link_followers") {
+            if (act.role === "prime" && act.actionType === "link_followers" && act.targetId && act.secondaryId) {
                 primeFollowers.add(act.targetId);
                 primeFollowers.add(act.secondaryId);
                 
@@ -297,7 +349,7 @@ export const TickEngine = {
             }
 
             // 3.3 Sói Tuyết (Snow Wolf) Đóng Băng Mục Tiêu
-            if (act.role === "wolfSnow" && act.actionType === "freeze") {
+            if (act.role === "wolfSnow" && act.actionType === "freeze" && act.targetId) {
                 frozenPlayers.add(act.targetId);
                 initPlayerState(act.targetId);
                 playerStateUpdates[act.targetId].isSnowWolfFrozen = true;
@@ -310,9 +362,9 @@ export const TickEngine = {
             }
         });
 
-        // 3.4 Kẻ Phản Chiếu (Reflector) Dựng Kính
+        // 3.4 Kẻ Phản Chiếu (Reflector) & Sói Gương (Mirror Wolf) Dựng Kính
         actionBuffer.forEach(act => {
-            if (act.role === "reflector" && act.actionType === "set_mirror") {
+            if ((act.role === "reflector" || act.role === "mirrorWolf") && act.actionType === "set_mirror" && act.targetId) {
                 mirrorsMap[act.targetId] = act.srcId; 
                 initPlayerState(act.targetId);
                 playerStateUpdates[act.targetId].isReflectorMirrored = true;
@@ -320,7 +372,7 @@ export const TickEngine = {
                 initMailbox(act.srcId);
                 mailboxDeliveries[act.srcId].push({
                     title: "[🪞] KÍNH PHẢN QUANG",
-                    content: `Đã dựng kính phản chiếu ma thuật trước cửa nhà ${playersMap[act.targetId]?.name}.`
+                    content: `Đã dựng kính phản chiếu ma thuật dội ngược kỹ năng trước cửa nhà ${playersMap[act.targetId]?.name}.`
                 });
             }
         });
@@ -341,7 +393,7 @@ export const TickEngine = {
 
         // Bẻ hướng toàn bộ hành động qua gương phản chiếu
         actionBuffer.forEach(act => {
-            if (act.actionType !== "set_mirror" && act.actionType !== "protect") {
+            if (act.actionType !== "set_mirror" && act.actionType !== "protect" && act.targetId) {
                 act.targetId = getRoutedTarget(act.srcId, act.targetId);
             }
         });
@@ -350,8 +402,8 @@ export const TickEngine = {
         // TICK 4: KHÓA PHÉP, PHONG ẤN VÀ CÂM LẶNG
         // ==========================================
         actionBuffer.forEach(act => {
-            // Sói Câm Lặng (Silencer)
-            if (act.role === "silencerWolf" && act.actionType === "silence") {
+            // Sói Câm Lặng (Silencer Wolf)
+            if (act.role === "silencerWolf" && act.actionType === "silence" && act.targetId) {
                 if (!purifiedPlayers.has(act.targetId)) {
                     silencedPlayers.add(act.targetId);
                     
@@ -372,7 +424,7 @@ export const TickEngine = {
             }
 
             // Kẻ Báo Thù (Avenger) & Mèo (Cat) Phong Ấn
-            if ((act.role === "avenger" && act.actionType === "anesthetize") || (act.role === "cat" && act.actionType === "seal")) {
+            if (((act.role === "avenger" && act.actionType === "anesthetize") || (act.role === "cat" && act.actionType === "seal")) && act.targetId) {
                 blockedCasters.add(act.targetId);
                 
                 initPlayerState(act.targetId);
@@ -400,7 +452,7 @@ export const TickEngine = {
         // ==========================================
         actionBuffer.forEach(act => {
             // Cupid Tơ Hồng
-            if (act.role === "cupid" && act.actionType === "link_lovers") {
+            if (act.role === "cupid" && act.actionType === "link_lovers" && act.targetId && act.secondaryId) {
                 const uniqueCoupleId = "couple_" + roomId + "_" + Math.random().toString(36).substring(2, 7);
 
                 [act.targetId, act.secondaryId].forEach(loverId => {
@@ -430,7 +482,7 @@ export const TickEngine = {
             }
 
             // Nhà Truyền Giáo (Missionary)
-            if (act.role === "missionary" && act.actionType === "convert") {
+            if (act.role === "missionary" && act.actionType === "convert" && act.targetId) {
                 convertedPlayers.add(act.targetId);
                 initPlayerState(act.targetId);
                 playerStateUpdates[act.targetId].isMissionaryConverted = true;
@@ -448,7 +500,7 @@ export const TickEngine = {
             }
 
             // Ma Cà Rồng (Vampire) Bitten
-            if (act.role === "vampire" && act.actionType === "bite") {
+            if (act.role === "vampire" && act.actionType === "bite" && act.targetId) {
                 vampireBittenPlayers.add(act.targetId);
                 const vampireChatId = "vampire_" + roomId;
 
@@ -459,7 +511,6 @@ export const TickEngine = {
                 playerStateUpdates[act.targetId].isVampireBitten = true;
                 playerStateUpdates[act.targetId].vampireFactionId = vampireChatId;
 
-                // Kiểm tra Bán Sói (Half Wolf) chuyển hóa thành Sói
                 if (playersMap[act.targetId]?.role === "halfWolf") {
                     playerStateUpdates[act.targetId].realFaction = "wolf";
                     playerStateUpdates[act.targetId].role = "wolf";
@@ -478,7 +529,7 @@ export const TickEngine = {
             }
 
             // Vẹt (Parrot) Nhái Giọng
-            if (act.role === "parrot" && act.actionType === "mimic") {
+            if (act.role === "parrot" && act.actionType === "mimic" && act.targetId) {
                 initMailbox(act.srcId);
                 mailboxDeliveries[act.srcId].push({
                     title: "[🦜] BÙA CHÚ LẶP LẠI",
@@ -499,10 +550,10 @@ export const TickEngine = {
         let witchHealTarget = null;
         const witchPoisonTargets = new Set();
 
-        // 6.1 Phù Thủy (Witch) phân giải bình
+        // 6.1 Phù Thủy (Witch) Phân Giải Bình
         actionBuffer.forEach(act => {
             if (act.role === "witch") {
-                if (act.actionType === "heal") {
+                if (act.actionType === "heal" && act.targetId) {
                     witchHealTarget = act.targetId;
                     initPlayerState(act.targetId);
                     playerStateUpdates[act.targetId].isWitchHealed = true;
@@ -513,7 +564,7 @@ export const TickEngine = {
                         content: `Bạn đã tưới bình Dược Thủy hồi sinh cho ${playersMap[act.targetId]?.name}.`
                     });
                 }
-                if (act.actionType === "poison") {
+                if (act.actionType === "poison" && act.targetId) {
                     witchPoisonTargets.add(act.targetId);
                     initPlayerState(act.targetId);
                     playerStateUpdates[act.targetId].isWitchPoisoned = true;
@@ -527,25 +578,25 @@ export const TickEngine = {
             }
         });
 
-        // 6.2 Gom sát thương từ Ma Sói, Sát Nhân, Kẻ Báo Thù, Mèo, Kẻ Mạo Danh
+        // 6.2 Gom Sát Thương Từ Ma Sói, Sát Nhân, Báo Thù, Mèo, Mạo Danh
         actionBuffer.forEach(act => {
-            if (act.role === "wolf" || act.actionType === "wolf_bite" || act.role === "wolfBoss" || act.role === "loneWolf") {
+            if ((act.role === "wolf" || act.actionType === "wolf_bite" || act.role === "wolfBoss" || act.role === "loneWolf") && act.targetId) {
                 damageQueue.push({ targetId: act.targetId, sourceRole: "wolf" });
             }
-            if (act.role === "serialKiller" && act.actionType === "serial_kill") {
+            if (act.role === "serialKiller" && act.actionType === "serial_kill" && act.targetId) {
                 damageQueue.push({ targetId: act.targetId, sourceRole: "serialKiller" });
             }
-            if (act.role === "avenger" && act.actionType === "execute") {
+            if (act.role === "avenger" && act.actionType === "execute" && act.targetId) {
                 damageQueue.push({ targetId: act.targetId, sourceRole: "avenger" });
                 initPlayerState(act.targetId);
                 playerStateUpdates[act.targetId].isAvengerExecuted = true;
             }
-            if (act.role === "cat" && act.actionType === "tear") {
+            if (act.role === "cat" && act.actionType === "tear" && act.targetId) {
                 damageQueue.push({ targetId: act.targetId, sourceRole: "cat" });
                 initPlayerState(act.targetId);
                 playerStateUpdates[act.targetId].isCatClawed = true;
             }
-            if (act.role === "impostor" && act.actionType === "lethal_slash") {
+            if (act.role === "impostor" && act.actionType === "lethal_slash" && act.targetId) {
                 damageQueue.push({ targetId: act.targetId, sourceRole: "impostor" });
                 initPlayerState(act.targetId);
                 playerStateUpdates[act.targetId].isLethalSlashed = true;
@@ -555,7 +606,7 @@ export const TickEngine = {
         // 6.3 Kẻ Phóng Hỏa (Arsonist) Tẩm Xăng & Châm Lửa
         actionBuffer.forEach(act => {
             if (act.role === "arsonist") {
-                if (act.actionType === "pour_petrol") {
+                if (act.actionType === "pour_petrol" && act.targetId) {
                     newlyPetroled.add(act.targetId);
                     if (act.secondaryId) newlyPetroled.add(act.secondaryId);
 
@@ -587,7 +638,7 @@ export const TickEngine = {
             }
         });
 
-        // 6.4 Xử lý duyệt hàng chờ sát thương
+        // 6.4 Duyệt Hàng Chờ Sát Thương
         damageQueue.forEach(dmg => {
             const { targetId, sourceRole } = dmg;
 
@@ -602,7 +653,17 @@ export const TickEngine = {
                 return;
             }
 
-            // Phù Thủy Cứu -> Hủy sát thương
+            // Hiệp Sĩ Không Đầu Miễn Nhiễm Đêm 1
+            if (playersMap[targetId]?.role === "headlessKnight" && currentDay === 1) {
+                initMailbox(targetId);
+                mailboxDeliveries[targetId].push({
+                    title: "[🎃] BẢN NĂNG KHÔNG ĐẦU",
+                    content: "Đòn tấn công đã giáng xuống nhưng bạn miễn nhiễm hoàn toàn vào Đêm đầu tiên!"
+                });
+                return;
+            }
+
+            // Phù Thủy Cứu
             if (targetId === witchHealTarget) {
                 initMailbox(targetId);
                 mailboxDeliveries[targetId].push({
@@ -646,7 +707,7 @@ export const TickEngine = {
             });
         });
 
-        // Xử lý Cặp Đôi Uyên Ương (Cupid Couple) Chết Cùng Nhau
+        // Cặp Đôi Uyên Ương (Cupid Lovers) Chết Cùng Nhau
         playersList.forEach(p => {
             if (p.inCouple && deathsSet.has(p.id) && p.coupleId) {
                 playersList.forEach(partner => {
@@ -666,7 +727,7 @@ export const TickEngine = {
         // TICK 7: PHẢN SÁT VÀ PHÁT BẮN CUỐI CÙNG (DEATH RETALIATIONS)
         // ==========================================
         playersList.forEach(p => {
-            // Thợ Săn (Hunter) chết đêm nổ súng
+            // Thợ Săn (Hunter) Chết Đêm Nổ Súng
             if (p.role === "hunter" && deathsSet.has(p.id) && p.targetSelection) {
                 let hunterTarget = p.targetSelection.targetId;
                 hunterTarget = getRoutedTarget(p.id, hunterTarget);
@@ -711,7 +772,7 @@ export const TickEngine = {
         // ==========================================
         actionBuffer.forEach(act => {
             // Tiên Tri (Seer)
-            if (act.role === "seer" && (act.actionType === "seer_scan" || act.actionType === "seer_open_eye")) {
+            if (act.role === "seer" && (act.actionType === "seer_scan" || act.actionType === "seer_open_eye") && act.targetId) {
                 const originalTarget = act.targetId;
                 const finalTargetId = identitySwaps[originalTarget] || originalTarget;
                 const targetPlayer = playersMap[finalTargetId];
@@ -742,7 +803,7 @@ export const TickEngine = {
             }
 
             // Cảnh Sát Trưởng (Police)
-            if (act.role === "police" && act.actionType === "check_weapon") {
+            if (act.role === "police" && act.actionType === "check_weapon" && act.targetId) {
                 const targetPlayer = playersMap[act.targetId];
                 const dangerousRoles = ["hunter", "serialKiller", "arsonist", "witch", "impostor", "wolf"];
                 const hasWeapon = targetPlayer && dangerousRoles.includes(targetPlayer.role);
@@ -755,7 +816,7 @@ export const TickEngine = {
             }
 
             // Pháp Sư Sói (Wolf Mage)
-            if (act.role === "wolfMage" && act.actionType === "scan_seer") {
+            if (act.role === "wolfMage" && act.actionType === "scan_seer" && act.targetId) {
                 const targetPlayer = playersMap[act.targetId];
                 const isSeer = targetPlayer && (targetPlayer.role === "seer" || targetPlayer.role === "apprenticeSeer");
                 
@@ -766,6 +827,18 @@ export const TickEngine = {
                 mailboxDeliveries[act.srcId].push({
                     title: "[🧿] MA PHÁP DÒ ĐƯỜNG",
                     content: `Kiểm tra ${targetPlayer?.name}. Kết quả: ${isSeer ? "LÀ VAI TRÒ TIÊN TRI 🔮" : "KHÔNG PHẢI TIÊN TRI ❌"}.`
+                });
+            }
+
+            // Tử Thần (Reaper) Dự Đoán Linh Hồn
+            if (act.role === "reaper" && act.actionType === "predict_death" && act.targetId) {
+                const targetPlayer = playersMap[act.targetId];
+                const isDeadTonight = deathsSet.has(act.targetId);
+
+                initMailbox(act.srcId);
+                mailboxDeliveries[act.srcId].push({
+                    title: "[💀] LƯỠI HÁI TIÊN TRI",
+                    content: `Dự đoán linh hồn của ${targetPlayer?.name}: ${isDeadTonight ? "ĐÃ THU HOẠCH THÀNH CÔNG 🩸" : "DỰ ĐOÁN SAI MỤC TIÊU ❌"}.`
                 });
             }
         });
