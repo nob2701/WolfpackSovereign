@@ -1,6 +1,6 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE (UPDATE 8 FIXED)
+ * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE (FIXED)
  * =========================================================================
  * Tệp điều phối trung tâm ứng dụng. Quản lý kết nối Firebase Realtime,
  * Sảnh chờ Lobby, Mật khẩu phòng, Chuyển giao Host tự động, Render Bàn Cờ,
@@ -14,7 +14,7 @@ import {
 import { StateMachine } from "./state-machine.js";
 import { 
     openTargetSelection, ModalManager, initMobileTabSync, showPlayerBottomSheet, 
-    setupSoundSettings, showToast, askConfirm, openMayorSuccessionModal,
+    setupSoundSettings, showToast, askConfirm,
     NavigationStack, openHunterRevengeModal, debounceButton 
 } from "./ui-manager.js";
 import { 
@@ -46,7 +46,7 @@ let spectatorPollConfigured = false;
 let openedMailsList = [];
 let currentMailIndex = -1;
 
-// KHỞI CHẠY ỨNG DỤNG AN TOÀN (BẢO VỆ CHỐNG BẪY DOMCONTENTLOADED CỦA ES6 MODULES)
+// KHỞI CHẠY ỨNG DỤNG AN TOÀN
 function initApp() {
     try {
         initLobbyEngine();
@@ -112,7 +112,7 @@ function clearActiveListeners() {
 }
 
 // ==========================================
-// 1. ĐĂNG NHẬP VÀ TẠO / THAM GIA PHÒNG CHƠI (ĐÃ SỬA LỖI NHẬP TÊN TIẾNG VIỆT)
+// 1. ĐĂNG NHẬP VÀ TẠO / THAM GIA PHÒNG CHƠI
 // ==========================================
 function initLobbyEngine() {
     const nameInput = document.getElementById("player-name-input");
@@ -250,7 +250,6 @@ function setupGMConsoleListeners() {
     });
 }
 
-// SỬA LỖI NHẬP MÃ PHÒNG VÀ ĐIỀU HƯỚNG BÀN PHÍM ẢO DI ĐỘNG (iOS/ANDROID BACKSPACE)
 function setupCodeInputNavigation() {
     const inputs = document.querySelectorAll(".code-input");
     inputs.forEach((input, index) => {
@@ -801,7 +800,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
                 if (chatSendBtn) chatSendBtn.disabled = false;
             }
         } else {
-            // Linh Hồn Chat
             document.getElementById("chan-graveyard")?.classList.remove("hidden");
             if (Net.currentChannel === "graveyard") {
                 if (chatInputField) {
