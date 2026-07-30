@@ -1,6 +1,6 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE (UPDATE 8 FULL)
+ * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE (UPDATE 8 FIXED)
  * =========================================================================
  * Tệp điều phối trung tâm ứng dụng. Quản lý kết nối Firebase Realtime,
  * Sảnh chờ Lobby, Mật khẩu phòng, Chuyển giao Host tự động, Render Bàn Cờ,
@@ -112,7 +112,7 @@ function clearActiveListeners() {
 }
 
 // ==========================================
-// 1. ĐĂNG NHẬP VÀ TẠO / THAM GIA PHÒNG CHƠI
+// 1. ĐĂNG NHẬP VÀ TẠO / THAM GIA PHÒNG CHƠI (ĐÃ SỬA LỖI NHẬP TÊN TIẾNG VIỆT)
 // ==========================================
 function initLobbyEngine() {
     const nameInput = document.getElementById("player-name-input");
@@ -126,29 +126,34 @@ function initLobbyEngine() {
     const btnLeaveRoom = document.getElementById("btn-leave-room");
     const btnHeaderBackLobby = document.getElementById("btn-header-back-lobby");
 
+    // Hàm kiểm tra độ dài tên và mở khóa nút bấm chuẩn xác
+    const validateAndToggleButtons = () => {
+        if (!nameInput) return;
+        const cleanName = nameInput.value.trim();
+        const isValid = cleanName.length >= 2 && cleanName.length <= 10;
+        
+        if (btnInitialJoin) btnInitialJoin.disabled = !isValid;
+        if (btnCreate) btnCreate.disabled = !isValid;
+        Net.playerName = cleanName;
+    };
+
     if (nameInput) {
-        nameInput.addEventListener("input", () => {
-            const cleanName = nameInput.value.trim().replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, "").substring(0, 10);
-            nameInput.value = cleanName;
-            const isValid = cleanName.length >= 2 && cleanName.length <= 10;
-            if (btnInitialJoin) btnInitialJoin.disabled = !isValid;
-            if (btnCreate) btnCreate.disabled = !isValid;
-            Net.playerName = cleanName;
-        });
+        nameInput.addEventListener("input", validateAndToggleButtons);
+        nameInput.addEventListener("keyup", validateAndToggleButtons);
+        nameInput.addEventListener("change", validateAndToggleButtons);
     }
 
-    // Tự động điền tên cũ từ LocalStorage và PHÁT SỰ KIỆN INPUT chủ động để mở khóa nút bấm
+    // Tự động điền tên cũ từ LocalStorage và kích hoạt kiểm tra tên
     const savedName = localStorage.getItem("online_player_name");
     if (savedName && nameInput) {
         const truncatedName = savedName.substring(0, 10);
         nameInput.value = truncatedName;
-        Net.playerName = truncatedName;
-        nameInput.dispatchEvent(new Event("input"));
+        validateAndToggleButtons();
     }
 
     if (btnInitialJoin) {
         btnInitialJoin.addEventListener("click", () => {
-            if (debounceButton(btnInitialJoin, 300) || Net.isReconnecting) return;
+            if (debounceButton(btnInitialJoin, 300)) return;
             localStorage.setItem("online_player_name", Net.playerName);
             document.getElementById("login-form-panel")?.classList.add("hidden");
             document.getElementById("join-code-panel")?.classList.remove("hidden");
@@ -165,12 +170,12 @@ function initLobbyEngine() {
     }
 
     if (btnCreate) btnCreate.addEventListener("click", () => {
-        if (debounceButton(btnCreate, 500) || Net.isReconnecting) return;
+        if (debounceButton(btnCreate, 500)) return;
         createRoom();
     });
 
     if (btnJoinSubmit) btnJoinSubmit.addEventListener("click", () => {
-        if (debounceButton(btnJoinSubmit, 500) || Net.isReconnecting) return;
+        if (debounceButton(btnJoinSubmit, 500)) return;
         let code = "";
         for (let i = 1; i <= 6; i++) {
             const el = document.getElementById(`code-${i}`);
@@ -240,7 +245,6 @@ function setupGMConsoleListeners() {
         }
     });
 
-    // Nút Tải Xuất Match Logs cho GM
     document.getElementById("btn-export-logs")?.addEventListener("click", () => {
         window.UI_Module.exportMatchLogs();
     });
@@ -258,7 +262,6 @@ function setupCodeInputNavigation() {
             checkCodeComplete();
         });
 
-        // Bắt phím Xóa (Backspace) trên bàn phím cứng lẫn bàn phím ảo di động
         const handleBackspace = (e) => {
             if (e.key === "Backspace" || e.code === "Backspace") {
                 if (!input.value && index > 0) {
@@ -299,7 +302,7 @@ function generateRoomCode() {
 }
 
 async function createRoom() {
-    if (Net.playerName.length < 2 || Net.isReconnecting) return;
+    if (Net.playerName.length < 2) return;
     const roomId = generateRoomCode();
     Net.roomId = roomId;
     Net.playerId = "host_" + Date.now();
@@ -355,9 +358,6 @@ async function createRoom() {
 }
 
 async function joinRoom(roomId, passwordInput = "", name = Net.playerName) {
-    if (Net.isReconnecting) return;
-
-    // Kiểm tra mật khẩu phòng thông qua Helper
     const pwdCheck = await verifyRoomPassword(roomId, passwordInput);
     if (!pwdCheck.valid) {
         showToast(pwdCheck.reason || "Mật khẩu phòng chơi không chính xác!", "danger");
@@ -441,7 +441,7 @@ function setupActivePlayersPresence() {
     onDisconnect(connectionRef).set(false);
 }
 
-// KHÔI PHỤC PHIÊN CHƠI VỚI CỜ LÓC CHỐNG ĐUA TRẠNG THÁI (RECONNECT RACE CONDITION GUARD)
+// KHÔI PHỤC PHIÊN CHƠI VỚI BẢO VỆ TIMEOUT
 async function attemptSessionReconnection() {
     const savedRoomId = localStorage.getItem("reconnect_room_id");
     const savedPlayerId = localStorage.getItem("reconnect_player_id");
