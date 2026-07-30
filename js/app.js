@@ -1,6 +1,6 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE (FULL)
+ * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE (UPDATE 8 FULL)
  * =========================================================================
  * Tệp điều phối trung tâm ứng dụng. Quản lý kết nối Firebase Realtime,
  * Sảnh chờ Lobby, Mật khẩu phòng, Chuyển giao Host tự động, Render Bàn Cờ,
@@ -19,7 +19,7 @@ import {
 } from "./ui-manager.js";
 import { 
     ROLE_DB, ROLE_ICONS, FACTION_ICONS, getRoleName, PASSIVE_ROLES, ACTIVE_NIGHT_ROLES,
-    checkMajorityNominationTrigger, Engine_Module, AVATARS_LIST 
+    checkMajorityNominationTrigger, Engine_Module 
 } from "./game-logic.js";
 
 // Trạng thái mạng và đồng bộ cục bộ của Client
@@ -31,7 +31,8 @@ export const Net = {
     players: {}, 
     connectedRef: null,
     currentChannel: "public",
-    mailCategory: "all"
+    mailCategory: "all",
+    isReconnecting: false
 };
 window.Net = Net;
 
@@ -55,7 +56,6 @@ function initApp() {
         setupChatEngine();
         setupParchmentNavigation();
         setupGMConsoleListeners();
-        setupAvatarSelector();
     } catch (err) {
         console.warn("⚠️ [Khởi tạo App] Cảnh báo DOM:", err);
     } finally {
@@ -71,7 +71,7 @@ if (document.readyState === "loading") {
     initApp();
 }
 
-// Gỡ bỏ màn hình chờ Splash Screen An Toàn tuyệt đối
+// Giải phóng màn hình chờ Splash Screen An Toàn
 function dismissSplashScreen() {
     const splash = document.getElementById("splash-screen");
     if (!splash) return;
@@ -112,37 +112,8 @@ function clearActiveListeners() {
 }
 
 // ==========================================
-// 1. ĐĂNG NHẬP, CHỌN AVATAR & TẠO/THAM GIA PHÒNG
+// 1. ĐĂNG NHẬP VÀ TẠO / THAM GIA PHÒNG CHƠI
 // ==========================================
-function setupAvatarSelector() {
-    const container = document.getElementById("avatar-selector-container");
-    if (!container) return;
-    container.innerHTML = "";
-
-    AVATARS_LIST.forEach(av => {
-        const chip = document.createElement("span");
-        chip.className = `avatar-token-chip ${window.G.selectedAvatar === av ? "selected" : ""}`;
-        chip.style.cssText = "font-size:22px; cursor:pointer; padding:4px 8px; border-radius:6px; border:1px solid transparent; display:inline-block;";
-        if (window.G.selectedAvatar === av) {
-            chip.style.borderColor = "var(--accent)";
-            chip.style.background = "rgba(234, 179, 8, 0.2)";
-        }
-        chip.innerText = av;
-
-        chip.addEventListener("click", () => {
-            document.querySelectorAll("#avatar-selector-container .avatar-token-chip").forEach(c => {
-                c.style.borderColor = "transparent";
-                c.style.background = "transparent";
-            });
-            chip.style.borderColor = "var(--accent)";
-            chip.style.background = "rgba(234, 179, 8, 0.2)";
-            window.G.selectedAvatar = av;
-        });
-
-        container.appendChild(chip);
-    });
-}
-
 function initLobbyEngine() {
     const nameInput = document.getElementById("player-name-input");
     const btnInitialJoin = document.getElementById("btn-initial-join-trigger");
@@ -155,15 +126,6 @@ function initLobbyEngine() {
     const btnLeaveRoom = document.getElementById("btn-leave-room");
     const btnHeaderBackLobby = document.getElementById("btn-header-back-lobby");
 
-    const savedName = localStorage.getItem("online_player_name");
-    if (savedName && nameInput) {
-        const truncatedName = savedName.substring(0, 10);
-        nameInput.value = truncatedName;
-        Net.playerName = truncatedName;
-        if (btnInitialJoin) btnInitialJoin.disabled = truncatedName.length < 2;
-        if (btnCreate) btnCreate.disabled = truncatedName.length < 2;
-    }
-
     if (nameInput) {
         nameInput.addEventListener("input", () => {
             const cleanName = nameInput.value.trim().replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, "").substring(0, 10);
@@ -175,9 +137,18 @@ function initLobbyEngine() {
         });
     }
 
+    // Tự động điền tên cũ từ LocalStorage và PHÁT SỰ KIỆN INPUT chủ động để mở khóa nút bấm
+    const savedName = localStorage.getItem("online_player_name");
+    if (savedName && nameInput) {
+        const truncatedName = savedName.substring(0, 10);
+        nameInput.value = truncatedName;
+        Net.playerName = truncatedName;
+        nameInput.dispatchEvent(new Event("input"));
+    }
+
     if (btnInitialJoin) {
         btnInitialJoin.addEventListener("click", () => {
-            if (debounceButton(btnInitialJoin, 300)) return;
+            if (debounceButton(btnInitialJoin, 300) || Net.isReconnecting) return;
             localStorage.setItem("online_player_name", Net.playerName);
             document.getElementById("login-form-panel")?.classList.add("hidden");
             document.getElementById("join-code-panel")?.classList.remove("hidden");
@@ -194,12 +165,12 @@ function initLobbyEngine() {
     }
 
     if (btnCreate) btnCreate.addEventListener("click", () => {
-        if (debounceButton(btnCreate, 500)) return;
+        if (debounceButton(btnCreate, 500) || Net.isReconnecting) return;
         createRoom();
     });
 
     if (btnJoinSubmit) btnJoinSubmit.addEventListener("click", () => {
-        if (debounceButton(btnJoinSubmit, 500)) return;
+        if (debounceButton(btnJoinSubmit, 500) || Net.isReconnecting) return;
         let code = "";
         for (let i = 1; i <= 6; i++) {
             const el = document.getElementById(`code-${i}`);
@@ -275,6 +246,7 @@ function setupGMConsoleListeners() {
     });
 }
 
+// SỬA LỖI NHẬP MÃ PHÒNG VÀ ĐIỀU HƯỚNG BÀN PHÍM ẢO DI ĐỘNG (iOS/ANDROID BACKSPACE)
 function setupCodeInputNavigation() {
     const inputs = document.querySelectorAll(".code-input");
     inputs.forEach((input, index) => {
@@ -286,8 +258,18 @@ function setupCodeInputNavigation() {
             checkCodeComplete();
         });
 
-        input.addEventListener("keydown", (e) => {
-            if (e.key === "Backspace" && !input.value && index > 0) {
+        // Bắt phím Xóa (Backspace) trên bàn phím cứng lẫn bàn phím ảo di động
+        const handleBackspace = (e) => {
+            if (e.key === "Backspace" || e.code === "Backspace") {
+                if (!input.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            }
+        };
+
+        input.addEventListener("keydown", handleBackspace);
+        input.addEventListener("keyup", (e) => {
+            if ((e.key === "Backspace" || e.code === "Backspace") && !input.value && index > 0) {
                 inputs[index - 1].focus();
             }
         });
@@ -305,7 +287,7 @@ function checkCodeComplete() {
 }
 
 // ==========================================
-// 2. KẾT NỐI TẠO PHÒNG VÀ XÁC THỰC MẬT KHẨU (UPDATE7)
+// 2. KẾT NỐI TẠO PHÒNG VÀ XÁC THỰC MẬT KHẨU
 // ==========================================
 function generateRoomCode() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -317,7 +299,7 @@ function generateRoomCode() {
 }
 
 async function createRoom() {
-    if (Net.playerName.length < 2) return;
+    if (Net.playerName.length < 2 || Net.isReconnecting) return;
     const roomId = generateRoomCode();
     Net.roomId = roomId;
     Net.playerId = "host_" + Date.now();
@@ -333,7 +315,6 @@ async function createRoom() {
     const hostData = {
         id: Net.playerId,
         name: Net.playerName,
-        avatar: window.G.selectedAvatar || "🐺",
         isHost: true,
         isReady: true,
         isConnected: true,
@@ -373,9 +354,10 @@ async function createRoom() {
     }
 }
 
-// XÁC THỰC MẬT KHẨU PHÒNG CHUẨN XÁC KHI JOIN PHÒNG (SỬA LỖI UPDATE7)
 async function joinRoom(roomId, passwordInput = "", name = Net.playerName) {
-    // 1. Kiểm tra mật khẩu phòng thông qua Helper
+    if (Net.isReconnecting) return;
+
+    // Kiểm tra mật khẩu phòng thông qua Helper
     const pwdCheck = await verifyRoomPassword(roomId, passwordInput);
     if (!pwdCheck.valid) {
         showToast(pwdCheck.reason || "Mật khẩu phòng chơi không chính xác!", "danger");
@@ -407,7 +389,6 @@ async function joinRoom(roomId, passwordInput = "", name = Net.playerName) {
         const playerData = {
             id: Net.playerId,
             name: name,
-            avatar: window.G.selectedAvatar || "🐺",
             isHost: false,
             isReady: false,
             isConnected: true,
@@ -452,7 +433,7 @@ function enterLobbyMode() {
 }
 
 function setupActivePlayersPresence() {
-    if (presenceConfigured) return;
+    if (presenceConfigured || !Net.roomId || !Net.playerId) return;
     presenceConfigured = true;
 
     const connectionRef = ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/isConnected`);
@@ -460,17 +441,19 @@ function setupActivePlayersPresence() {
     onDisconnect(connectionRef).set(false);
 }
 
-// KHÔI PHỤC PHIÊN CHƠI KHI F5 VỚI TIMEOUT BẢO VỆ
+// KHÔI PHỤC PHIÊN CHƠI VỚI CỜ LÓC CHỐNG ĐUA TRẠNG THÁI (RECONNECT RACE CONDITION GUARD)
 async function attemptSessionReconnection() {
     const savedRoomId = localStorage.getItem("reconnect_room_id");
     const savedPlayerId = localStorage.getItem("reconnect_player_id");
 
     if (savedRoomId && savedPlayerId) {
+        Net.isReconnecting = true;
         const overlay = document.getElementById("reconnect-overlay");
         if (overlay) overlay.style.display = "flex";
 
         const safeTimeout = setTimeout(() => {
             if (overlay) overlay.style.display = "none";
+            Net.isReconnecting = false;
         }, 2000);
 
         try {
@@ -505,6 +488,7 @@ async function attemptSessionReconnection() {
         } finally {
             clearTimeout(safeTimeout);
             if (overlay) overlay.style.display = "none";
+            Net.isReconnecting = false;
         }
     }
 }
@@ -547,6 +531,7 @@ function handleLocalEvictionCleanup() {
     Net.roomId = null;
     Net.playerId = null;
     Net.isHost = false;
+    Net.isReconnecting = false;
     
     document.body.setAttribute("data-view", "lobby");
     document.getElementById("lobby-room-status")?.classList.add("hidden");
@@ -596,20 +581,20 @@ function listenToRoom() {
             }
         }
 
-        window.G.day = roomData.meta.day || 0;
-        window.G.phase = roomData.meta.phase || "setup";
-        window.G.mayorId = roomData.meta.mayorId || null;
+        window.G.day = roomData.meta?.day || 0;
+        window.G.phase = roomData.meta?.phase || "setup";
+        window.G.mayorId = roomData.meta?.mayorId || null;
         window.G.players = Object.values(roomData.players || {});
         window.G.roleCounts = roomData.roleCounts || {};
         Net.players = roomData.players || {};
 
-        if (roomData.meta.timerEndTime && roomData.meta.timerDuration) {
+        if (roomData.meta?.timerEndTime && roomData.meta?.timerDuration) {
             StateMachine.syncPhaseTimer(roomData.meta.timerEndTime, roomData.meta.timerDuration);
         }
 
         const mayorNameEl = document.getElementById("mayor-name-display");
         if (mayorNameEl) {
-            if (roomData.meta.mayorId && roomData.players[roomData.meta.mayorId]) {
+            if (roomData.meta?.mayorId && roomData.players[roomData.meta.mayorId]) {
                 mayorNameEl.innerText = roomData.players[roomData.meta.mayorId].name;
             } else {
                 mayorNameEl.innerText = "Chưa có";
@@ -622,7 +607,7 @@ function listenToRoom() {
         const lobbyConnectedEl = document.getElementById("lobby-connected-count");
         if (lobbyConnectedEl) lobbyConnectedEl.innerText = connectedCount;
 
-        const isSetupPhaseInLobby = (roomData.meta.phase === "setup" && !roomData.meta.started);
+        const isSetupPhaseInLobby = (roomData.meta?.phase === "setup" && !roomData.meta?.started);
 
         if (isSetupPhaseInLobby) {
             renderLobbyPlayersList();
@@ -639,7 +624,7 @@ function listenToRoom() {
                 transitionToGameScreen(roomData);
             }
 
-            if (roomData.meta.phase === "victory" && roomData.meta.winner) {
+            if (roomData.meta?.phase === "victory" && roomData.meta?.winner) {
                 window.UI_Module.showVictoryScreen(roomData.meta.winner, roomData.meta.mvp, roomData.meta.relations);
             }
 
@@ -648,9 +633,9 @@ function listenToRoom() {
             updateSovereignStatusAndGuide(roomData);
             
             if (Net.isHost) {
-                if (roomData.meta.phase === "night") {
+                if (roomData.meta?.phase === "night") {
                     StateMachine.checkAndAutoTransitionToDay();
-                } else if (roomData.meta.phase === "day" && roomData.nominations) {
+                } else if (roomData.meta?.phase === "day" && roomData.nominations) {
                     checkMajorityNominationTrigger();
                 }
             }
@@ -689,7 +674,7 @@ function renderLobbyPlayersList() {
         tag.className = "lobby-player-tag";
         
         const nameSpan = document.createElement("span");
-        nameSpan.innerText = `${p.avatar || "👤"} ${p.name}` + (p.isHost ? " 👑" : "");
+        nameSpan.innerText = `👤 ${p.name}` + (p.isHost ? " 👑" : "");
         nameSpan.style.fontWeight = "bold";
 
         const badge = document.createElement("span");
@@ -731,7 +716,7 @@ function transitionToGameScreen(roomData) {
 }
 
 // ==========================================
-// 4. BẢO VỆ KÊNH CHAT CHẾT & ĐỒNG BỘ LAYOUT (UPDATE7)
+// 4. BẢO VỆ KÊNH CHAT CHẾT & ĐỒNG BỘ LAYOUT
 // ==========================================
 function syncLayoutBasedOnRoleAndStatus(roomData) {
     const mySelf = Net.players[Net.playerId];
@@ -749,7 +734,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
     const chatInputField = document.getElementById("chat-input-field");
     const chatSendBtn = document.getElementById("btn-chat-send");
 
-    // SỬA LỖI UPDATE7: Khóa hoàn toàn Kênh Sói khi Ma Sói đã chết
     const wolfTab = document.getElementById("chan-wolf");
     if (mySelf && mySelf.alive && (mySelf.role === "wolf" || mySelf.realFaction === "wolf")) {
         wolfTab?.classList.remove("hidden");
@@ -910,7 +894,6 @@ function renderDynamicActionControls(roomData, mySelf) {
 
         document.getElementById("btn-use-skill")?.addEventListener("click", () => {
             openTargetSelection(Object.values(Net.players), mySelf.role, (targetPlayerId, secondaryId, chosenModifier, phrase) => {
-                // Nếu là Ma Sói cắn -> Đồng thời đẩy vào node wolf_votes để cả bầy cùng thấy
                 if (mySelf.role === "wolf" || mySelf.role === "wolfBoss" || mySelf.realFaction === "wolf") {
                     set(ref(db, `rooms/${Net.roomId}/wolf_votes/${Net.playerId}`), targetPlayerId);
                 }
@@ -952,7 +935,7 @@ function renderDynamicActionControls(roomData, mySelf) {
 }
 
 // ==========================================
-// 5. CÁC PHA XỬ ÁN & TÒA ÁN (SỬA LỖI HIỂN THỊ ĐIỂM TRƯỞNG LÀNG 2đ)
+// 5. CÁC PHA XỬ ÁN & TÒA ÁN
 // ==========================================
 function syncTrialPhases(roomData) {
     const trial = roomData.trial || { stage: "none", accusedId: null };
@@ -1054,7 +1037,6 @@ function openMayorElectionModal(roomData) {
     }
 }
 
-// SỬA LỖI LISTENER DỒN TÍCH TRONG PANEL BIỆN HỘ REALTIME
 function renderDefenseTypingPanel(isAccused, accusedName = "") {
     const controlPanel = document.getElementById("controls");
     if (!controlPanel) return;
@@ -1102,7 +1084,6 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
     }
 }
 
-// SỬA LỖI UPDATE7: HIỂN THỊ TRỌNG SỐ TRƯỞNG LÀNG (👑 2đ) TRÊN MODAL BỎ PHIẾU
 function openSplitScreenVoteModal(accusedId, roomData) {
     const modal = document.getElementById("vote-modal");
     if (!modal) return;
@@ -1323,7 +1304,7 @@ function setupMailboxCategoryFilters() {
 }
 
 // ==========================================
-// 7. KÊNH THẢO LUẬN MULTI-CHANNEL & MẬT THƯ GM (UPDATE7)
+// 7. KÊNH THẢO LUẬN MULTI-CHANNEL & MẬT THƯ GM
 // ==========================================
 function setupChatEngine() {
     const btnSend = document.getElementById("btn-chat-send");
@@ -1386,7 +1367,6 @@ async function sendChatMessage() {
     const messagePayload = {
         senderName: Net.playerName,
         senderId: Net.playerId,
-        avatar: window.G.selectedAvatar || "👤",
         text: msg,
         timestamp: getSynchronizedTimestamp()
     };
@@ -1410,7 +1390,6 @@ function listenToChatChannel(channelPath) {
         const chatBox = document.getElementById("chat-box");
         if (!chatBox) return;
 
-        // BẢO VỆ SCROLL: Chỉ tự cuộn xuống đáy khi người chơi đang ở dưới đáy
         const isNearBottom = chatBox.scrollHeight - chatBox.clientHeight - chatBox.scrollTop < 80;
 
         chatBox.innerHTML = "";
@@ -1420,7 +1399,7 @@ function listenToChatChannel(channelPath) {
             row.className = `chat-msg ${Net.currentChannel}`;
             row.style.marginBottom = "6px";
             row.style.lineHeight = "1.4";
-            row.innerHTML = `<span>${m.avatar || "👤"}</span> <b style="color:var(--accent)">${m.senderName}:</b> ${m.text}`;
+            row.innerHTML = `<b style="color:var(--accent)">${m.senderName}:</b> ${m.text}`;
             chatBox.appendChild(row);
         });
 
@@ -1430,7 +1409,6 @@ function listenToChatChannel(channelPath) {
     });
 }
 
-// BỔ SUNG LẮNG NGHE MẬT THƯ TRỰC TIẾP TỪ QUẢN TRÒ (GM WHISPER)
 function setupGMWhisperListener() {
     if (activeGMWhisperUnsub || !Net.roomId || !Net.playerId) return;
 
@@ -1445,7 +1423,6 @@ function setupGMWhisperListener() {
     });
 }
 
-// HÀM CHO QUẢN TRÒ GỬI MẬT THƯ RIÊNG
 export async function sendGMWhisper(targetPlayerId, messageText) {
     if (!Net.isHost || !Net.roomId) return;
     const whisperRef = ref(db, `rooms/${Net.roomId}/gm_whispers/${targetPlayerId}`);
@@ -1460,7 +1437,6 @@ export async function sendGMWhisper(targetPlayerId, messageText) {
     }
 }
 
-// BỘ DỰ ĐOÁN TỈ LỆ THẮNG KHÁN GIẢ (CÓ DEBOUNCE CHỐNG SPAM)
 function setupSpectatorWinPoll() {
     if (spectatorPollConfigured || !Net.roomId) return;
     spectatorPollConfigured = true;
@@ -1475,7 +1451,7 @@ function setupSpectatorWinPoll() {
         const triggerEl = document.getElementById(btn.id);
         if (triggerEl) {
             triggerEl.addEventListener("click", async () => {
-                if (debounceButton(triggerEl, 1000)) return; // Khóa 1s
+                if (debounceButton(triggerEl, 1000)) return;
 
                 const mySelf = Net.players[Net.playerId];
                 if (mySelf && mySelf.alive) {
@@ -1518,7 +1494,7 @@ function setupSpectatorWinPoll() {
 }
 
 // ==========================================
-// 8. RENDER BÀN CỜ NGƯỜI CHƠI (DOM DIFFING & THỐNG NHẤT TARGET BẦY SÓI)
+// 8. RENDER BÀN CỜ NGƯỜI CHƠI (DOM DIFFING TỐI ƯU)
 // ==========================================
 function renderPlayersGridSmartly(roomData) {
     const grid = document.getElementById("game-players-grid");
@@ -1532,7 +1508,6 @@ function renderPlayersGridSmartly(roomData) {
         if (id) existingCardsMap[id] = card;
     });
 
-    // Thu thập danh sách mục tiêu cắn của Bầy Sói đêm nay (Realtime Wolf Pack Targets)
     const wolfVotesNode = roomData?.wolf_votes || {};
     const wolfVoteCounts = {};
     Object.values(wolfVotesNode).forEach(tid => {
@@ -1567,7 +1542,7 @@ function renderPlayersGridSmartly(roomData) {
         }
 
         const nameEl = card.querySelector(".name");
-        const fullNameStr = `${p.avatar || "👤"} ${p.name}`;
+        const fullNameStr = `👤 ${p.name}`;
         if (nameEl && nameEl.innerText !== fullNameStr) nameEl.innerText = fullNameStr;
 
         const roleUnmaskedEl = card.querySelector(".role-unmasked");
@@ -1593,7 +1568,6 @@ function renderPlayersGridSmartly(roomData) {
             card.appendChild(star);
         }
 
-        // Hiển thị huy hiệu số phiếu Bầy Sói đang nhắm cắn (Chỉ hiện cho đồng đội Sói)
         const mySelf = Net.players[Net.playerId];
         if (mySelf && (mySelf.role === "wolf" || mySelf.realFaction === "wolf" || Net.isHost)) {
             const votesForThisPlayer = wolfVoteCounts[p.id] || 0;

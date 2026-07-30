@@ -1,6 +1,6 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - UI MANAGER & INTERACTION SYSTEM (FULL UPDATE7)
+ * WOLFPACK SOVEREIGN v47.0 - UI MANAGER & INTERACTION SYSTEM (UPDATE 8 FULL)
  * =========================================================================
  * Quản lý Navigation Stack (Nút Quay lại Lịch sử), Modal Stack, Thẻ bài 3D,
  * Bộ chọn Mục tiêu Đêm 3 bước, Bottom Sheet vuốt tay, Búa Tòa Án, Âm Thanh,
@@ -15,7 +15,7 @@ import { getRoleName, getRoleDesc, PASSIVE_ROLES, ACTIVE_NIGHT_ROLES } from "./g
 // ==========================================
 export function debounceButton(btnElement, cooldownMs = 500) {
     if (!btnElement) return false;
-    if (btnElement.dataset.debounced === "true") return true; // Đã bị khóa -> Chặn!
+    if (btnElement.dataset.debounced === "true") return true; 
 
     btnElement.dataset.debounced = "true";
     btnElement.style.opacity = "0.6";
@@ -27,7 +27,7 @@ export function debounceButton(btnElement, cooldownMs = 500) {
         btnElement.style.pointerEvents = "auto";
     }, cooldownMs);
 
-    return false; // Cho phép thực thi lệnh!
+    return false; 
 }
 
 // ==========================================
@@ -121,11 +121,16 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ==========================================
-// 3. HỆ THỐNG THÔNG BÁO TOAST NỔI (TOAST NOTIFICATIONS)
+// 3. HỆ THỐNG THÔNG BÁO TOAST NỔI (TOAST NOTIFICATIONS WITH LIMIT)
 // ==========================================
 export function showToast(message, type = "info") {
     const container = document.getElementById("toast-container");
     if (!container) return;
+
+    // Giới hạn tối đa 3 Toast xếp chồng để tránh che kín màn hình
+    while (container.children.length >= 3) {
+        container.firstElementChild.remove();
+    }
 
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
@@ -162,7 +167,6 @@ export function askConfirm(message, onConfirm, onCancel = null) {
 
     if (!btnSubmit || !btnCancel) return;
 
-    // Tẩy sạch listener cũ dồn tích bằng Node Cloning
     const newSubmitBtn = btnSubmit.cloneNode(true);
     const newCancelBtn = btnCancel.cloneNode(true);
 
@@ -210,7 +214,7 @@ export function setupPasteCodeHandler() {
 }
 
 // ==========================================
-// 6. BỘ CHỌN MỤC TIÊU 3 BƯỚC ĐỘNG (SỬA LỖI TẨY STATE RÁC CHOSENMODIFIER)
+// 6. BỘ CHỌN MỤC TIÊU 3 BƯỚC ĐỘNG (KHÓA BÌNH PHÙ THỦY ĐÃ DÙNG)
 // ==========================================
 export function openTargetSelection(playersList, role, onConfirmCallback) {
     const Net = window.Net;
@@ -221,7 +225,6 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
     
     if (!grid || !modifiersBox || !textInputBox || !instruction || !Net) return;
 
-    // TẨY SẠCH STATE RÁC BAN ĐẦU
     let selectedPlayerIds = [];
     let chosenModifier = null;
     let extraPhrase = "";
@@ -238,7 +241,6 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
     textInputBox.classList.add("hidden");
     instruction.style.display = "none";
 
-    // Kỹ năng chọn 2 mục tiêu
     const multiTargetRoles = ["cupid", "phantomWolf", "eradicator", "manipulator", "prime", "arsonist"];
     const isMultiSelect = multiTargetRoles.includes(role);
     const maxSelections = isMultiSelect ? 2 : 1;
@@ -308,10 +310,24 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
         ]);
     } else if (role === "witch") {
         modifiersBox.classList.remove("hidden");
-        renderModifiers([
-            { id: "heal", label: "🧪 Bình Cứu" },
-            { id: "poison", label: "☠️ Bình Độc" }
-        ]);
+        const mySelf = Net.players[Net.playerId];
+        const options = [];
+        
+        // Chỉ hiện nút bình thuốc nếu chưa dùng hết bình đó
+        if (!mySelf || !mySelf.hasUsedHeal) {
+            options.push({ id: "heal", label: "🧪 Bình Cứu" });
+        }
+        if (!mySelf || !mySelf.hasUsedPoison) {
+            options.push({ id: "poison", label: "☠️ Bình Độc" });
+        }
+
+        if (options.length === 0) {
+            showToast("Bạn đã dùng hết cả 2 bình thuốc cứu và độc!", "warning");
+            purgeState();
+            return;
+        }
+
+        renderModifiers(options);
     } else if (role === "avenger") {
         modifiersBox.classList.remove("hidden");
         renderModifiers([
@@ -375,7 +391,7 @@ export function openTargetSelection(playersList, role, onConfirmCallback) {
     newSubmitBtn.onclick = () => {
         if (debounceButton(newSubmitBtn, 400)) return;
 
-        if (selectedPlayerIds.length === 0) {
+        if (selectedPlayerIds.length === 0 && chosenModifier !== "ignite") {
             showToast("Vui lòng chọn mục tiêu trước khi xác nhận!", "warning");
             return;
         }
@@ -452,7 +468,6 @@ export function openHunterRevengeModal(alivePlayers, onFireCallback) {
         if (secondsLeft <= 0) {
             clearInterval(interval);
             modal.style.display = "none";
-            // Tự động chọn mục tiêu ngẫu nhiên nếu Thợ Săn AFK
             if (!selectedTargetId && alivePlayers.length > 0) {
                 selectedTargetId = alivePlayers[Math.floor(Math.random() * alivePlayers.length)].id;
             }
@@ -494,14 +509,13 @@ export function initMobileTabSync() {
                 });
                 tabElement.classList.add("active");
 
-                // ĐỘC QUYỀN DRAWER TRÊN DI ĐỘNG (DRAWER MUTEX)
                 const leftDrawer = document.getElementById("col-left-container");
                 const rightDrawer = document.getElementById("col-right-container");
 
-                if (targetTab === 4) { // Tab Mật Thư
+                if (targetTab === 4) { 
                     leftDrawer?.classList.add("show-drawer");
                     rightDrawer?.classList.remove("show-drawer");
-                } else if (targetTab === 2 || targetTab === 5) { // Tab Roles hoặc Chat
+                } else if (targetTab === 2 || targetTab === 5) { 
                     rightDrawer?.classList.add("show-drawer");
                     leftDrawer?.classList.remove("show-drawer");
                 } else {
@@ -512,10 +526,9 @@ export function initMobileTabSync() {
         }
     });
 
-    // Lắng nghe nút Đóng Drawer trên di động
     document.getElementById("btn-close-left-drawer")?.addEventListener("click", () => {
         document.getElementById("col-left-container")?.classList.remove("show-drawer");
-        document.body.setAttribute("data-mobile-tab", 3); // Quay về tab Arena Board
+        document.body.setAttribute("data-mobile-tab", 3); 
     });
 
     document.getElementById("btn-close-right-drawer")?.addEventListener("click", () => {
@@ -523,7 +536,6 @@ export function initMobileTabSync() {
         document.body.setAttribute("data-mobile-tab", 3);
     });
 
-    // Lắng nghe toàn bộ sự kiện click nút .btn-nav-back trên toàn bộ ứng dụng
     document.addEventListener("click", (e) => {
         if (e.target.closest(".btn-nav-back")) {
             ModalManager.closeCurrent();
@@ -535,7 +547,7 @@ export function initMobileTabSync() {
 }
 
 // ==========================================
-// 9. CƠ CHẾ CHẠM GIỮ XEM THẺ MẬT (SỬA LỖI POPUP CONTEXT MENU DI ĐỘNG)
+// 9. CƠ CHẾ CHẠM GIỮ XEM THẺ MẬT (CHỐNG KẸT GIẢI MỜ TỰ ĐỘNG)
 // ==========================================
 export function setupIdentityCardHoldGesture() {
     const idCard = document.getElementById("player-identity-card");
@@ -547,7 +559,6 @@ export function setupIdentityCardHoldGesture() {
     let holdTimer = null;
     let isHolding = false;
 
-    // Ngăn chặn menu ngữ cảnh trình duyệt di động khi chạm giữ
     idCard.addEventListener("contextmenu", (e) => e.preventDefault());
 
     const startHold = (e) => {
@@ -582,6 +593,8 @@ export function setupIdentityCardHoldGesture() {
     idCard.addEventListener("touchstart", startHold, { passive: true });
     idCard.addEventListener("touchend", endHold, { passive: true });
     idCard.addEventListener("touchcancel", endHold, { passive: true });
+    
+    window.addEventListener("blur", endHold);
 }
 
 // ==========================================
@@ -675,7 +688,8 @@ function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
     sheet.ontouchmove = (e) => {
         currentY = e.touches[0].clientY;
         const deltaY = currentY - startY;
-        if (deltaY > 0) {
+        // Chỉ kích hoạt vuốt xuống đóng Sheet khi người chơi đã cuộn lên trên cùng (scrollTop <= 0)
+        if (deltaY > 0 && sheet.scrollTop <= 0) {
             sheet.style.transform = `translateY(${deltaY}px)`;
             sheet.style.transition = "none";
         }
@@ -684,7 +698,7 @@ function setupBottomSheetSwipeGesture(sheet, overlay, dismissCallback) {
     sheet.ontouchend = () => {
         const deltaY = currentY - startY;
         sheet.style.transition = "";
-        if (deltaY > 100) {
+        if (deltaY > 100 && sheet.scrollTop <= 0) {
             dismissCallback();
         } else {
             sheet.style.transform = "";

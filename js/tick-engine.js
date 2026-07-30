@@ -1,6 +1,6 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - DETERMINISTIC 8-TICK RESOLUTION ENGINE (FULL)
+ * WOLFPACK SOVEREIGN v47.0 - DETERMINISTIC 8-TICK RESOLUTION ENGINE (UPDATE 8 FULL)
  * =========================================================================
  * Bộ máy phân giải kỹ năng ban đêm theo thứ tự ưu tiên 8 Ticks (Priority Order).
  * Giải quyết toàn bộ hiệu ứng phản xạ gương, bẫy sắt, chuyển hóa, tịnh hóa,
@@ -41,10 +41,12 @@ export const TickEngine = {
             if (!playerStateUpdates[pid]) playerStateUpdates[pid] = {};
         };
 
-        // BẢN ĐỒ BỘ NHỚ TẠM QUẢN LÝ TẮM XĂNG TRONG ĐÊM (Khắc phục lỗi Thiên Sứ vs Arsonist)
-        const petroledState = {};
+        // BẢN ĐỒ BỘ NHỚ TẠM QUẢN LÝ TẮM XĂNG TỪ CÁC ĐÊM TRƯỚC (Khắc phục lỗi Arsonist same-night burn)
+        const alreadyPetroled = new Set();
         playersList.forEach(p => {
-            petroledState[p.id] = p.isPetroled || p.isArsonistPetroled || false;
+            if (p.isPetroled || p.isArsonistPetroled) {
+                alreadyPetroled.add(p.id);
+            }
         });
 
         // RESET BÙA CHÚ TẠM THỜI CỦA ĐÊM TRƯỚC (Tránh dính bùa vĩnh viễn)
@@ -81,10 +83,10 @@ export const TickEngine = {
             playerStateUpdates[p.id].isReaperCorpse = false;
         });
 
-        // Thu thập toàn bộ hành động đêm từ người chơi còn sống
+        // Thu thập toàn bộ hành động đêm từ người chơi CÒN SỐNG VÀ ĐANG ONLINE
         let actionBuffer = [];
         playersList.forEach(p => {
-            if (p.alive && p.targetSelection) {
+            if (p.alive && p.isConnected !== false && p.targetSelection) {
                 actionBuffer.push({
                     srcId: p.id,
                     role: p.role,
@@ -126,9 +128,7 @@ export const TickEngine = {
             if (act.role === "angel" && (act.actionType === "purify" || act.actionType === "angel_purify")) {
                 if (act.targetId) {
                     purifiedPlayers.add(act.targetId);
-                    
-                    // Xóa Xăng ngay lập tức trong bộ nhớ tạm resolution
-                    petroledState[act.targetId] = false;
+                    alreadyPetroled.delete(act.targetId);
 
                     initPlayerState(act.targetId);
                     playerStateUpdates[act.targetId].isPetroled = false;
@@ -257,7 +257,7 @@ export const TickEngine = {
             }
         });
 
-        // 2.2 Sói Ảo Ảnh (Phantom Wolf) Hoán Đổi Nhân Dạng (SỬA LỖI TRÁO ĐỔI CẢ SECONDARY TARGET)
+        // 2.2 Sói Ảo Ảnh (Phantom Wolf) Hoán Đổi Nhân Dạng
         actionBuffer.forEach(act => {
             if (act.role === "phantomWolf" && act.actionType === "identity_swap" && act.targetId && act.secondaryId) {
                 identitySwaps[act.targetId] = act.secondaryId;
@@ -316,7 +316,7 @@ export const TickEngine = {
         // TICK 3: BẢO VỆ, LÁ CHẮN, KHẾ ƯỚC VÀ GƯƠNG PHẢN CHIẾU
         // ==========================================
         
-        // 3.1 Bảo VỆ (Guard) Tuần Tra (SỬA LỖI: KHÔNG BỊ DỘI GƯƠNG)
+        // 3.1 Bảo Vệ (Guard) Tuần Tra
         actionBuffer.forEach(act => {
             if (act.role === "guard" && act.actionType === "protect" && act.targetId) {
                 protectedPlayers.add(act.targetId);
@@ -509,7 +509,7 @@ export const TickEngine = {
                 });
             }
 
-            // Ma Cà Rồng (Vampire) Bitten (SỬA LỖI: BÁN SÓI CHUYỂN THÀNH VAMPIRE THAY VÌ SÓI)
+            // Ma Cà Rồng (Vampire) Bitten (Ưu tiên Sói cắn trước Bán Sói)
             if (act.role === "vampire" && act.actionType === "bite" && act.targetId) {
                 vampireBittenPlayers.add(act.targetId);
                 const vampireChatId = "vampire_" + roomId;
@@ -521,7 +521,9 @@ export const TickEngine = {
                 playerStateUpdates[act.targetId].isVampireBitten = true;
                 playerStateUpdates[act.targetId].vampireFactionId = vampireChatId;
 
-                if (playersMap[act.targetId]?.role === "halfWolf") {
+                // Nếu là Bán Sói VÀ KHÔNG bị Ma Sói cắn đêm nay -> Biến đổi thành Vampire
+                const targetP = playersMap[act.targetId];
+                if (targetP && targetP.role === "halfWolf" && !playerStateUpdates[act.targetId]?.role) {
                     playerStateUpdates[act.targetId].realFaction = "third";
                     playerStateUpdates[act.targetId].role = "vampire";
                 }
@@ -560,11 +562,10 @@ export const TickEngine = {
         let witchHealTarget = null;
         const witchPoisonTargets = new Set();
 
-        // 6.1 GOM PHIẾU BẦU BẦY SÓI (SỬA LỖI SÓI CẮN CÀN MULTI-KILL)
+        // 6.1 GOM PHIẾU BẦU BẦY SÓI (SỬA LỖI ĐỒNG THUẬN CẮN SÓI)
         const wolfVotesNode = roomData.wolf_votes || {};
         const wolfVoteCounts = {};
         
-        // Thu thập từ node wolf_votes Firebase hoặc actionBuffer
         Object.values(wolfVotesNode).forEach(targetId => {
             if (targetId) wolfVoteCounts[targetId] = (wolfVoteCounts[targetId] || 0) + 1;
         });
@@ -575,11 +576,10 @@ export const TickEngine = {
             }
         });
 
-        // Tìm nạn nhân nhận nhiều phiếu Sói cắn nhất
         let wolfConsensusTarget = null;
         let maxWolfVotes = 0;
         
-        // Kiểm tra xem Sói Trùm (Wolf Boss) có chốt quyền phủ quyết không
+        // Sói Trùm phủ quyết
         const wolfBossPlayer = playersList.find(p => p.alive && p.role === "wolfBoss");
         if (wolfBossPlayer && wolfBossPlayer.targetSelection?.targetId) {
             wolfConsensusTarget = wolfBossPlayer.targetSelection.targetId;
@@ -592,23 +592,38 @@ export const TickEngine = {
             });
         }
 
+        // Xử lý Bán Sói (Half-Wolf) bị Sói cắn -> Ưu tiên chuyển hóa thành Sói thay vì chết
         if (wolfConsensusTarget) {
-            damageQueue.push({ targetId: wolfConsensusTarget, sourceRole: "wolf" });
-            initPlayerState(wolfConsensusTarget);
-            playerStateUpdates[wolfConsensusTarget].isWolfTargeted = true;
+            const wolfVictim = playersMap[wolfConsensusTarget];
+            if (wolfVictim && wolfVictim.role === "halfWolf") {
+                initPlayerState(wolfConsensusTarget);
+                playerStateUpdates[wolfConsensusTarget].role = "wolf";
+                playerStateUpdates[wolfConsensusTarget].realFaction = "wolf";
+                
+                initMailbox(wolfConsensusTarget);
+                mailboxDeliveries[wolfConsensusTarget].push({
+                    title: "[🐺] SỰ CHUYỂN HÓA BÁN SÓI",
+                    content: "Bạn đã bị Ma Sói cắn đêm qua! Bản năng Ma Sói thức tỉnh, bạn chính thức trở thành MA SÓI.",
+                    category: "system"
+                });
+            } else {
+                damageQueue.push({ targetId: wolfConsensusTarget, sourceRole: "wolf" });
+                initPlayerState(wolfConsensusTarget);
+                playerStateUpdates[wolfConsensusTarget].isWolfTargeted = true;
+            }
         }
 
-        // 6.2 Phù Thủy (Witch) Phân Giải Bình (SỬA LỖI KHÓA 1 LẦN DÙNG)
+        // 6.2 Phù Thủy (Witch) Phân Giải Bình
         actionBuffer.forEach(act => {
             if (act.role === "witch") {
                 const witchPlayer = playersMap[act.srcId];
 
-                // Bình Cứu (Kiểm tra chưa dùng `hasUsedHeal`)
+                // Bình Cứu (Cứu nạn nhân bị Sói cắn)
                 if (act.actionType === "heal" && act.targetId && (!witchPlayer || !witchPlayer.hasUsedHeal)) {
                     witchHealTarget = act.targetId;
                     
                     initPlayerState(act.srcId);
-                    playerStateUpdates[act.srcId].hasUsedHeal = true; // Lưu vĩnh viễn
+                    playerStateUpdates[act.srcId].hasUsedHeal = true; // Khóa vĩnh viễn
                     
                     initPlayerState(act.targetId);
                     playerStateUpdates[act.targetId].isWitchHealed = true;
@@ -616,16 +631,16 @@ export const TickEngine = {
                     initMailbox(act.srcId);
                     mailboxDeliveries[act.srcId].push({
                         title: "[🧪] BÌNH CỨU SINH MỆNH",
-                        content: `Bạn đã tưới bình Dược Thủy hồi sinh cho ${playersMap[act.targetId]?.name}. (Bình cứu đã dùng hết)`
+                        content: `Bạn đã tưới bình Dược Thủy hồi sinh cho ${playersMap[act.targetId]?.name}. (Bình cứu đã dùng xong)`
                     });
                 }
 
-                // Bình Độc (Kiểm tra chưa dùng `hasUsedPoison`)
+                // Bình Độc (Hạ sát trực tiếp mục tiêu)
                 if (act.actionType === "poison" && act.targetId && (!witchPlayer || !witchPlayer.hasUsedPoison)) {
                     witchPoisonTargets.add(act.targetId);
 
                     initPlayerState(act.srcId);
-                    playerStateUpdates[act.srcId].hasUsedPoison = true; // Lưu vĩnh viễn
+                    playerStateUpdates[act.srcId].hasUsedPoison = true; // Khóa vĩnh viễn
 
                     initPlayerState(act.targetId);
                     playerStateUpdates[act.targetId].isWitchPoisoned = true;
@@ -633,7 +648,7 @@ export const TickEngine = {
                     initMailbox(act.srcId);
                     mailboxDeliveries[act.srcId].push({
                         title: "[☠️] BÌNH ĐỘC DƯỢC",
-                        content: `Bạn đã hạ độc dội xuống người ${playersMap[act.targetId]?.name}. (Bình độc đã dùng hết)`
+                        content: `Bạn đã dội bình độc dược lên ${playersMap[act.targetId]?.name}. (Bình độc đã dùng xong)`
                     });
                 }
             }
@@ -669,7 +684,6 @@ export const TickEngine = {
                     if (act.secondaryId) newlyPetroled.add(act.secondaryId);
 
                     [act.targetId, act.secondaryId].filter(id => id !== null).forEach(id => {
-                        petroledState[id] = true; // Cập nhật bộ nhớ tạm ngay
                         initPlayerState(id);
                         playerStateUpdates[id].isPetroled = true; 
                         playerStateUpdates[id].isArsonistPetroled = true;
@@ -681,8 +695,9 @@ export const TickEngine = {
                         content: `Đã dội dầu tưới xăng lên căn nhà của ${playersMap[act.targetId]?.name}.`
                     });
                 } else if (act.actionType === "ignite") {
+                    // CHỈ thiêu rụi mục tiêu đã tẩm xăng từ ĐÊM TRƯỚC (alreadyPetroled), KHÔNG đốt mục tiêu mới tẩm đêm nay
                     playersList.forEach(p => {
-                        if (petroledState[p.id] === true || newlyPetroled.has(p.id)) {
+                        if (alreadyPetroled.has(p.id)) {
                             damageQueue.push({ targetId: p.id, sourceRole: "arsonist" });
                             initPlayerState(p.id);
                             playerStateUpdates[p.id].isArsonistIgnited = true;
@@ -691,46 +706,27 @@ export const TickEngine = {
                     initMailbox(act.srcId);
                     mailboxDeliveries[act.srcId].push({
                         title: "[🔥] THẢ NGỌN LỬA TỰ DO",
-                        content: "Bạn đã châm mồi lửa bùng cháy toàn bộ các mục tiêu bị tẩm xăng!"
+                        content: "Bạn đã châm mồi lửa bùng cháy toàn bộ các mục tiêu bị dội xăng từ trước!"
                     });
                 }
             }
         });
 
-        // 6.5 Duyệt Hàng Chờ Sát Thương (SỬA LỖI: SÁT NHÂN VS BÌNH CỨU PHÙ THỦY)
+        // 6.5 Duyệt Hàng Chờ Sát Thương
         damageQueue.forEach(dmg => {
             const { targetId, sourceRole } = dmg;
 
-            // Nếu mục tiêu được Phù Thủy dùng Bình Cứu -> CỨU SỐNG HOÀN TOÀN
-            if (targetId === witchHealTarget) {
+            // Nếu được Phù Thủy Cứu VÀ đòn đánh là của Ma Sói -> Hồi sinh
+            if (targetId === witchHealTarget && sourceRole === "wolf") {
                 initMailbox(targetId);
                 mailboxDeliveries[targetId].push({
                     title: "[🧪] CỨU MẠNG BỞI PHÙ THỦY",
-                    content: "Sát khí tử vong đã vồ lấy bạn, nhưng bình Dược Thủy của Phù Thủy đã kịp thời cứu sống bạn!"
-                });
-                return; // Thoát không ghi tử vong
-            }
-
-            // Sát Nhân (Serial Killer) đâm xuyên lá chắn Bảo Vệ & Chủ Thần
-            if (sourceRole === "serialKiller") {
-                if (playersMap[targetId]?.role === "headlessKnight" && currentDay === 1) {
-                    initMailbox(targetId);
-                    mailboxDeliveries[targetId].push({
-                        title: "[🎃] BẢN NĂNG KHÔNG ĐẦU",
-                        content: "Sát Nhân đã ra tay nhưng bạn miễn nhiễm hoàn toàn đòn đánh Đêm 1!"
-                    });
-                    return;
-                }
-                deathsSet.add(targetId);
-                initMailbox(targetId);
-                mailboxDeliveries[targetId].push({
-                    title: "[🔪] NHÁT ĐÂM SÁT NHÂN",
-                    content: "Nhát đâm cuồng loạn của Sát Nhân đã găm thẳng vào tim bạn, xuyên qua mọi lá chắn!"
+                    content: "Nanh vuốt Ma Sói đã cào xé bạn, nhưng bình Dược Thủy của Phù Thủy đã kịp thời cứu sống bạn!"
                 });
                 return;
             }
 
-            // Hiệp Sĩ Không Đầu Miễn Nhiễm Đêm 1
+            // Hiệp Sĩ Không Đầu Miễn Nhiễm Đêm 1 với MỌI đòn tấn công
             if (playersMap[targetId]?.role === "headlessKnight" && currentDay === 1) {
                 initMailbox(targetId);
                 mailboxDeliveries[targetId].push({
@@ -740,7 +736,18 @@ export const TickEngine = {
                 return;
             }
 
-            // Bảo Vệ lá chắn che chở (Ngoại trừ Kẻ Phóng Hỏa)
+            // Sát Nhân (Serial Killer) & Kẻ Báo Thù (Avenger) ĐÂM XUYÊN lá chắn Bảo Vệ
+            if (sourceRole === "serialKiller" || sourceRole === "avenger") {
+                deathsSet.add(targetId);
+                initMailbox(targetId);
+                mailboxDeliveries[targetId].push({
+                    title: sourceRole === "serialKiller" ? "[🔪] NHÁT ĐÂM SÁT NHÂN" : "[⚔️] NHÁT CHÉM TỬ HÌNH",
+                    content: "Đòn tấn công chí mạng đã đâm xuyên qua mọi lá chắn bảo vệ!"
+                });
+                return;
+            }
+
+            // Lá chắn Bảo Vệ che chở (Ngoại trừ Kẻ Phóng Hỏa, Sát Nhân, Báo Thù)
             if (protectedPlayers.has(targetId) && sourceRole !== "arsonist") {
                 initMailbox(targetId);
                 mailboxDeliveries[targetId].push({
@@ -760,12 +767,21 @@ export const TickEngine = {
                 return;
             }
 
-            // Ghi nhận tử vong chuẩn
             deathsSet.add(targetId);
         });
 
-        // Độc Phù Thủy tác động trực tiếp (Bình độc gây tử vong 100%)
+        // Độc Phù Thủy tác động trực tiếp
         witchPoisonTargets.forEach(targetId => {
+            // Hiệp Sĩ Không Đầu vẫn miễn nhiễm độc Đêm 1
+            if (playersMap[targetId]?.role === "headlessKnight" && currentDay === 1) {
+                initMailbox(targetId);
+                mailboxDeliveries[targetId].push({
+                    title: "[🎃] BẢN NĂNG KHÔNG ĐẦU",
+                    content: "Bình độc Phù Thủy đã tưới lên người nhưng bạn miễn nhiễm hoàn toàn vào Đêm 1!"
+                });
+                return;
+            }
+
             deathsSet.add(targetId);
             initMailbox(targetId);
             mailboxDeliveries[targetId].push({
@@ -774,9 +790,11 @@ export const TickEngine = {
             });
         });
 
-        // Cặp Đôi Uyên Ương (Cupid Lovers) Chết Cùng Nhau
+        // Cặp Đôi Uyên Ương (Cupid Lovers) Chết Cùng Nhau (Chống lặp Mật thư)
+        const processedLovers = new Set();
         playersList.forEach(p => {
-            if (p.inCouple && deathsSet.has(p.id) && p.coupleId) {
+            if (p.inCouple && deathsSet.has(p.id) && p.coupleId && !processedLovers.has(p.coupleId)) {
+                processedLovers.add(p.coupleId);
                 playersList.forEach(partner => {
                     if (partner.coupleId === p.coupleId && partner.id !== p.id && partner.alive) {
                         deathsSet.add(partner.id);

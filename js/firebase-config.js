@@ -1,10 +1,10 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - FIREBASE CORE CONFIGURATION MODULE (FULL UPDATE7)
+ * WOLFPACK SOVEREIGN v47.0 - FIREBASE CORE CONFIGURATION MODULE (UPDATE 8 FULL)
  * =========================================================================
  * Tệp cấu hình khởi tạo kết nối Firebase App, Realtime Database, Analytics,
- * Bù trừ chênh lệch thời gian Server (Time Offset Sync), Xác thực Mật khẩu phòng
- * và cung cấp toàn bộ Helper References cho hệ thống v47.0.
+ * Bù trừ chênh lệch thời gian Server (Time Offset Sync), Xác thực Mật khẩu phòng,
+ * Dọn dẹp Node dữ liệu rác và cung cấp toàn bộ Helper References cho hệ thống v47.0.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -155,7 +155,35 @@ export const verifyRoomPassword = async (roomId, inputPassword = "") => {
     }
 };
 
-// 7. BỘ GIÁM SÁT TRẠNG THÁI KẾT NỐI MẠNG (ONLINE/OFFLINE PRESENCE)
+// 7. BỘ DỌN DẸP DỮ LIỆU TẠM GIỮA CÁC VÁN CHƠI (PREVENT MEMORY/DATA BLOAT)
+/**
+ * Xóa sạch toàn bộ node rác khi bắt đầu ván mới trong cùng một mã phòng
+ * @param {string} roomId - Mã phòng chơi
+ */
+export const resetGameRoomNodes = async (roomId) => {
+    if (!roomId) return;
+    const updates = {};
+    updates[`rooms/${roomId}/wolf_votes`] = null;
+    updates[`rooms/${roomId}/prediction_poll`] = null;
+    updates[`rooms/${roomId}/nominations`] = null;
+    updates[`rooms/${roomId}/votes`] = null;
+    updates[`rooms/${roomId}/mayor_votes`] = null;
+    updates[`rooms/${roomId}/gm_whispers`] = null;
+    updates[`rooms/${roomId}/trial`] = {
+        stage: "none",
+        accusedId: null,
+        accusedText: "",
+        decisionText: ""
+    };
+    try {
+        await update(ref(db), updates);
+        console.log(`🧹 [Firebase Reset] Đã dọn sạch các node rác của phòng ${roomId}`);
+    } catch (err) {
+        console.error("⚠️ [Firebase Reset Error]:", err);
+    }
+};
+
+// 8. BỘ GIÁM SÁT TRẠNG THÁI KẾT NỐI MẠNG (ONLINE/OFFLINE PRESENCE)
 /**
  * Lắng nghe trạng thái kết nối tới máy chủ Firebase Realtime Database
  * @param {function(boolean): void} callback - Trả về true nếu Online, false nếu mất mạng
@@ -170,7 +198,7 @@ export const monitorServerConnection = (callback) => {
     });
 };
 
-// 8. Xuất toàn bộ các hàm Primitive của Firebase Database để dùng trên toàn hệ thống
+// 9. Xuất toàn bộ các hàm Primitive của Firebase Database để dùng trên toàn hệ thống
 export {
     app,
     db,

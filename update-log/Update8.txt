@@ -1,0 +1,148 @@
+🔴 PHẦN 1: NGUYÊN NHÂN TẠI SAO GAME BỊ TREO NGHẼN Ở MÀN HÌNH CHỜ (t1)
+Dựa trên hình ảnh bạn gửi, game bị treo ở màn hình tạo/tham gia phòng vì 3 nguyên nhân cộng hưởng:
+Lỗi Crash Module do "Linh thú đại diện" (Avatar Selector):
+Nhìn vào hình, khung bên dưới chữ "Linh thú đại diện:" bị dẹp lép và trống rỗng.
+Hàm setupAvatarSelector() khi khởi chạy bị lỗi JS (do không tìm thấy mảng hoặc lỗi render DOM) làm toàn bộ luồng Script của app.js bị dừng ngột ngạt ngay lập tức.
+Khi Script bị dừng giữa chừng, các hàm gán sự kiện kích hoạt nút bấm THAM GIA PHÒNG CHƠI và TẠO PHÒNG MỚI phía dưới chưa kịp chạy, khiến 2 nút này bị khóa vô thời hạn (disabled).
+Lỗi Tự động điền tên từ LocalStorage không kích hoạt Nút bấm:
+Khi người chơi mở lại game, tên cũ ("a1") được tự động điền vào ô player-name-input từ localStorage.
+Tuy nhiên, sự kiện input chỉ lắng nghe khi người chơi gõ phím thực tế. Việc tự động điền giá trị bằng code không phát sự kiện input, khiến hệ thống không tính toán lại độ dài tên (cleanName.length >= 2) ➔ Nút bấm vẫn bị giữ ở trạng thái disabled.
+Lỗi Khóa Nút Bấm vĩnh viễn (debounceButton):
+Trong ui-manager.js, cơ chế chống spam click debounceButton gán pointerEvents = "none" và disabled = true.
+Nếu quá trình xử lý gặp lỗi (hoặc Firebase chưa phản hồi), nút bấm không bao giờ được khôi phục lại trạng thái bình thường.
+🗑️ PHẦN 2: KẾ HOẠCH BỎ HOÀN TOÀN TÍNH NĂNG "LINH THÚ ĐẠI DIỆN" (t2)
+Để đưa ứng dụng về trạng thái đơn giản, mượt mà và không còn lỗi rác, chúng ta sẽ xóa sạch 100% tính năng Linh thú ở các tệp:
+Trong index.html: Xóa bỏ hoàn toàn khối HTML <div id="avatar-selector-container"></div> và nhãn "Linh thú đại diện:".
+Trong style.css: Xóa bỏ các Class CSS .avatar-selector-container và .avatar-token-chip.
+Trong game-logic.js: Xóa mảng AVATARS_LIST và thuộc tính selectedAvatar trong window.G.
+Trong app.js:
+Xóa hàm setupAvatarSelector() và lời gọi hàm này.
+Xóa thuộc tính avatar trong đối tượng hostData và playerData khi Tạo/Join phòng.
+Xóa ký tự Avatar khỏi thẻ tên Người chơi, Sảnh chờ, Kênh Chat và Bàn cờ Thần dân.
+🔍 PHẦN 3: TÌM SÂU TẤT CẢ CÁC LỖI TƯƠNG TỰ TRÊN TOÀN BỘ HỆ THỐNG
+Sau khi kiểm tra toàn bộ luồng mã nguồn, tôi phát hiện các vị trí tiềm ẩn nguy cơ gây treo/kẹt game tương tự:
+1. Lỗi Khởi tạo Sự kiện và Điền sẵn Dữ liệu (Lobby Binding Faults)
+Lỗi ô nhập mã 6 ký tự (join-code-panel): Khi người chơi dán (paste) hoặc nhập đủ 6 ký tự, nếu nút btn-join-room-submit không được xóa thuộc tính disabled một cách chủ động từ JS, người chơi sẽ không thể bấm Xác Nhận.
+2. Lỗi Crash do Firebase Snapshot trả về null / undefined
+Lỗi đọc danh sách người chơi: Trong listenToRoom() và renderPlayersGridSmartly(), code gọi Object.values(roomData.players). Nếu trong 1 miligiây chuyển pha, Firebase gửi snapshot mà node players bị null, hàm sẽ ném ra ngoại lệ TypeError: Cannot convert undefined or null to object ➔ Làm đơ toàn bộ giao diện điều khiển.
+3. Lỗi Khóa Trạng Thái Chuyển Pha không được Reset khi gặp Exception
+Lỗi biến isTransitioning và isResolvingVote: Trong state-machine.js, 2 biến này được bật lên = true để chống lặp lệnh. Nếu câu lệnh await update(ref(db), ...) gặp sự cố mạng và quăng lỗi (throw error), đoạn code reset biến về = false nằm ở cuối hàm (nếu không có khối finally) sẽ bị bỏ qua ➔ Game bị kẹt ở pha hiện tại vĩnh viễn, không thể sang Ngày/Đêm nữa.
+4. Lỗi Chồng Lập Đồng Hồ Đếm Ngược (setInterval Accumulation)
+Lỗi nhảy số đếm ngược: Hàm syncPhaseTimer() mỗi lần được gọi lại tạo ra một setInterval mới. Nếu không xoá sạch interval cũ một cách tuyệt đối trước khi tạo mới, hàng loạt đồng hồ sẽ chạy song song, tranh chấp hiển thị chữ trên thanh Timer làm giao diện giật lag liên tục.
+5. Lỗi Lớp Phủ Mờ Che Khuất Click (Invisible Overlay Blocking)
+Lỗi Modal Backdrop: Các Modal như #confirm-modal, #target-modal khi đóng chỉ ẩn nội dung nhưng nếu lớp phủ mờ .custom-modal-overlay vẫn còn giữ display: flex do lỗi CSS/JS, nó sẽ tạo ra một "bức tường vô hình" chặn sạch mọi cú click chuột của người chơi vào màn hình phía sau.
+🏛️ KHỐI 1: LỖI SẢNH CHỜ, GIA NHẬP PHÒNG & KẾT NỐI (LOBBY & NETWORK)
+Lỗi Tự động điền Tên không mở khóa Nút bấm (LocalStorage Desync):
+Nguyên nhân: Khi mở ứng dụng, tên cũ được đọc từ localStorage và gán thẳng vào nameInput.value. Tuy nhiên, trình duyệt không tự phát sự kiện input.
+Hậu quả: Người chơi nhìn thấy tên mình đã có sẵn trong ô nhập nhưng 2 nút "THAM GIA PHÒNG CHƠI" và "TẠO PHÒNG MỚI" vẫn bị xám mờ (disabled). Người chơi bắt buộc phải xóa 1 ký tự gõ lại thì nút mới sáng.
+Lỗi Bàn phím Di động bị kẹt khi Nhập Mã Phòng 6 Ký tự:
+Nguyên nhân: Các ô nhập mã phòng (code-1 đến code-6) dùng sự kiện keydown bắt phím Backspace. Trên bàn phím ảo iOS/Android, phím Xóa (Backspace) khi ô đang trống thường không phát sự kiện keydown tiêu chuẩn.
+Hậu quả: Người chơi trên điện thoại gõ sai mã phòng không thể bấm nút Xóa để lùi về ô trước đó, bị kẹt cứng ở ô hiện tại.
+Lỗi Đua Trạng Thái khi Phục Hồi Kết Nối (Reconnect Race Condition):
+Nguyên nhân: Hàm attemptSessionReconnection() chạy bất đồng bộ trong 2 giây đầu khi mở app. Nếu người chơi nhanh tay bấm "TẠO PHÒNG MỚI" trong lúc hệ thống đang âm thầm khôi phục phòng cũ, 2 luồng tạo phòng và kết nối phòng cũ sẽ chạy đè lên nhau.
+Hậu quả: Tạo ra dữ liệu rác trên Firebase, làm xuất hiện 2 người chơi trùng ID hoặc bị văng ra sảnh chờ liên tục.
+Lỗi Bỏ dở Chuyển giao Host khi Rời phòng đột ngột:
+Nguyên nhân: Khi Quản trò (Host) bấm "RỜI KHỎI PHÒNG", code gọi lệnh update() bất đồng bộ để chuyển quyền Host cho người kế tiếp. Nếu người chơi đóng tab trình duyệt ngay lập tức trước khi lệnh Firebase hoàn tất, phòng chơi sẽ bị mất Quản trò.
+Hậu quả: Phòng chơi không còn Host, toàn bộ người chơi còn lại bị kẹt ở sảnh chờ vì không ai có quyền bấm BẮT ĐẦU.
+Lỗi Vượt rào Mật khẩu phòng bằng Console:
+Nguyên nhân: Hàm kiểm tra mật khẩu verifyRoomPassword chỉ chạy ở giao diện Client trước khi gọi set().
+Hậu quả: Người chơi có kiến thức lập trình có thể mở Developer Tools gõ trực tiếp lệnh Join phòng bypass qua hàm kiểm tra mật khẩu để vào phòng kín tự do.
+⚙️ KHỐI 2: LỖI BỘ MÁY TÍNH TOÁN BAN ĐÊM (TICK ENGINE LOGIC)
+Lỗi Phù Thủy Tự Hủy Bình Cứu khi Tự Chọn Cứu và Độc cùng 1 Người:
+Nguyên nhân: Nếu Phù Thủy vô tình hoặc cố ý chọn Bình Cứu và Bình Độc vào cùng một Mục tiêu A trong cùng 1 đêm, Engine tính toán Bình Cứu ở hàng chờ trước, sau đó danh sách Bình Độc witchPoisonTargets duyệt phía sau và gán deathsSet.add(A).
+Hậu quả: Mục tiêu A vẫn bị chết, đồng thời Phù Thủy bị mất sạch cả 2 bình thuốc trong 1 đêm.
+Lỗi Kẻ Phóng Hỏa (Arsonist) Tẩm Xăng và Châm Lửa Trong Cùng 1 Đêm:
+Nguyên nhân: Trong actionBuffer, nếu Kẻ Phóng Hỏa chọn Tẩm Xăng mục tiêu A và Châm Lửa trong cùng đêm đó, mảng xử lý chạy lệnh pour_petrol trước (gán petroledState[A] = true), sau đó khối ignite chạy ngay bên dưới trong cùng vòng lặp.
+Hậu quả: Mục tiêu A vừa bị dội xăng lập tức bị thiêu rụi ngay trong đêm đó, sai hoàn toàn quy tắc Arsonist (phải tẩm xăng đêm trước, đêm sau mới châm lửa được).
+Lỗi Trùng Lặp Mật Thư Tử Vong Cho Cặp Đôi Uyên Ương:
+Nguyên nhân: Khi Cặp đôi A & B cùng bị tấn công trong 1 đêm (A bị Sói cắn, B bị Sát nhân đâm). Engine thêm A và B vào danh sách chết deathsSet. Sau đó vòng lặp Cặp đôi kiểm tra thấy A chết nên xử lý B tự sát, rồi lại thấy B chết nên xử lý A tự sát tiếp.
+Hậu quả: Hòm mật thư của cả A và B nhận được 2-3 lá thư "Tình yêu bất tử" giống hệt nhau, gây tràn hòm thư.
+Lỗi Thứ Tự Lặp ActionBuffer làm Sai Lệch Chuyển Hóa Bán Sói (Half-Wolf):
+Nguyên nhân: Nếu trong 1 đêm Bán Sói vừa bị Ma Sói cắn, vừa bị Vampire cắn. Thứ tự chuyển hóa bị phụ thuộc hoàn toàn vào vị trí của hành động nào đứng trước trong mảng actionBuffer.
+Hậu quả: Kết quả biến đổi Bán Sói thành Sói hay thành Vampire mang tính ngẫu nhiên bất định do thứ tự mảng chứ không theo logic ưu tiên chuẩn.
+Lỗi Người Chơi Offline Vẫn Tự Động Thi Triển Kỹ Năng Đêm:
+Nguyên nhân: Nếu một người chơi đặt mục tiêu ban đêm, sau đó bị mất mạng/rớt mạng (isConnected = false), hành động của họ vẫn nằm trong targetSelection trên Firebase và được actionBuffer thu thập.
+Hậu quả: Nhân vật của người chơi đã rớt mạng vẫn tự động đi cắn/bảo vệ/soi người khác mà không có sự điều khiển của con người.
+⏱️ KHỐI 3: LỖI VÒNG LẶP TRẬN ĐẤU & ĐỒNG BỘ THỜI GIAN (STATE MACHINE)
+Lỗi Chạy Trùng Lặp Lệnh Khi Hết Giờ (Timer Expiration Cascade):
+Nguyên nhân: Trong syncPhaseTimer(), khi thời gian còn lại <= 0, hàm handleTimerExpiration() được gọi. Nếu mạng chập chờn khiến lệnh chuyển pha lên Firebase mất 1-2 giây, vòng lặp setInterval (chạy mỗi 1 giây) sẽ gọi lại handleTimerExpiration() lần thứ 2 và thứ 3.
+Hậu quả: Lệnh chuyển sang Ban Ngày hoặc Chốt biểu quyết bị phát đi nhiều lần, gây ra hiện tượng nhảy cóc ngày hoặc xử tử sai người.
+Lỗi Bốc Thăm Trưởng Làng Không Đồng Bộ Khi Đổi Host (Mayor Tie Randomness):
+Nguyên nhân: Khi cuộc bầu Trưởng Làng bị hòa phiếu, code dùng Math.floor(Math.random() * ...) để bốc thăm ngẫu nhiên trên máy Host. Nếu đúng lúc đó Host bị văng và Host mới tiếp quản, Host mới sẽ chạy lại hàm bốc thăm và ra kết quả khác với Host cũ.
+Hậu quả: Hai máy người chơi nhìn thấy 2 Trưởng Làng khác nhau, gây lệch dữ liệu toàn phòng.
+Lỗi Kẻ Ngốc (Idiot) Lật Thẻ Vẫn Bấm Được Nút Bỏ Phiếu ở Client:
+Nguyên nhân: Khi Kẻ Ngốc lật thẻ, Firebase lưu isIdiotRevealed = true. Tuy nhiên ở giao diện Modal Tòa Án của Kẻ Ngốc, nút "🟢 THA BỔNG / 🔴 XỬ TỬ" không bị ẩn hay khóa ở phía giao diện Client.
+Hậu quả: Kẻ Ngốc đã lật thẻ vẫn bấm được nút bỏ phiếu. Dù phía Server đã trừ phiếu nhưng giao diện Client của Kẻ Ngốc vẫn hiện phản hồi như thể họ vừa vote thành công, gây hiểu nhầm.
+Lỗi Thợ Săn (Hunter) Rớt Mạng Bắn Trả Thù Làm Treo Game Vĩnh Viễn:
+Nguyên nhân: Khi Thợ Săn bị treo cổ ban ngày, Modal bắn trả thù bật lên ở máy Thợ Săn. Nếu người chơi Thợ Săn bị rớt mạng hoặc tắt trình duyệt, đếm ngược setInterval 15 giây chạy trên máy Thợ Săn bị hủy. Máy Quản trò (Host) trên Cloud sẽ chờ vô thời hạn phản hồi từ Thợ Săn.
+Hậu quả: Ban ngày bị đơ vĩnh viễn, game không thể chuyển sang Pha Đêm được nữa.
+🎨 KHỐI 4: LỖI GIAO DIỆN, BẢNG ĐIỀU HƯỚNG & TRẢI NGHIỆM NGƯỜI DÙNG (UI/UX)
+Lỗi Va Chạm Tầng Điều Hướng Modal (Navigation Stack Collision):
+Nguyên nhân: Khi một Modal này mở đè lên một Modal khác (Ví dụ: Modal Chọn mục tiêu mở đè Modal Xác nhận). Khi người chơi bấm nút "⬅️ Quay lại" hoặc phím ESC, NavigationStack.pop() đóng Modal trên nhưng lại vô tình bật lại Modal dưới đã bị hủy trước đó.
+Hậu quả: Màn hình xuất hiện các lớp phủ mờ vô hình chặn toàn bộ cú nhấp chuột, làm người chơi không tương tác được với bàn cờ.
+Lỗi Xung Đột Cuộn Trang và Vuốt Vuốt Tay ở Bottom Sheet (Mobile Swipe Conflict):
+Nguyên nhân: Màn hình Lý lịch người chơi (bottom-sheet) có danh sách dài cần cuộn xuống (overflow-y: auto). Sự kiện ontouchmove bắt mọi thao tác vuốt Y để đóng Sheet.
+Hậu quả: Khi người chơi vuốt ngón tay xuống để xem thông tin phía dưới của nhân vật, hệ thống hiểu nhầm là thao tác "Vuốt xuống để đóng" ➔ Màn hình lý lịch bị đóng sầm lại ngay lập tức.
+Lỗi Sơ Đồ Quan Hệ SVG Bị Lệch Tọa Độ Khi Xoay Màn Hình (SVG Misalignment):
+Nguyên nhân: Hàm triggerSgDrawingRelations() tính tọa độ sợi dây nối Cặp đôi/Bảo vệ dựa trên getBoundingClientRect(). Khi người chơi xoay ngang/dọc điện thoại hoặc cuộn trang danh sách MVP, tọa độ X/Y cũ không còn đúng.
+Hậu quả: Các đường dây nối màu hồng/đỏ bay lơ lửng giữa khoảng trống, không đính đúng vào thẻ bài của người chơi.
+Lỗi Bàn Phím Đẩy Mất Thanh Header Trên Di Động:
+Nguyên nhân: On Android/iOS, khi người chơi bấm vào ô gõ chat (#chat-input-field), bàn phím ảo bật lên làm thu hẹp chiều cao màn hình (100dvh).
+Hậu quả: Thanh Header chứa Đồng hồ đếm ngược và thông tin Trưởng Làng bị đẩy trôi ra khỏi vùng nhìn thấy của màn hình.
+Lỗi Tràn Màn Hình Do Thông Báo Toast Quá Nhiều:
+Nguyên nhân: Khi có nhiều sự kiện xảy ra cùng lúc (3 người chết + chuyển pha + nhắc nhở hết giờ), hàm showToast() liên tục thêm các thẻ div vào #toast-container mà không có giới hạn số lượng tối đa.
+Hậu quả: Các thông báo Toast xếp chồng đè kín từ trên xuống dưới, che mất đồng hồ đếm ngược và các nút bấm chức năng ở phía trên.
+Lỗi Giật Màn Hình Khi Lắng Nghe Tin Nhắn Chat Mới:
+Nguyên nhân: Trong listenToChatChannel(), mỗi khi có tin nhắn mới, code thực hiện chatBox.innerHTML = "" và dựng lại toàn bộ danh sách tin nhắn từ đầu.
+Hậu quả: Kênh chat bị nhấp nháy liên tục (Flash of Content) và tiêu tốn CPU thiết bị di động.
+🎭 KHỐI A: XUNG ĐỘT KỸ NĂNG & QUY TẮC GIỮA CÁC VAI TRÒ ĐẶC BIỆT
+Phù Thủy (Witch) Không Được Báo Trước Khi Bình Thuốc Đã Dùng:
+Nguyên nhân: Trong openTargetSelection() (ui-manager.js), khi Phù Thủy mở bảng chọn mục tiêu, giao diện vẫn hiển thị đủ 2 nút "🧪 Bình Cứu" và "☠️ Bình Độc".
+Hậu quả: Dù Phù Thủy đã dùng hết Bình Cứu từ Đêm 1 (hasUsedHeal = true), giao diện vẫn cho phép bấm chọn Bình Cứu ở Đêm 2. Khi gửi lên Server, tick-engine.js âm thầm từ chối hành động ➔ Phù Thủy bị mất trắng lượt đi đêm mà không hề biết bình cứu của mình đã bị khóa.
+Lỗi Kẻ Nghịch Hành (Paradox) Lật Ngược Thời Gian Sai Thứ Tự:
+Nguyên nhân: Kẻ Nghịch Hành khi bị treo cổ sẽ lật ngược thời gian hủy bỏ bản án. Tuy nhiên, trong resolveVotingOutcome() (state-machine.js), hệ thống gán alive = false lên Firebase trước khi kiểm tra vai trò thụ động của Kẻ Nghịch Hành.
+Hậu quả: Kẻ Nghịch Hành bị đánh dấu "Đã chết" trong Nhật ký và Bàn cờ Thần dân trước khi kỹ năng đảo ngược thời gian kịp kích hoạt, gây lỗi loạn hiển thị trạng thái sinh mệnh.
+Lỗi Hiệp Sĩ Không Đầu (Headless Knight) Vẫn Bị Dính Độc Phù Thủy Đêm 1:
+Nguyên nhân: Hiệp Sĩ Không Đầu được miễn nhiễm mọi đòn hạ sát Đêm 1. Tuy nhiên trong tick-engine.js, danh sách dội Độc của Phù Thủy (witchPoisonTargets) được xử lý trực tiếp vào deathsSet.add(targetId) mà quên bỏ qua kiểm tra headlessKnight Đêm 1.
+Hậu quả: Hiệp Sĩ Không Đầu vẫn bị chết bởi bình độc Phù Thủy ngay Đêm 1, sai hoàn toàn mô tả kỹ năng.
+Lỗi Lá Chắn Bảo Vệ (Guard) Triệt Bỏ Nhát Chém Tử Hình Của Kẻ Báo Thù (Avenger):
+Nguyên nhân: Kẻ Báo Thù thi triển nhát chém trừng phạt tử hình (execute) được đẩy vào damageQueue với sourceRole = "avenger". Khi duyệt qua câu lệnh Bảo Vệ (if (protectedPlayers.has(targetId) && sourceRole !== "arsonist")), lá chắn Bảo Vệ lại vô tình chặn đứng đòn đánh này.
+Hậu quả: Nhát chém trừng phạt tối cao của Kẻ Báo Thù bị lá chắn Bảo Vệ vô hiệu hóa, làm mất đi tính uy nghiêm của vai trò Kẻ Báo Thù.
+Lỗi Tử Thần (Reaper) Tự Dự Đoán Tử Vong Chính Mình:
+Nguyên nhân: Tử Thần dự đoán đêm nay ai sẽ chết để thu hoạch linh hồn. Nếu Tử Thần chọn chính bản thân mình và đêm đó Tử Thần bị Ma Sói cắn chết, deathsSet.has(reaperId) trả về true.
+Hậu quả: Tử Thần vừa bị chết vừa nhận được thông báo "Dự đoán đúng", hệ thống cố gửi mật thư vào Hòm thư của một người chơi đã tử vong.
+🌐 KHỐI B: LỖI CẤU TRÚC DỮ LIỆU & BỘ NHỚ FIREBASE REALTIME
+Lỗi Dồn Tích Dữ Liệu Rác Ở Node wolf_votes:
+Nguyên nhân: Node wolf_votes lưu phiếu cắn của Sói dạng wolf_votes/${playerId} = targetId. Khi một con Ma Sói bị treo cổ ban ngày, key của con Sói đó vẫn tồn tại trên Node wolf_votes. Khi sang Đêm 2, nếu transitionToNight() không xóa sạch Node này, phiếu cắn của con Sói đã chết ở Đêm 1 vẫn bị tính điểm vào Đêm 2!
+Lỗi Phình To Kích Thước Dữ Liệu Hòm Thư (mailbox Bloat):
+Nguyên nhân: Mỗi đêm, mỗi người chơi nhận 1-3 mật thư pushed vào players/${playerId}/mailbox. Sau 5 ngày chơi, một phòng 10 người có tới hơn 150 object mật thư.
+Hậu quả: Mỗi lần Firebase có thay đổi nhỏ, hàm onValue(mailboxRef) phải tải lại toàn bộ mảng JSON hàng trăm KB, gây tiêu tốn băng thông và làm đơ giao diện di động yếu.
+Lỗi Rò Rỉ Dữ Liệu Bình Chọn Khán Giả (prediction_poll) Giữa Các Trận Đấu:
+Nguyên nhân: Node prediction_poll lưu bình chọn tỉ lệ thắng của khán giả. Khi trận đấu kết thúc và Quản trò bắt đầu ván mới trong cùng một mã phòng (roomId), Node prediction_poll cũ không được set về null.
+Hậu quả: Ván mới vừa bắt đầu (chưa ai chết/bình chọn) nhưng thanh tỉ lệ thắng đã hiển thị 40% - 60% từ dữ liệu của ván chơi trước.
+Lỗi Trùng Nhát Cắn Cặp Đôi Uyên Ương (Cupid Lovers Chain Loop):
+Nguyên nhân: Khi Cặp đôi A & B cùng bị tấn công đêm (A bị Sói cắn, B bị Sát nhân đâm). Engine thêm A vào deathsSet, sau đó vòng lặp Cặp đôi thêm B vào deathsSet. Tiếp đó, hàng chờ Sát nhân lại thêm B vào deathsSet một lần nữa.
+Hậu quả: Người chơi B nhận được 2-3 lá mật thư tử vong trùng lặp trong hòm thư.
+📱 KHỐI C: LỖI TƯƠNG THÍCH TRÌNH DUYỆT DI ĐỘNG & PHẦN CỨNG
+Lỗi Nhảy Chiều Cao Màn Hình Trình Duyệt Safari iOS Khi Cuộn Trang:
+Nguyên nhân: Trên iPhone (Safari), khi cuộn danh sách Bàn cờ Thần dân, thanh URL phía trên của Safari tự động thu nhỏ/mở rộng, khiến chiều cao màn hình 100dvh bị thay đổi liên tục và kích hoạt sự kiện window.onresize.
+Hậu quả: Kích hoạt hàm triggerSgDrawingRelations() chạy lại liên tục, làm các đường dây SVG nối Cặp đôi ở màn hình vinh danh bị chớp nháy liên tục khi cuộn.
+Lỗi Phóng To Màn Hình Mất Kiểm Soát Khi Chạm Nhanh (Double-Tap Zoom):
+Nguyên nhân: Trên trình duyệt Chrome di động, khi người chơi nhấp đúp nhanh vào các thẻ người chơi (.player-grid-card) để chọn mục tiêu, tính năng trợ năng mặc định của Android sẽ tự động phóng to màn hình lên 200%.
+Hậu quả: Màn hình game bị lệch khung nhìn, người chơi phải dùng 2 ngón tay thu nhỏ lại mới thấy được các nút bấm bên dưới.
+Lỗi Trình Duyệt Chặn Âm Thanh Tự Động (Audio Autoplay Policy Block):
+Nguyên nhân: Các trình duyệt hiện đại (iOS Safari / Android Chrome) cấm tuyệt đối các tệp Audio tự động phát (audio.play()) nếu không xuất phát trực tiếp từ cử chỉ nhấp chuột của người dùng.
+Hậu quả: Các âm thanh chuyển pha như morning_rooster (Gà gáy) hay night_howl (Sói hú) được kích hoạt bất đồng bộ qua Listener Firebase onValue sẽ bị trình duyệt chặn âm thầm hoàn toàn, game bị mất sạch hiệu ứng âm thanh môi trường.
+Lỗi Tụt Frame Rate Do Hiệu Ứng Làm Mờ Cực Hạn (backdrop-filter):
+Nguyên nhân: Lớp CSS backdrop-filter: blur(10px) được áp dụng dày đặc trên .lobby-container, .game-header-bar, .custom-modal-overlay.
+Hậu quả: Các dòng điện thoại Android cấu hình tầm trung/yếu bị quá tải GPU, FPS bị tụt xuống dưới 15 FPS, thao tác vuốt Drawer bị giật khựng nghiêm trọng.
+🔄 KHỐI D: LỖI KẸT ĐIỀU HƯỚNG & LOGIC CHUYỂN CẢNH (NAVIGATION DEADLOCKS)
+Lỗi Bôi Đen Màn Hình Khi Bấm Nút Xem Thẻ Mật 3D Nhanh:
+Nguyên nhân: Trong setupIdentityCardHoldGesture(), sự kiện touchstart đặt bộ đếm setTimeout 1.2s. Nếu người chơi vừa chạm vào thẻ thì cùng lúc đó có thông báo Toast hoặc Modal Tòa Án xuất hiện đè lên.
+Hậu quả: Sự kiện touchend bị Modal đè mất không thể kích hoạt ➔ Biến isHolding bị kẹt = true vĩnh viễn, thẻ Căn cước bị giải mờ vĩnh viễn không đóng lại được.
+Lỗi Trắng Sơ Đồ SVG Khi Khôi Phục Phiên Chơi Màn Hình Vinh Danh (F5 Victory Screen):
+Nguyên nhân: Khi ván đấu kết thúc (phase === "victory"), nếu một người chơi F5 (Refresh) lại trang web, listenToRoom() phát hiện phase === "victory" và gọi showVictoryScreen().
+Hậu quả: Biến cachedRelationLogs bị rỗng do F5 làm mất bộ nhớ Ram tạm ➔ Bảng sơ đồ SVG bị trắng xóa, không vẽ được bất kỳ đường dây liên kết nào giữa các người chơi.
+Lỗi Nhân Đôi Sự Kiện Nổ Súng Thợ Săn Khi Bấm Xác Nhận Nhanh:
+Nguyên nhân: Modal Thợ Săn nổ súng trả thù (#hunter-revenge-modal) có nút #btn-hunter-fire-submit. Nếu người chơi Thợ Săn nhấp liên tục 2 lần vào nút này trong 100ms.
+Hậu quả: Hai yêu cầu hạ sát được gửi lên Firebase cùng lúc, làm Thợ Săn bắn chết liền lúc 2 người chơi khác thay vì chỉ 1 người.
