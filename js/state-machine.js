@@ -1,16 +1,23 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - STATE MACHINE & GAME LOOP MANAGER
+ * WOLFPACK SOVEREIGN v47.0 - STATE MACHINE & GAME LOOP MANAGER (FULL UPDATE7)
  * =========================================================================
  * Bộ điều phối luồng vòng lặp trận đấu (Game Loop Manager). Quản lý đồng hồ
- * đếm ngược thời gian, bầu Trưởng Làng, bỏ phiếu xử án treo cổ, xử tử,
- * chuyển pha Đêm/Ngày kết hợp TickEngine và kiểm tra Điều kiện Chiến Thắng.
+ * đếm ngược thời gian chuẩn giờ Server, bầu Trưởng Làng, bỏ phiếu xử án treo cổ, 
+ * xử tử, Kẻ Ngốc lật thẻ, chuyển pha Đêm/Ngày kết hợp TickEngine và kiểm tra 
+ * Điều kiện Chiến Thắng mở rộng.
  */
 
-import { db, ref, get, set, update, runTransaction } from "./firebase-config.js";
+import { 
+    db, ref, get, set, update, runTransaction, 
+    getSynchronizedTimestamp 
+} from "./firebase-config.js";
 import { Engine_Module, getRoleName } from "./game-logic.js";
 import { TickEngine } from "./tick-engine.js";
-import { runGavelStrikeAnimation, showToast, playSFX, playBGM, openHunterRevengeModal } from "./ui-manager.js";
+import { 
+    runGavelStrikeAnimation, showToast, playSFX, playBGM, 
+    openHunterRevengeModal 
+} from "./ui-manager.js";
 
 // BẢO VỆ KHÓA TRẠNG THÁI CỤC BỘ (CHỐNG LẶP LỆNH BẤT ĐỒNG BỘ)
 let isTransitioning = false;
@@ -36,18 +43,19 @@ const DEFAULT_PHASE_DURATIONS = {
 
 export const StateMachine = {
     // ==========================================
-    // 1. QUẢN LÝ ĐỒNG HỒ ĐẾM NGƯỢC THỜI GIAN THEO PHA
+    // 1. QUẢN LÝ ĐỒNG HỒ ĐẾM NGƯỢC THỜI GIAN CHUẨN MÁY CHỦ
     // ==========================================
     
     /**
-     * Bắt đầu đếm ngược thời gian pha và đồng bộ hóa lên Firebase
+     * Bắt đầu đếm ngược thời gian pha và đồng bộ hóa lên Firebase bằng giờ Server
      * @param {number} durationSeconds - Số giây đếm ngược
      */
     async startPhaseTimer(durationSeconds) {
         const Net = window.Net;
         if (!Net || !Net.roomId || !Net.isHost) return;
 
-        const endTime = Date.now() + (durationSeconds * 1000);
+        const serverNow = getSynchronizedTimestamp();
+        const endTime = serverNow + (durationSeconds * 1000);
         try {
             await update(ref(db, `rooms/${Net.roomId}/meta`), {
                 timerEndTime: endTime,
@@ -59,8 +67,8 @@ export const StateMachine = {
     },
 
     /**
-     * Đồng bộ hóa giao diện thanh đếm ngược thời gian ở client
-     * @param {number} endTime - Thời điểm hết giờ (Timestamp ms)
+     * Đồng bộ hóa giao diện thanh đếm ngược thời gian ở client theo giờ Server chuẩn
+     * @param {number} endTime - Thời điểm hết giờ (Timestamp ms Server)
      * @param {number} duration - Tổng thời lượng pha (Giây)
      */
     syncPhaseTimer(endTime, duration) {
@@ -72,8 +80,8 @@ export const StateMachine = {
         if (!display || !bar || !endTime) return;
 
         const updateVisuals = () => {
-            const now = Date.now();
-            const remainingMs = Math.max(0, endTime - now);
+            const serverNow = getSynchronizedTimestamp();
+            const remainingMs = Math.max(0, endTime - serverNow);
             const remainingSec = Math.ceil(remainingMs / 1000);
 
             const mins = Math.floor(remainingSec / 60);
@@ -163,7 +171,7 @@ export const StateMachine = {
     },
 
     /**
-     * Chốt kết quả bầu chọn Trưởng Làng
+     * Chốt kết quả bầu chọn Trưởng Làng (SỬA LỖI HÒA PHIẾU BẰNG BỐC THĂM)
      */
     async resolveMayorElection() {
         const Net = window.Net;
@@ -183,15 +191,25 @@ export const StateMachine = {
             }
         });
 
-        let winnerId = null;
+        let topCandidates = [];
         let maxVotes = 0;
 
         Object.entries(voteCounts).forEach(([candId, count]) => {
             if (count > maxVotes) {
                 maxVotes = count;
-                winnerId = candId;
+                topCandidates = [candId];
+            } else if (count === maxVotes && maxVotes > 0) {
+                topCandidates.push(candId);
             }
         });
+
+        let winnerId = null;
+        if (topCandidates.length === 1) {
+            winnerId = topCandidates[0];
+        } else if (topCandidates.length > 1) {
+            // Bốc thăm ngẫu nhiên giữa các ứng viên bằng phiếu
+            winnerId = topCandidates[Math.floor(Math.random() * topCandidates.length)];
+        }
 
         const updates = {
             [`rooms/${Net.roomId}/trial`]: { stage: "none", accusedId: null },
@@ -201,10 +219,14 @@ export const StateMachine = {
         if (winnerId && roomData.players[winnerId]) {
             updates[`rooms/${Net.roomId}/meta/mayorId`] = winnerId;
             await update(ref(db), updates);
-            await Engine_Module.logMsg(`👑 Thần dân [${roomData.players[winnerId].name}] đã trúng cử chức vị TRƯỞNG LÀNG!`, "info");
+            if (topCandidates.length > 1) {
+                await Engine_Module.logMsg(`👑 Cuộc bầu chọn hòa phiếu! Bốc thăm ngẫu nhiên: Thần dân [${roomData.players[winnerId].name}] trúng cử TRƯỞNG LÀNG!`, "info");
+            } else {
+                await Engine_Module.logMsg(`👑 Thần dân [${roomData.players[winnerId].name}] đã trúng cử chức vị TRƯỞNG LÀNG!`, "info");
+            }
         } else {
             await update(ref(db), updates);
-            await Engine_Module.logMsg("👑 Cuộc bầu chọn hòa hoặc không đủ phiếu. Vương quốc tạm thời vắng Trưởng Làng!", "sys");
+            await Engine_Module.logMsg("👑 Không ai bỏ phiếu hoặc tất cả bỏ phiếu trắng. Vương quốc tạm vắng Trưởng Làng!", "sys");
         }
 
         const dayDuration = roomData.settings?.dayDuration || DEFAULT_PHASE_DURATIONS.day_discussion;
@@ -272,6 +294,7 @@ export const StateMachine = {
                 // Dọn dẹp dữ liệu bỏ phiếu ban ngày
                 updates[`rooms/${Net.roomId}/votes`] = null;
                 updates[`rooms/${Net.roomId}/nominations`] = null;
+                updates[`rooms/${Net.roomId}/wolf_votes`] = null;
                 updates[`rooms/${Net.roomId}/trial`] = {
                     stage: "none",
                     accusedId: null,
@@ -403,14 +426,14 @@ export const StateMachine = {
             // Gửi mật thư thông báo vào Hòm Thư Mailbox
             for (const [playerId, mails] of Object.entries(resolutionOutcome.mailboxDeliveries)) {
                 for (const mail of mails) {
-                    const mailId = "mail_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
+                    const mailId = "mail_" + getSynchronizedTimestamp() + "_" + Math.random().toString(36).substring(2, 7);
                     updates[`rooms/${Net.roomId}/players/${playerId}/mailbox/${mailId}`] = {
                         id: mailId,
                         title: mail.title,
                         content: mail.content,
                         category: mail.category || "role",
                         isRead: false,
-                        timestamp: Date.now()
+                        timestamp: getSynchronizedTimestamp()
                     };
                 }
             }
@@ -450,7 +473,7 @@ export const StateMachine = {
     },
 
     // ==========================================
-    // 6. PHÁN QUYẾT BỎ PHIẾU TREO CỔ (VOTE RESOLUTION)
+    // 6. PHÁN QUYẾT BỎ PHIẾU TREO CỔ (SỬA LỖI KẺ NGỐC & HÒA PHIẾU)
     // ==========================================
     
     /**
@@ -486,7 +509,8 @@ export const StateMachine = {
             // Tính toán tổng phiếu bầu (Phiếu của Trưởng Làng tính nhân đôi weight = 2)
             Object.entries(votes).forEach(([voterId, voteValue]) => {
                 const voter = roomData.players[voterId];
-                if (voter && voter.alive) {
+                // Kẻ Ngốc (Idiot) đã lật thẻ sẽ mất vĩnh viễn quyền bỏ phiếu!
+                if (voter && voter.alive && !voter.isIdiotRevealed) {
                     const weight = (voterId === mayorId) ? 2 : 1;
                     if (voteValue === "ACQUIT") countAcquit += weight;
                     if (voteValue === "EXECUTE") countExecute += weight;
@@ -498,13 +522,19 @@ export const StateMachine = {
             let decisionText = "";
             let executeTarget = false;
 
+            // Xử lý Hòa phiếu & Áp đảo
             if (countExecute > countAcquit) {
                 decisionText = `BẢN ÁN TỬ HÌNH DÀNH CHO: ${accusedName.toUpperCase()}!`;
                 executeTarget = true;
+            } else if (countExecute === countAcquit && countExecute > 0) {
+                decisionText = `HÒA PHIẾU! ${accusedName.toUpperCase()} ĐƯỢC THA BỔNG THEO SUY ĐOÁN VÔ TỘI.`;
+                executeTarget = false;
             } else {
                 decisionText = `${accusedName.toUpperCase()} ĐÃ ĐƯỢC THA BỔNG THÀNH CÔNG!`;
+                executeTarget = false;
             }
 
+            // Dùng Transaction khóa chuyển Stage nguyên tử chống trùng lặp
             let allowed = false;
             await runTransaction(ref(db, `rooms/${Net.roomId}/trial/stage`), (stage) => {
                 if (stage === "verdict") return;
@@ -527,23 +557,28 @@ export const StateMachine = {
                     const finalUpdates = {};
 
                     if (executeTarget) {
-                        finalUpdates[`rooms/${Net.roomId}/players/${trial.accusedId}/alive`] = false;
-                        await Engine_Module.logMsg(`⚖️ Dân làng đã thi hành án treo cổ đối tượng [${accusedName}].`, "kill");
-
-                        // XỬ LÝ ĐẶC BIỆT: Gã Hề (Clown) bị treo cổ -> Thắng Đơn Lập Lập Tức!
-                        if (accusedPlayer && accusedPlayer.role === "clown") {
+                        // LUẬT ĐẶC BIỆT KẺ NGỐC (IDIOT): Lật thẻ chứng minh bị Ngốc -> Sống sót nhưng mất quyền vote!
+                        if (accusedPlayer && accusedPlayer.role === "idiot") {
+                            finalUpdates[`rooms/${Net.roomId}/players/${trial.accusedId}/isIdiotRevealed`] = true;
+                            await Engine_Module.logMsg(`🤡 [${accusedName}] đã lật thẻ Căn Cước chứng minh bị NGỐC! Bản án tử hình bị hủy bỏ, nhưng Kẻ Ngốc mất vĩnh viễn quyền bỏ phiếu!`, "info");
+                        }
+                        // LUẬT ĐẶC BIỆT GÃ HỀ (CLOWN): Bị treo cổ -> Thắng Đơn Lập Lập Tức!
+                        else if (accusedPlayer && accusedPlayer.role === "clown") {
                             await StateMachine.triggerClownVictory(accusedPlayer);
                             isResolvingVote = false;
                             return;
                         }
+                        else {
+                            finalUpdates[`rooms/${Net.roomId}/players/${trial.accusedId}/alive`] = false;
+                            await Engine_Module.logMsg(`⚖️ Dân làng đã thi hành án treo cổ đối tượng [${accusedName}].`, "kill");
 
-                        // XỬ LÝ ĐẶC BIỆT: Thợ Săn (Hunter) bị treo cổ ban ngày -> Kích hoạt Modal nổ súng!
-                        if (accusedPlayer && accusedPlayer.role === "hunter") {
-                            await StateMachine.triggerHunterRevengeShot(accusedPlayer);
+                            // XỬ LÝ ĐẶC BIỆT: Thợ Săn (Hunter) bị treo cổ ban ngày -> Kích hoạt Modal nổ súng!
+                            if (accusedPlayer && accusedPlayer.role === "hunter") {
+                                await StateMachine.triggerHunterRevengeShot(accusedPlayer);
+                            }
                         }
-
                     } else {
-                        await Engine_Module.logMsg(`⚖️ Dân làng đã phán quyết tha bổng cho [${accusedName}].`, "sys");
+                        await Engine_Module.logMsg(`⚖️ Tòa án phán quyết tha bổng cho [${accusedName}] (${countAcquit} Tha vs ${countExecute} Tử).`, "sys");
                     }
 
                     // Dọn dẹp phiên tòa ban ngày
@@ -573,7 +608,7 @@ export const StateMachine = {
     },
 
     // ==========================================
-    // 7. SỰ KIỆN NỔ SÚNG TRẢ THÙ CỦA THỢ SĂN BAN NGÀY
+    // 7. SỰ KIỆN NỔ SÚNG TRẢ THÙ CỦA THỢ SĂN (CÓ FALLBACK TIMEOUT 15S CHỐNG ĐƠ GAME)
     // ==========================================
     
     /**
@@ -582,7 +617,7 @@ export const StateMachine = {
      */
     async triggerHunterRevengeShot(hunterPlayer) {
         const Net = window.Net;
-        await Engine_Module.logMsg(`🏹 Thợ Săn [${hunterPlayer.name}] bị treo cổ! Kích hoạt phát bắn tiễn biệt...`, "kill");
+        await Engine_Module.logMsg(`🏹 Thợ Săn [${hunterPlayer.name}] bị treo cổ! Kích hoạt phát bắn tiễn biệt (15s)...`, "kill");
 
         // Nếu người chơi hiện tại chính là Thợ Săn bị chết -> Mở Modal chọn mục tiêu
         if (Net.playerId === hunterPlayer.id) {
@@ -599,7 +634,7 @@ export const StateMachine = {
     },
 
     // ==========================================
-    // 8. KIỂM TRA ĐIỀU KIỆN CHIẾN THẮNG MỞ RỘNG
+    // 8. KIỂM TRA ĐIỀU KIỆN CHIẾN THẮNG MỞ RỘNG (BAO GỒM SÓI CÔ ĐỘC)
     // ==========================================
     
     /**
@@ -668,8 +703,35 @@ export const StateMachine = {
                 }
             }
 
-            // 2. Thống kê số lượng sinh mệnh từng phe
-            const wolvesAlive = alivePlayers.filter(p => p.realFaction === "wolf").length;
+            // 2. Kiểm tra Sói Cô Độc (Lone Wolf) Thắng Đơn Lập
+            const loneWolfAlive = alivePlayers.filter(p => p.role === "loneWolf");
+            if (loneWolfAlive.length === 1 && alivePlayers.length <= 2) {
+                const otherAlive = alivePlayers.filter(p => p.role !== "loneWolf");
+                if (otherAlive.length === 0 || (otherAlive.length === 1 && otherAlive[0].realFaction !== "wolf")) {
+                    const mvpData = {
+                        name: loneWolfAlive[0].name,
+                        badge: "🐺 BẢN NĂNG CÔ ĐỘC (LONE WOLF VICTORY)",
+                        stats: [
+                            { label: "Thành tựu", value: "Một Mình Tiêu Diệt Cả Làng & Bầy Sói" },
+                            { label: "Kết quả", value: "THẮNG ĐƠN LẬP VINH QUANG" }
+                        ]
+                    };
+
+                    await update(ref(db, `rooms/${Net.roomId}/meta`), {
+                        phase: "victory",
+                        winner: "loneWolf",
+                        mvp: mvpData,
+                        relations: []
+                    });
+
+                    playSFX("victory_fanfare");
+                    await Engine_Module.logMsg(`🐺 SÓI CÔ ĐỘC [${loneWolfAlive[0].name}] LÀ KẺ SỐNG SÓT CUỐI CÙNG! THẮNG ĐƠN LẬP VINH QUANG!`, "info");
+                    return;
+                }
+            }
+
+            // 3. Thống kê số lượng sinh mệnh từng phe
+            const wolvesAlive = alivePlayers.filter(p => p.realFaction === "wolf" && p.role !== "loneWolf").length;
             const villagersAlive = alivePlayers.filter(p => p.realFaction === "villager").length;
             const thirdsAlive = alivePlayers.filter(p => p.realFaction === "third").length;
 
@@ -680,11 +742,11 @@ export const StateMachine = {
                 winner = "wolf";
             }
             // Dân Làng thắng khi tiêu diệt sạch Ma Sói và Phe Thứ Ba
-            else if (wolvesAlive === 0 && thirdsAlive === 0) {
+            else if (wolvesAlive === 0 && thirdsAlive === 0 && loneWolfAlive.length === 0) {
                 winner = "villager";
             }
             // Phe Thứ Ba thắng khi dọn sạch 2 phe chính
-            else if (thirdsAlive > 0 && villagersAlive === 0 && wolvesAlive === 0) {
+            else if (thirdsAlive > 0 && villagersAlive === 0 && wolvesAlive === 0 && loneWolfAlive.length === 0) {
                 winner = "third";
             }
 

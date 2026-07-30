@@ -1,0 +1,126 @@
+ 1. CÁC LỖI LOGIC GAMEPLAY & CƠ CHẾ ĐÊM (CRUCIAL GAMEPLAY BUGS)
+Lỗi bầy Ma Sói cắn càn (Wolf Pack Damage Flaw):
+Hiện trạng: Trong tick-engine.js, mỗi con Sói chọn 1 mục tiêu thì hệ thống lại tính sát thương độc lập từng con. Nếu có 3 con Sói, chúng chọn 3 người khác nhau thì cả 3 người chơi đó đều bị cắn chết trong 1 đêm!
+Đúng ra phải là: Bầy Sói phải gom phiếu bầu chung vào 1 nạn nhân duy nhất (hoặc Sói Trùm chốt phiếu).
+Phù Thủy (Witch) bị dùng lại Bình Thuốc vô hạn:
+Hiện trạng: Code trong tick-engine.js giải mã bình Cứu / bình Độc nhưng chưa lưu trạng thái hasUsedHeal hoặc hasUsedPoison vào Firebase, dẫn đến Phù Thủy có thể xài bình cứu/độc liên tục mỗi đêm.
+Thiếu Mật Khẩu Phòng (Room Password Enforcement Gap):
+Hiện trạng: Trong HTML có ô nhập mật khẩu phòng, nhưng hàm joinRoom() trong app.js chưa kiểm tra so sánh mật khẩu người chơi nhập với mật khẩu lưu trên Database, làm phòng khóa mật khẩu ai cũng vào tự do được.
+Lỗi xâu chuỗi Cặp Đôi Uyên Ương (Cupid Suicide Chain):
+Hiện trạng: Khi Người A chết ➔ Người B tự sát chết theo. Nhưng nếu Người B là Thợ Săn/Mèo, sự kiện chết của Người B lại không kích hoạt lượt bắn/cào trả thù vì vòng lặp TickEngine đã kết thúc trước đó.
+Thường Dân / Sói Cô Độc bị tính sai Chiến Thắng (Victory Logic Bug):
+Hiện trạng: Trong checkVictoryConditions(), hàm kiểm tra Sói Cô Độc (Lone Wolf) vẫn đang được tính chung nhóm realFaction === 'wolf'. Do đó khi Sói Cô Độc thắng 1 mình, game lại báo "MA SÓI CHIẾN THẮNG" thay vì "SÓI CÔ ĐỘC THẮNG ĐƠN LẬP".
+
+ 2. LỖI ĐỒNG BỘ THỜI GIAN THỰC & MULTI-PLAYER (REALTIME & SYNC BUGS)
+Đồng hồ pha bị lệch giữa các máy (Client Clock Desync):
+Hiện trạng: syncPhaseTimer dùng Date.now() của máy Client. Nếu máy Người chơi A chỉnh giờ sớm hơn máy Người chơi B 2 phút, đồng hồ đếm ngược trên 2 máy sẽ hiện 2 số hoàn toàn khác nhau.
+Cần khắc phục: Phải bù trừ chênh lệch thời gian máy chủ Firebase Server Time Offset (.info/serverTimeOffset).
+Quản trò (Host) đổi Role nhưng Sảnh Chờ người chơi không nhảy:
+Hiện trạng: Khi Host chỉnh tăng/giảm số lượng Role ở tab Cấu Hình, thông tin Cán cân Trận đấu và Số Role không được đẩy Realtime xuống giao diện của các thành viên đang chờ ở Sảnh.
+Đồng đội Sói không thấy mục tiêu của nhau trong Đêm:
+Hiện trạng: Ban đêm, Sói A chọn cắn Player X thì Sói B không nhìn thấy thẻ Player X đang bị Sói A nhắm tới trên bàn cờ.
+Kẹt Reconnect khi Phòng bị xóa thủ công:
+Hiện trạng: Nếu Host xóa phòng trực tiếp trên Firebase Console, máy người chơi F5 lại sẽ bị kẹt ở ô "Đang phục hồi phiên chơi" vì attemptSessionReconnection liên tục tìm ID phòng không còn tồn tại.
+🔵 3. LỖI GIAO DIỆN & TRẢI NGHIỆM NGƯỜI DÙNG (UI/UX BUGS)
+Lỗi mất Nút bấm / Tràn màn hình trên di động (Mobile Viewport Clipping):
+Hiện trạng: Trên iPhone (Safari) có thanh địa chỉ động, giao diện 100vh làm thanh bấm kỹ năng (#action-center) bị che mất một nửa bên dưới.
+Hiện trạng: Các bảng Drawer Trái/Phải khi mở ra trên di động bị tràn chiều ngang, che mất nút ✕ Đóng.
+Chao đảo khi lật Thẻ Căn Cước 3D (Hold Gesture Conflict):
+Hiện trạng: Trên màn hình cảm ứng di động, khi đè giữ thẻ Căn Cước 1.2s để mở mờ Role, trình duyệt thường hiểu nhầm là thao tác Bôi đen văn bản (Text Selection) hoặc Mở Menu ngữ cảnh trình duyệt (Context Menu) làm thẻ bị giật.
+Sơ đồ SVG Vinh Danh vẽ sai vị trí (SVG Connection Lines Misalignment):
+Hiện trạng: Nối dây Cặp đôi Cupid trên sơ đồ SVG dùng getBoundingClientRect(). Khi xoay màn hình di động hoặc co giãn cửa sổ, các đường dây nối màu hồng bị lệch khỏi thẻ bài người chơi.
+Kênh Chat bị giật nẩy màn hình khi có tin nhắn mới:
+Hiện trạng: Khi người chơi kéo lên trên để đọc lịch sử chat cũ, mỗi khi có tin nhắn mới tới, hàm scrollTop = scrollHeight cưỡng chế kéo văng màn hình về đáy.
+⚪ 4. CÁC TÍNH NĂNG CÒN THIẾU CẦN BỔ SUNG (MISSING FEATURES)
+Bộ chọn Avatar / Token Linh Thú ở Sảnh Chờ: Người chơi hiện chưa có chỗ để chọn hình đại diện cá nhân.
+Kênh Chat Riêng Dành Cho Quản Trò (GM Direct Whisper): Quản trò chưa có ô gõ tin nhắn bí mật tới riêng 1 người chơi (Ví dụ: Nhắc nhở Tiên Tri / Báo thông điệp).
+Bảng Tóm Tắt Luật Role Ngay Trong Đêm: Ban đêm người chơi nhận vai trò lạ không biết xem lại mô tả chi tiết kỹ năng ở đâu.
+Nút Export Nhật Ký Ván Đấu: Chưa có nút tải xuống file Nhật ký diễn biến trận đấu sau khi kết thúc.
+🕳️ 1. LỖ HỔNG XUNG ĐỘT TRẠNG THÁI TRONG TICK ENGINE (ENGINE STATE MUTATION BUGS)
+Lỗi Đua Trạng Thái giữa Thiên Sứ (Angel) và Kẻ Phóng Hỏa (Arsonist):
+Bản chất thuật toán: Trong tick-engine.js, Thiên Sứ tịnh hóa ở Tick 1 gán playerStateUpdates[targetId].isPetroled = false. Nhưng ở Tick 6, Kẻ Phóng Hỏa châm lửa lại đọc p.isPetroled từ mảng gốc playersList (thời điểm trước khi đêm bắt đầu).
+Hậu quả: Dù Thiên Sứ đã tịnh hóa dội sạch xăng của mục tiêu ở Tick 1, Kẻ Phóng Hỏa châm lửa ở Tick 6 vẫn thiêu rụi nạn nhân đó vì Engine đọc nhầm trạng thái cũ chưa cập nhật!
+Cơ chế Phản Chiếu Gương (Reflector) triệt tiêu lá chắn Bảo Vệ:
+Bản chất thuật toán: Khi Player A dựng Kính Phản Chiếu, hàm getRoutedTarget bẻ hướng mục tiêu. Nếu Bảo Vệ chọn bảo vệ Player A, targetId bị dội gương thành "neutralized".
+Hậu quả: Lá chắn Bảo Vệ bị vô hiệu hóa hoàn toàn và biến mất, làm Player A hoàn toàn trần trụi trước đòn tấn công của Sát Nhân hay Ma Sói.
+Lỗi Tráo Đổi Nhân Dạng của Sói Ảo Ảnh (Phantom Wolf) bị lọt lưới:
+Bản chất thuật toán: Sói Ảo Ảnh tráo đổi vị trí A và B ở Tick 2. Engine cập nhật act.targetId cho các hành động phía sau, nhưng không cập nhật secondaryId (mục tiêu thứ 2 của các vai trò như Cupid, Chủ Thần, Kẻ Thao Túng).
+Hậu quả: Kỹ năng chọn 2 mục tiêu sẽ bị lệch 1 nửa: 1 mục tiêu bị tráo đổi nhân dạng, mục tiêu còn lại vẫn dính vào người cũ.
+⏳ 2. NGUY CƠ ĐÓNG BẰNG VÁN ĐẤU & TRẠNG THÁI LẶP (GAME FREEZE RISKS)
+Lỗi Thợ Săn (Hunter) Mất Kết Nối Làm Đơ Game Vĩnh Viễn:
+Kịch bản: Khi Thợ Săn bị treo cổ, Modal openHunterRevengeModal bật lên cho Thợ Săn 15 giây để chọn người bắn trả thù. Nếu người chơi Thợ Săn tắt trình duyệt hoặc mất mạng đúng lúc này, bộ đếm setInterval chạy trên máy Thợ Săn bị hủy.
+Hậu quả: Máy Quản trò (Host) trên Cloud sẽ chờ vô thời hạn phản hồi tử vong từ Thợ Săn ➔ Ban ngày bị đơ vĩnh viễn, không thể chuyển sang Đêm!
+Lỗi Nhân Đôi Bản Án khi Chuyển Giao Host Đúng Lúc Búa Gõ:
+Kịch bản: Trong khi hoạt ảnh Búa Tòa Án (runGavelStrikeAnimation) đang chạy 2.5 giây, nếu Quản trò cũ rớt mạng, hệ thống Host Failover lập tức đôn Người chơi B lên làm Host mới.
+Hậu quả: Host mới nhận sự kiện onValue khi trial.stage === 'vote', máy Host mới sẽ chạy lại hàm resolveVotingOutcome() lần 2 ➔ Dẫn đến xử tử 2 người cùng lúc hoặc lỗi ghi đè Firebase.
+Lỗi Bầu Chọn Hòa Không Có Cơ Chế Xử Lý (Tie-Vote Deadlock):
+Trong Tòa Án: Nếu Số phiếu Tha Bổng = Số phiếu Xử Tử (Ví dụ: 3 - 3), code phán quyết countExecute > countAcquit trả về false ➔ Tuyên tha bổng. Tuy nhiên, game không ghi nhận log "Hòa phiếu", làm dân làng hoang mang không hiểu tại sao bị cáo sống.
+Trong Bầu Trưởng Làng: Nếu 2 ứng viên cùng số phiếu bầu cao nhất, code chọn người đầu tiên xuất hiện trong Object Javascript (Object.entries(voteCounts)) theo thứ tự key chứ không có cơ chế bầu lại hay bốc thăm ngẫu nhiên.
+🔓 3. LỖ HỔNG BẢO MẬT & HACK BẰNG DEVTOOLS (SECURITY & CHEATING HOLES)
+Lộ diện toàn bộ Role qua Firebase Realtime Database công khai:
+Lỗ hổng: Hiện tại toàn bộ đường dẫn rooms/{roomId}/players/{playerId}/role được lưu công khai dạng Text thuần ("seer", "wolf", "vampire") trên Firebase mà chưa có Firebase Security Rules.
+Cách Hack: Bất kỳ người chơi nào chỉ cần ấn F12 (Console) hoặc gõ URL Firebase trên trình duyệt là có thể đọc sạch toàn bộ Vai Trò Mật của cả phòng ngay Đêm 1!
+Lỗi Giả Mạo Lệnh Hành Động Đêm (Target Injection Hack):
+Lỗ hổng: Nút bấm đêm gửi trực tiếp dữ liệu lên Firebase targetSelection: { actionType, targetId }. Máy Host khi chạy TickEngine chỉ đọc act.role dựa trên vai trò lưu ở DB, nhưng không kiểm tra actionType gửi lên có hợp lệ với Role đó hay không.
+Cách Hack: Một Dân Làng có thể mở Console gõ lệnh ghi đè actionType: "serial_kill" để tự cấp cho mình đòn đâm sát nhân ban đêm.
+💬 4. LỖ HỔNG RÒ RỈ KÊNH CHAT VÀ LẠM DỤNG KHÁN GIẢ
+Lỗi Rò Rỉ Tin Nhắn Ma Sói cho Linh Hồn (Dead Wolf Chat Leak):
+Hậu quả: Khi con Ma Sói bị treo cổ chết, nó chuyển sang tab Linh Hồn 👻. Tuy nhiên, vì code syncLayoutBasedOnRoleAndStatus chưa xóa biến role === 'wolf', con Sói đã chết này vẫn nhìn thấy song song cả Kênh Chat Sói lẫn Kênh Chat Linh Hồn, lộ thông tin chiến thuật đêm của bầy Sói còn sống cho người chết.
+Khán Giả Spam Dự Đoán Điểm (Poll Spamming):
+Hậu quả: Nút bấm dự đoán tỉ lệ thắng (spectator-prediction-widget) không kiểm tra khóa pha. Người chơi đã chết có thể click đổi cược liên tục 100 lần/giây để làm giật lag thanh tỉ lệ phần trăm của phòng.
+🧬 1. NGHỊCH LÝ KỸ NĂNG VÀ LỖI THỨ TỰ TRONG TICK ENGINE (SKILL PARADOXES)
+Nghịch lý Phù Thủy (Witch) vs Sát Nhân (Serial Killer):
+Mô tả lỗi: Trong Tick 6 của tick-engine.js, khi duyệt hàng chờ sát thương damageQueue, mã lệnh kiểm tra cú đâm của Sát Nhân trước:
+if (sourceRole === "serialKiller") { deathsSet.add(targetId); return; }
+Hậu quả: Vì câu lệnh return thoát ngay lập tức, đoạn code kiểm tra Bình Cứu của Phù Thủy (if (targetId === witchHealTarget)) nằm ở phía dưới KHÔNG BAO GIỜ ĐƯỢC CHẠY TOÁN TỚI.
+Thực tế cay đắng: Nếu Phù Thủy dùng Bình Cứu duy nhất trong đời cho người bị Sát Nhân đâm, Bình Cứu bị mất vĩnh viễn nhưng nạn nhân VẪN CHẾT! (Hành vi sai quy tắc game).
+Xung đột giữa Sói Câm Lặng (Silencer Wolf) và Con VẸT (Parrot):
+Mô tả lỗi: Sói Câm Lặng khóa miệng Player A ở Tick 4 ➔ isSilencerMuted = true. Con Vẹt ép Player A phát ngôn câu lệnh "Tôi là Sói" ở Tick 5.
+Hậu quả: Sang Ban Ngày, code trong app.js thấy isSilencerMuted = true liền vô hiệu hóa ô gõ chat (chatInputField.disabled = true). Người chơi A không thể gõ bất kỳ chữ nào để nhái câu của Vẹt, khiến kỹ năng của Con Vẹt bị vô hiệu hóa hoàn toàn một cách vô lý.
+Nghịch lý Ma Cà Rồng (Vampire) cắn Bán Sói (Half-Wolf) tạo ra "Sói Nhị Nguyên":
+Mô tả lỗi: Khi Vampire cắn Bán Sói ở Tick 5, code gán realFaction = "wolf" đồng thời gán cả vampireFactionId.
+Hậu quả: Bán Sói lúc này vừa sở hữu Phe Sói, vừa có Kênh Chat Sói, lại vừa mở Kênh Chat Huyết Tộc Vampire. Người chơi này trở thành "Gián điệp 2 phe độc lập" nằm ngoài mọi quy tắc chiến thắng của Ma Sói tiêu chuẩn.
+Kẻ Phóng Hỏa (Arsonist) Châm Lửa Thiêu Cả Người Được Bảo Vệ:
+Mô tả lỗi: Trong Tick 6, đòn châm lửa (ignite) đẩy toàn bộ người dội xăng vào damageQueue với sourceRole = "arsonist". Tuy nhiên, câu lệnh kiểm tra lá chắn Bảo Vệ (if (protectedPlayers.has(targetId) && sourceRole !== "arsonist")) đã cố tình bỏ qua Arsonist.
+Hậu quả: Nếu Phù Thủy dùng bình cứu hay Bảo Vệ kê lá chắn cho nhà bị châm lửa, ngọn lửa vẫn thiêu rụi hoàn toàn. Điều này đúng với Arsonist, nhưng nếu mục tiêu được Thiên Sứ tịnh hóa xăng ở Đêm 1, sang Đêm 2 Arsonist châm lửa thì người đó vẫn dính sát thương do biến isPetroled bị lưu đè trên Database từ ngày hôm trước.
+📐 2. LỖ HỔNG TOÁN HỌC & HIỂN THỊ SAI LẠC TRONG TÒA ÁN (VOTING MATH DISCREPANCIES)
+Hiển Thị Sai Lệch Phiếu Bầu Trưởng Làng Trên Modal Biểu Quyết:
+Bản chất lỗi: Trên Modal Bỏ Phiếu Xử Án (openSplitScreenVoteModal), code đếm số người thả thẻ: countAcquit++, countExecute++ (Mỗi người tính 1 điểm).
+Thực tế phán quyết: Khi chốt án (resolveVotingOutcome), lá phiếu của Trưởng Làng lại được tính trọng số nhân đôi (weight = 2).
+Hậu quả gây phẫn nộ: Trên màn hình Modal hiển thị tỉ lệ là 🟢 3 Phiếu Tha Bổng vs 🔴 3 Phiếu Xử Tử (Người chơi tưởng là Hòa). Nhưng khi chốt án, hệ thống lại công bố "BẢN ÁN TỬ HÌNH!" (do Trưởng Làng chọn Xử tử tính thành 2 điểm = 4-3). Người chơi sẽ nghĩ game bị Bắt Nạt / Hack Kết Quả!
+Kẻ Ngốc (Idiot) Bị Lật Thẻ Nhưng Vẫn Còn Quyền Bỏ Phiếu Treo Cổ:
+Bản chất lỗi: Khi Kẻ Ngốc bị làng bỏ phiếu treo cổ, Kẻ Ngốc lật thẻ chứng minh bị Khùng và sống sót. Theo luật, Kẻ Ngốc mất quyền bỏ phiếu các ngày sau.
+Hậu quả: Trong code hiện tại, khi Kẻ Ngốc lật thẻ, hệ thống không lưu biến isIdiotRevealed = true lên Firebase. Những ngày tiếp theo, Kẻ Ngốc vẫn bấm được nút "🟢 THA BỔNG / 🔴 XỬ TỬ" và phiếu vẫn được tính điểm bình thường.
+🔄 3. LỖ HỔNG RÒ RỈ BỘ NHỚ VÀ DỒN TÍCH EVENT LISTENER (MEMORY & CPU LEAKS)
+Rò rỉ Listener Nhập Liệu Biện Hộ (Defense Realtime Leak):
+Bản chất lỗi: Trong renderDefenseTypingPanel(), mỗi khi có phiên tòa diễn ra, code gọi onValue(textRef) để lắng nghe bị cáo gõ chữ thời gian thực và đẩy vào mảng activeUnsubscribers.push(unsubText).
+Hậu quả: Nếu một ván đấu có 5 phiên tòa diễn ra, 5 listener onValue của cùng một đường dẫn trial/accusedText sẽ chạy song song ngầm. Khi bị cáo gõ 1 ký tự, event fire 5 lần liên tiếp ➔ Gây giật lag (CPU Spike) và chữ trên màn hình bị nhảy giật đĩa.
+Dồn Tích Event Listener Ở Thanh Dự Đoán Khán Giả (Spectator Poll Leak):
+Bản chất lỗi: Mỗi khi hàm listenToRoom() kích hoạt khi Firebase có thay đổi, nó lại gọi setupSpectatorWinPoll(). Hàm này gán sự kiện .addEventListener("click") vào 3 thanh dự đoán.
+Hậu quả: Sau 10 phút chơi, 3 thanh dự đoán dính hàng chục Event Listener chồng lên nhau. Khi một người chết nhấp vào cược 1 lần, hàm gửi dữ liệu Firebase chạy 10-20 lần cùng lúc.
+🧭 4. XUNG ĐỘT LUỒNG ĐIỀU HƯỚNG NAVIGATION STACK VS FIREBASE PUSH
+Văng Màn Hình Khi Quản Trò Ép Pha Đột Ngột:
+Kịch bản: Người chơi A đang mở Hòm Mật Thư Giấy Da (mailbox-parchment-modal) để đọc thư. Lúc này NavigationStack đang giữ ID tệp thư đó.
+Sự cố: Quản trò bấm "Cưỡng chế sang Ngày" hoặc Đủ phiếu đề cử đưa người lên đài ➔ Firebase đẩy sự kiện mở Modal Tòa Án (#vote-modal).
+Hậu quả: Màn hình Tòa Án chèn đè lên Mật Thư. Khi người chơi A bấm nút ⬅️ Quay lại, thay vì đóng Tòa Án để về Bàn Cờ, NavigationStack.pop() lại đóng Tòa Án và hiển thị lại Tờ Giấy Da Mật Thư bên dưới, làm người chơi không thể nhìn thấy bàn cờ biểu quyết!
+Biến Rác chosenModifier Bị Lưu Đè Giữa Các Lần Chọn Mục Tiêu:
+Bản chất lỗi: Trong openTargetSelection(), biến chosenModifier lưu lựa chọn kỹ năng (Ví dụ: seer_scan hoặc seer_open_eye). Nếu người chơi mở Modal lên, chọn nút "Khai Nhãn", nhưng sau đó đổi ý bấm phím ESC để đóng Modal.
+Hậu quả: Biến chosenModifier vẫn nằm trong bộ nhớ Closure. Lần tiếp theo người chơi mở Modal chọn mục tiêu khác, kỹ năng "Khai Nhãn" cũ vẫn tự động bị kích hoạt dù người chơi không bấm chọn!
+
+Bản phân tích 14 lỗi tương tác đã làm rõ bức tranh toàn cảnh về lý do tại sao ứng dụng bị giật, kẹt và đơ giao diện khi người chơi bấm nút liên tục.
+Dưới đây là Phương án khắc phục tổng thể (Master Architectural Fix) cho toàn bộ 14 lỗi tương tác trên mà không cần đụng đến cấu trúc Firebase:
+🛡️ NGUYÊN TẮC KHẮC PHỤC TỔNG THỂ (MASTER FIX PRINCIPLES)
+Cơ chế Chống Spam Nút Bấm Toàn Cục (Button Debounce & Lock Manager):
+Mọi nút bấm gửi request (Xác nhận lượt đêm, Đề cử, Biện hộ, Bỏ phiếu, Rời phòng, Cưỡng chế ngày) sẽ tự động bị Disable + hiện hiệu ứng Loading 300ms - 500ms ngay khi nhấp vào.
+Ngăn chặn hoàn toàn việc gửi 2-4 request trùng lặp lên Firebase.
+Thay thế 100% window.alert() bằng Toast/Modal Không Chặn Luồng (Non-Blocking UI):
+Loại bỏ toàn bộ alert() truyền thống của trình duyệt ở game-logic.js và app.js.
+Chuyển sang dùng showToast() hoặc Modal tùy chỉnh để UI Thread không bao giờ bị đóng đóng băng.
+Cơ chế Độc Quyền Drawer & Bottom Sheet (Exclusive View State):
+Khi mở Drawer Trái (Mật thư), tự động đóng Drawer Phải (Chat) và ngược lại.
+Khi Bottom Sheet hiển thị, thêm lớp phủ chặn chạm chuẩn xác touch-action: none và tính toán lại deltaY vuốt tay theo trục Y chuẩn xác, tránh lơ lửng giữa màn hình.
+Đồng bộ hóa UI Tòa án & Trọng số Trưởng Làng:
+Cập nhật Modal Bỏ Phiếu (#vote-modal): Thẻ tên của Trưởng Làng sẽ có huy hiệu 👑 kèm chú thích (2 phiếu) và tổng điểm ở trên đầu cột sẽ cộng đúng điểm trọng số (Acquit Score / Execute Score) thay vì chỉ đếm số đầu người.
+Đồng bộ Hàng Chờ Confirm & Tự Động Xóa State Rác:
+Khi nút Xử tử ở Bottom Sheet được bấm, Sheet đóng mượt 200ms xong mới gọi askConfirm() để tránh bị vô hiệu hóa overlay.
+Khi người chơi bấm nút ⬅️ Quay lại ở bất kỳ Modal nào, toàn bộ mảng/biến tạm (selectedPlayerIds, chosenModifier, extraPhrase) sẽ được tẩy sạch hoàn toàn (Purge State).

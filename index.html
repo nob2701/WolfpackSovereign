@@ -93,12 +93,19 @@
                 <p class="game-subtitle">Hệ thống đồng bộ ván đấu Ma Sói đa nền tảng v47.0</p>
             </div>
             
-            <!-- FORM 1: TÊN NGƯỜI CHƠI -->
+            <!-- FORM 1: TÊN NGƯỜI CHƠI VÀ CHỌN AVATAR TOKEN -->
             <div id="login-form-panel">
                 <div class="lobby-form-group">
                     <label for="player-name-input">Tên thần dân hiển thị:</label>
                     <input type="text" id="player-name-input" maxlength="10" placeholder="Nhập tên (2 - 10 ký tự)..." autocomplete="off" class="w-100">
                 </div>
+
+                <!-- BỘ CHỌN AVATAR TOKEN (UPDATE7) -->
+                <div class="lobby-form-group">
+                    <label>Linh thú đại diện:</label>
+                    <div id="avatar-selector-container" class="avatar-selector-container"></div>
+                </div>
+
                 <div class="lobby-actions">
                     <button id="btn-initial-join-trigger" class="btn-success w-100" disabled>THAM GIA PHÒNG CHƠI</button>
                     <div class="divider-text">hoặc</div>
@@ -106,7 +113,7 @@
                 </div>
             </div>
 
-            <!-- FORM 2: NHẬP MÃ PHÒNG 6 KÝ TỰ & MẬT KHẨU (CÓ NÚT BACK) -->
+            <!-- FORM 2: NHẬP MÃ PHÒNG 6 KÝ TỰ & MẬT KHẨU PHÒNG -->
             <div id="join-code-panel" class="hidden">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
                     <button id="btn-back-to-login" class="btn-nav-back">⬅️ Quay lại</button>
@@ -124,7 +131,7 @@
                 </div>
 
                 <div class="room-password-input-row" id="room-password-input-group" style="margin-top: 10px;">
-                    <input type="password" id="join-room-password" placeholder="Mật khẩu phòng (nếu có)..." maxlength="12" style="width: 100%;">
+                    <input type="password" id="join-room-password" placeholder="Mật khẩu phòng (để trống nếu công khai)..." maxlength="12" style="width: 100%;">
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -214,9 +221,12 @@
                     <h2>📜 MẬT THƯ & DIỄN BIẾN</h2>
                 </div>
 
-                <!-- DÀNH CHO QUẢN TRÒ (GM TIMELINE LOG) -->
+                <!-- DÀNH CHO QUẢN TRÒ (GM TIMELINE LOG + EXPORT LOG) -->
                 <div id="gm-timeline-container" class="hidden gm-timeline-wrapper">
-                    <h3>📋 NHẬT KÝ QUẢN TRÒ</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h3>📋 NHẬT KÝ QUẢN TRÒ</h3>
+                        <button id="btn-export-logs" class="btn-suggest btn-small">📥 Tải Match Log</button>
+                    </div>
                     <div id="gm-timeline-log" class="log-box flex-fill"></div>
                 </div>
 
@@ -255,7 +265,7 @@
                     </div>
                 </div>
 
-                <!-- BẢNG ĐIỀU KHẨN QUẢN TRÒ TỐI CAO (GM MASTER CONSOLE - DÀNH CHO HOST) -->
+                <!-- BẢNG ĐIỀU KHẨN QUẢN TRÒ TỐI CAO (GM MASTER CONSOLE) -->
                 <div id="gm-master-console" class="gm-master-console hidden">
                     <div class="gm-console-title">⚡ BẢNG ĐIỀU KHIỂN TỐI CAO QUẢN TRÒ</div>
                     <div class="gm-quick-intervention-grid">
@@ -473,8 +483,8 @@
          4. HỆ THỐNG MODAL & POPUP OVERLAYS v47.0
          ========================================== -->
 
-    <!-- MODAL 1: XÁC NHẬN HÀNH ĐỘNG (CONFIRM MODAL CÓ NÚT BACK) -->
-    <div class="custom-modal-overlay" id="confirm-modal">
+    <!-- MODAL 1: XÁC NHẬN HÀNH ĐỘNG -->
+    <div class="custom-modal-overlay" id="confirm-modal" style="display: none;">
         <div class="custom-modal">
             <h3 id="confirm-modal-title">XÁC NHẬN HÀNH ĐỘNG</h3>
             <p id="confirm-modal-message" style="margin: 15px 0;">Bạn chắc chắn muốn thực hiện hành động này chứ?</p>
@@ -485,8 +495,8 @@
         </div>
     </div>
 
-    <!-- MODAL 2: THÔNG BÁO CƠ BẢN (ALERT MODAL) -->
-    <div class="custom-modal-overlay" id="alert-modal">
+    <!-- MODAL 2: THÔNG BÁO CƠ BẢN -->
+    <div class="custom-modal-overlay" id="alert-modal" style="display: none;">
         <div class="custom-modal">
             <h3 id="alert-title">Thông báo</h3>
             <p id="alert-message" style="margin: 15px 0;">Nội dung thông điệp</p>
@@ -494,8 +504,8 @@
         </div>
     </div>
 
-    <!-- MODAL 3: CẤU HÌNH CÀI ĐẶT PHÒNG (ROOM CONFIG MODAL CÓ NÚT BACK) -->
-    <div class="custom-modal-overlay" id="room-settings-modal">
+    <!-- MODAL 3: CẤU HÌNH CÀI ĐẶT PHÒNG -->
+    <div class="custom-modal-overlay" id="room-settings-modal" style="display: none;">
         <div class="custom-modal">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <button id="btn-cancel-room-cfg" class="btn-nav-back">⬅️ Quay lại</button>
@@ -519,8 +529,8 @@
         </div>
     </div>
 
-    <!-- MODAL 4: XEM THẺ MẬT 3D (FLASHCARD MODAL) -->
-    <div class="custom-modal-overlay" id="flashcard-modal">
+    <!-- MODAL 4: XEM THẺ MẬT 3D -->
+    <div class="custom-modal-overlay" id="flashcard-modal" style="display: none;">
         <div class="custom-modal-card-wrapper">
             <div class="fc-container">
                 <div class="fc-card" id="fc-card">
@@ -540,8 +550,8 @@
         </div>
     </div>
 
-    <!-- MODAL 5: MẬT THƯ GIẤY DA CỔ ĐIỂN (PARCHMENT MAIL MODAL CÓ NÚT BACK) -->
-    <div class="custom-modal-overlay" id="mailbox-parchment-modal">
+    <!-- MODAL 5: MẬT THƯ GIẤY DA CỔ ĐIỂN -->
+    <div class="custom-modal-overlay" id="mailbox-parchment-modal" style="display: none;">
         <div class="parchment-scroll-container">
             <button class="parchment-close-btn" id="btn-close-parchment">✕</button>
             <div class="parchment-content-body">
@@ -558,21 +568,21 @@
         </div>
     </div>
 
-    <!-- MODAL 6: BỎ PHIẾU XỬ ÁN TÒA ÁN TỐI CAO (SPLIT VOTE COURTROOM MODAL CÓ NÚT BACK) -->
-    <div class="custom-modal-overlay" id="vote-modal">
+    <!-- MODAL 6: BỎ PHIẾU XỬ ÁN TÒA ÁN (CÓ HIỂN THỊ TRỌNG SỐ 👑 2đ) -->
+    <div class="custom-modal-overlay" id="vote-modal" style="display: none;">
         <div class="custom-modal vote-courtroom-modal">
             <h3 id="vote-modal-title">BIỂU QUYẾT SỐ PHẬN</h3>
-            <p style="text-align: center; margin-top:5px;">Vui lòng đưa ra quyết định tha bổng hay hành quyết bị cáo!</p>
+            <p style="text-align: center; margin-top:5px; font-size:12px;">Phiếu của Trưởng Làng 👑 có trọng số nhân đôi (2đ)!</p>
             
             <div class="voting-split-container">
                 <!-- Cột Trái: Tha bổng -->
                 <div class="vote-split-column acquit" id="vote-col-acquit">
-                    <div class="column-header">🟢 THA BỔNG (<span id="count-acquit">0</span>)</div>
+                    <div class="column-header">🟢 THA BỔNG (<span id="count-acquit">0</span>đ)</div>
                     <div class="voters-avatar-list" id="list-voters-acquit"></div>
                 </div>
                 <!-- Cột Phải: Xử tử -->
                 <div class="vote-split-column execute" id="vote-col-execute">
-                    <div class="column-header">🔴 XỬ TỬ (<span id="count-execute">0</span>)</div>
+                    <div class="column-header">🔴 XỬ TỬ (<span id="count-execute">0</span>đ)</div>
                     <div class="voters-avatar-list" id="list-voters-execute"></div>
                 </div>
             </div>
@@ -584,8 +594,8 @@
         </div>
     </div>
 
-    <!-- MODAL 7: CHỌN MỤC TIÊU HÀNH ĐỘNG ĐỘNG (TARGET SELECTOR MODAL CÓ NÚT BACK) -->
-    <div class="custom-modal-overlay" id="target-modal">
+    <!-- MODAL 7: CHỌN MỤC TIÊU HÀNH ĐỘNG ĐỘNG -->
+    <div class="custom-modal-overlay" id="target-modal" style="display: none;">
         <div class="custom-modal" id="target-modal-content">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <button id="target-modal-close" class="btn-nav-back">⬅️ Quay lại</button>
@@ -593,7 +603,7 @@
             </div>
             <p id="target-modal-instruction" style="margin-top:10px;"></p>
             
-            <!-- BỘ BỔ TRỢ KỸ NĂNG (HỒI/ĐỘC, THẤU THỊ/KHAI NHÃN...) -->
+            <!-- BỘ BỔ TRỢ KỸ NĂNG -->
             <div id="target-action-modifiers" class="hidden" style="margin-top:10px;"></div>
             
             <!-- Ô NHẬP TỰ DO DÀNH CHO VẸT -->
@@ -609,18 +619,18 @@
         </div>
     </div>
 
-    <!-- MODAL 8: THỢ SĂN BẮN TRẢ THÙ KHI CHẾT (HUNTER REVENGE TARGET MODAL) -->
-    <div class="custom-modal-overlay" id="hunter-revenge-modal">
+    <!-- MODAL 8: THỢ SĂN BẮN TRẢ THÙ (COUNTDOWN 15S CHỐNG AFK) -->
+    <div class="custom-modal-overlay" id="hunter-revenge-modal" style="display: none;">
         <div class="custom-modal" style="border-color: var(--danger);">
             <h3 style="color: var(--danger);">🏹 PHÁT BẮN TIỄN BIỆT CỦA THỢ SĂN</h3>
-            <p style="text-align: center; margin-top:10px;">Bạn đã bị loại khỏi ván đấu! Hãy chọn một mục tiêu để kéo theo xuống mồ trước khi trút hơi thở cuối cùng:</p>
+            <p style="text-align: center; margin-top:10px;">Bạn đã bị loại khỏi ván đấu! Hãy chọn một mục tiêu để kéo theo xuống mồ:</p>
             <div class="target-grid" id="hunter-targets-grid" style="max-height: 220px; overflow-y: auto;"></div>
             <button id="btn-hunter-fire-submit" class="btn-danger w-100" style="margin-top: 15px;">💥 NỔ SÚNG HẠ SÁT</button>
         </div>
     </div>
 
-    <!-- MODAL 9: BẦU TRƯỞNG LÀNG (MAYOR ELECTION MODAL) -->
-    <div class="custom-modal-overlay" id="mayor-modal">
+    <!-- MODAL 9: BẦU TRƯỞNG LÀNG -->
+    <div class="custom-modal-overlay" id="mayor-modal" style="display: none;">
         <div class="custom-modal" style="max-width: 550px;">
             <h3>👑 BẦU CHỌN TRƯỞNG LÀNG</h3>
             <p style="text-align: center; margin-top:10px;">Hãy chọn thành viên uy tín nhất để trao trọng trách lá phiếu Trưởng Làng!</p>
@@ -632,7 +642,7 @@
         </div>
     </div>
 
-    <!-- MODAL 10: MÀN HÌNH BÚA TÒA ÁN ĐỘNG (GAVEL IMPACT OVERLAY) -->
+    <!-- MODAL 10: MÀN HÌNH BÚA TÒA ÁN ĐỘNG -->
     <div class="gavel-overlay hidden" id="gavel-animation-overlay">
         <div class="gavel-container">
             <div class="gavel-hammer" id="gavel-hammer-element">🔨</div>
@@ -642,8 +652,8 @@
         </div>
     </div>
 
-    <!-- MODAL 11: MÀN HÌNH TỔNG KẾT & VINH DANH MVP (VICTORY SCREEN v47.0 CÓ NÚT BACK) -->
-    <div class="custom-modal-overlay" id="victory-screen-modal">
+    <!-- MODAL 11: MÀN HÌNH TỔNG KẾT & VINH DANH MVP v47.0 -->
+    <div class="custom-modal-overlay" id="victory-screen-modal" style="display: none;">
         <div class="victory-layout-container">
             
             <!-- Panel Chuyển Cảnh Vinh Danh -->
@@ -688,12 +698,23 @@
         </div>
     </div>
 
-    <!-- MODAL 12: BOTTOM SHEET LÝ LỊCH NGƯỜI CHƠI (CÓ NÚT BACK) -->
+    <!-- MODAL 12: BOTTOM SHEET LÝ LỊCH NGƯỜI CHƠI -->
     <div class="bottom-sheet-overlay" id="player-sheet-overlay">
         <div class="bottom-sheet" id="player-sheet-modal"></div>
     </div>
 
-<!-- KẾT NỐI SCRIPT MODULE CHÍNH TRONG THƯ MỤC JS -->
+    <!-- MODAL 13: TRA CỨU LUẬT CÁC VAI TRÒ (UPDATE7) -->
+    <div class="custom-modal-overlay" id="role-rules-summary-modal" style="display: none;">
+        <div class="custom-modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <button class="btn-nav-back">⬅️ Quay lại</button>
+                <h3>📖 LUẬT CHỨC NĂNG VAI TRÒ</h3>
+            </div>
+            <div id="role-rules-summary-body" style="text-align:left; max-height:320px; overflow-y:auto; font-size:12px; line-height:1.5;"></div>
+        </div>
+    </div>
+
+    <!-- KẾT NỐI SCRIPT MODULE CHÍNH TRONG THƯ MỤC JS -->
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

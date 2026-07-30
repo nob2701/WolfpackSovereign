@@ -1,9 +1,10 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - FIREBASE CORE CONFIGURATION MODULE
+ * WOLFPACK SOVEREIGN v47.0 - FIREBASE CORE CONFIGURATION MODULE (FULL UPDATE7)
  * =========================================================================
- * Tệp cấu hình khởi tạo kết nối Firebase App, Realtime Database và Analytics.
- * Cung cấp bộ công cụ điều hướng Reference đường dẫn và giám sát kết nối mạng.
+ * Tệp cấu hình khởi tạo kết nối Firebase App, Realtime Database, Analytics,
+ * Bù trừ chênh lệch thời gian Server (Time Offset Sync), Xác thực Mật khẩu phòng
+ * và cung cấp toàn bộ Helper References cho hệ thống v47.0.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -57,59 +58,104 @@ isSupported().then((supported) => {
     console.warn("⚠️ [Firebase Analytics] Kiểm tra hỗ trợ thất bại:", err.message);
 });
 
-// 4. TIỆN ÍCH TẠO REFERENCE ĐƯỜNG DẪN CHUẨN TRONG GAME
+// 4. BỘ GIÁM SÁT VÀ ĐỒNG BỘ THỜI GIAN MÁY CHỦ (SERVER TIME OFFSET SYNCHRONIZATION)
+let serverTimeOffset = 0;
+const offsetRef = ref(db, ".info/serverTimeOffset");
+onValue(offsetRef, (snap) => {
+    serverTimeOffset = snap.val() || 0;
+    console.log(`⏱️ [Firebase Time Sync] Server Offset: ${serverTimeOffset}ms`);
+});
+
 /**
- * Trả về reference gốc của một phòng chơi cụ thể
- * @param {string} roomId - Mã phòng 6 ký tự
+ * Lấy thời gian đồng bộ chuẩn theo giờ Server Firebase (Chống desync đồng hồ client)
+ * @returns {number} Timestamp milliseconds chuẩn xác
  */
+export const getSynchronizedTimestamp = () => {
+    return Date.now() + serverTimeOffset;
+};
+
+/**
+ * Lấy giá trị lệch thời gian hiện tại giữa máy Client và Server
+ * @returns {number} Offset ms
+ */
+export const getServerTimeOffset = () => serverTimeOffset;
+
+// 5. TIỆN ÍCH TẠO REFERENCE ĐƯỜNG DẪN CHUẨN TRONG GAME (HỆ THỐNG MỞ RỘNG v47.0)
+
+/** Trả về reference gốc của một phòng chơi */
 export const getRoomRef = (roomId) => ref(db, `rooms/${roomId}`);
 
-/**
- * Trả về reference dữ liệu Metadata của phòng
- * @param {string} roomId 
- */
+/** Trả về reference dữ liệu Metadata của phòng */
 export const getMetaRef = (roomId) => ref(db, `rooms/${roomId}/meta`);
 
-/**
- * Trả về reference danh sách toàn bộ người chơi trong phòng
- * @param {string} roomId 
- */
+/** Trả về reference danh sách toàn bộ người chơi trong phòng */
 export const getPlayersRef = (roomId) => ref(db, `rooms/${roomId}/players`);
 
-/**
- * Trả về reference thông tin của một người chơi cụ thể
- * @param {string} roomId 
- * @param {string} playerId 
- */
+/** Trả về reference thông tin của một người chơi cụ thể */
 export const getPlayerRef = (roomId, playerId) => ref(db, `rooms/${roomId}/players/${playerId}`);
 
-/**
- * Trả về reference kênh chat cụ thể (Public, Wolf, Couple, Prime, Graveyard...)
- * @param {string} roomId 
- * @param {string} channelPath 
- */
+/** Trả về reference kênh chat cụ thể (Public, Wolf, Couple, Prime, Graveyard...) */
 export const getChatsRef = (roomId, channelPath) => ref(db, `rooms/${roomId}/chats/${channelPath}`);
 
-/**
- * Trả về reference Hòm Mật Thư của một người chơi
- * @param {string} roomId 
- * @param {string} playerId 
- */
+/** Trả về reference Hòm Mật Thư của một người chơi */
 export const getMailboxRef = (roomId, playerId) => ref(db, `rooms/${roomId}/players/${playerId}/mailbox`);
 
-/**
- * Trả về reference Nhật Ký Quản Trò (GM Logs)
- * @param {string} roomId 
- */
+/** Trả về reference Nhật Ký Quản Trò (GM Logs) */
 export const getLogsRef = (roomId) => ref(db, `rooms/${roomId}/logs`);
 
-/**
- * Trả về reference Trạng Thái Tòa Án & Biểu Quyết
- * @param {string} roomId 
- */
+/** Trả về reference Trạng Thái Tòa Án & Biểu Quyết */
 export const getTrialRef = (roomId) => ref(db, `rooms/${roomId}/trial`);
 
-// 5. BỘ GIÁM SÁT TRẠNG THÁI KẾT NỐI MẠNG (ONLINE/OFFLINE PRESENCE)
+/** Trả về reference Phiếu bầu chọn mục tiêu cắn của Bầy Sói (Wolf Votes Target Consensus) */
+export const getWolfVotesRef = (roomId) => ref(db, `rooms/${roomId}/wolf_votes`);
+
+/** Trả về reference Danh sách Đề cử treo cổ ban ngày */
+export const getNominationsRef = (roomId) => ref(db, `rooms/${roomId}/nominations`);
+
+/** Trả về reference Phiếu bầu Trưởng Làng */
+export const getMayorVotesRef = (roomId) => ref(db, `rooms/${roomId}/mayor_votes`);
+
+/** Trả về reference Thống kê Bình chọn Tỉ lệ Thắng Khán Giả */
+export const getPredictionsRef = (roomId) => ref(db, `rooms/${roomId}/prediction_poll`);
+
+/** Trả về reference Kênh Chat Thì Thầm Bí Mật của Quản Trò với 1 Người chơi */
+export const getGMWhispersRef = (roomId, playerId) => ref(db, `rooms/${roomId}/gm_whispers/${playerId}`);
+
+// 6. TIỆN ÍCH XÁC THỰC MẬT KHẨU PHÒNG CHƠI (ROOM PASSWORD ENFORCEMENT)
+/**
+ * Kiểm tra mật khẩu phòng khi người chơi thực hiện thao tác Gia nhập
+ * @param {string} roomId - Mã phòng 6 ký tự
+ * @param {string} inputPassword - Mật khẩu do người chơi nhập vào
+ * @returns {Promise<{valid: boolean, reason?: string}>} Kết quả xác thực
+ */
+export const verifyRoomPassword = async (roomId, inputPassword = "") => {
+    try {
+        const metaSnapshot = await get(ref(db, `rooms/${roomId}/meta`));
+        if (!metaSnapshot.exists()) {
+            return { valid: false, reason: "Phòng chơi không tồn tại!" };
+        }
+        
+        const meta = metaSnapshot.val();
+        const roomPassword = meta.password || "";
+
+        // Nếu phòng công khai (không cài mật khẩu)
+        if (!roomPassword || String(roomPassword).trim() === "") {
+            return { valid: true };
+        }
+
+        // So sánh mật khẩu đã chuẩn hóa
+        if (String(roomPassword).trim() === String(inputPassword).trim()) {
+            return { valid: true };
+        } else {
+            return { valid: false, reason: "Mật khẩu phòng chơi không chính xác!" };
+        }
+    } catch (err) {
+        console.error("⚠️ [Verify Password Error]:", err);
+        return { valid: false, reason: "Lỗi kết nối máy chủ khi kiểm tra mật khẩu phòng!" };
+    }
+};
+
+// 7. BỘ GIÁM SÁT TRẠNG THÁI KẾT NỐI MẠNG (ONLINE/OFFLINE PRESENCE)
 /**
  * Lắng nghe trạng thái kết nối tới máy chủ Firebase Realtime Database
  * @param {function(boolean): void} callback - Trả về true nếu Online, false nếu mất mạng
@@ -124,7 +170,7 @@ export const monitorServerConnection = (callback) => {
     });
 };
 
-// 6. Xuất toàn bộ các hàm Primitive của Firebase Database để dùng trên toàn hệ thống
+// 8. Xuất toàn bộ các hàm Primitive của Firebase Database để dùng trên toàn hệ thống
 export {
     app,
     db,

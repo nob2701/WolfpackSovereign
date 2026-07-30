@@ -1,9 +1,10 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - GAME LOGIC & UI MODULE (EXHAUSTIVE & FULL)
+ * WOLFPACK SOVEREIGN v47.0 - GAME LOGIC & UI MODULE (FULL PRODUCTION UPDATE7)
  * =========================================================================
  * Quản lý Cơ sở dữ liệu 61 Vai trò, Từ điển Song ngữ (VI/EN), Engine phân phát Bài,
- * Bảng cấu hình Role Config, Cán cân Trận đấu, UI Module và Sơ đồ quan hệ SVG.
+ * Khởi tạo biến trạng thái Phù Thủy/Kẻ Ngốc, Cán cân Trận đấu, UI Module, 
+ * Sơ đồ quan hệ SVG và Tính năng Export Nhật ký ván đấu.
  */
 
 import { db, ref, set, get, update, push } from "./firebase-config.js";
@@ -25,11 +26,19 @@ window.G = {
     currentRolePage: 0,
     rolesPerPage: 5,
     gameTimeline: [],
-    playerStats: {}
+    playerStats: {},
+    selectedAvatar: "🐺"
 };
 
 // ==========================================
-// 2. PHÂN LOẠI VAI TRÒ TOÀN DIỆN (ROLE CLASSIFICATIONS)
+// 2. DANH SÁCH TOKEN AVATAR LINH THÚ SẢNH CHỜ
+// ==========================================
+export const AVATARS_LIST = [
+    "🐺", "🌾", "🔮", "🛡️", "🧪", "🏹", "💘", "🧛", "🤡", "🔥", "🔪", "💀", "👑", "🎃", "👻", "🐈", "🦅", "🐉", "🕷️", "⚔️"
+];
+
+// ==========================================
+// 3. PHÂN LOẠI VAI TRÒ TOÀN DIỆN (ROLE CLASSIFICATIONS)
 // ==========================================
 export const PASSIVE_ROLES = [
     "villager", "clown", "idiot", "ghost", "halfWolf", "apprenticeSeer", 
@@ -58,13 +67,13 @@ export const SOLO_WIN_ROLES = [
 ];
 
 // ==========================================
-// 3. TỪ ĐIỂN ĐA NGÔN NGỮ HOÀN CHỈNH 100% (I18N DICTIONARY)
+// 4. TỪ ĐIỂN ĐA NGÔN NGỮ HOÀN CHỈNH 100% (I18N DICTIONARY)
 // ==========================================
 export const DICT = {
     vi: {
         tab1: "Bàn Chơi", tab2: "Cấu Hình Role", tab3: "Điều Khiển", tab4: "Mật Thư", tab5: "Thảo Luận",
         btn_back: "⬅️ Quay lại",
-        t_players: "👥 THẦN DÂN KẾT NỐI", t_add_ph: "Nhập tên...", t_add_btn: "Thêm",
+        t_players: "👥 THẦN DÂN KẾT NỐI", t_add_ph: "Nhập tên (2-10 ký tự)...", t_add_btn: "Thêm",
         t_role_config: "⚙️ THIẾT LẬP VAI TRÒ", t_btn_dist: "🎲 Trộn & Phát Role", t_search_role: "Tìm kiếm vai trò...", t_active_roles: "Vai trò sử dụng: ",
         t_preset_title: "CHẾ ĐỘ CHƠI MẪU:", t_mode_classic: "Kinh Điển (Classic)", t_mode_lonewolf: "Vũ Điệu Cô Độc", t_mode_chaos: "Hỗn Mang Đêm Đen", t_mode_vampire: "Huyết Tộc Trỗi Dậy",
         t_balance_meter: "CÁN CÂN TRẬN ĐẤU:", balance_wolf: "🐺 Sói Áp Đảo (Game Nhanh)", balance_village: "🌾 Dân Làng Thắng Thế", balance_third: "🧛 Phe Thứ 3 Nguy Hiểm", balance_neutral: "⚖️ Cân Bằng Hoàn Hảo",
@@ -72,6 +81,15 @@ export const DICT = {
         t_secrets: "🕵️ BÍ MẬT & PHE PHÁI", t_villagers: "🌾 DÂN LÀNG", t_wolves: "🐺 MA SÓI", t_thirds: "🧛 PHE THỨ 3", t_empty: "<i>Trống</i>",
         t_log: "📜 LỊCH SỬ DIỄN BIẾN", t_settings: "⚙️ CÀI ĐẶT HỆ THỐNG", t_close: "Đóng", t_theme: "🎨 GIAO DIỆN MÀU SẮC", t_time: "⏱️ THỜI GIAN BAN NGÀY", t_lang: "🌐 NGÔN NGỮ",
         t_mailbox: "⚙️ HÒM MẬT THƯ",
+        
+        // Nhãn mới Update7
+        t_password: "Mật khẩu phòng (để trống nếu công khai):",
+        t_avatar_select: "Chọn Linh Thú Đại Diện:",
+        t_gm_whisper_title: "💬 QUẢN TRÒ MẬT THƯ TỚI BẠN",
+        t_export_log_btn: "📥 Tải Nhật Ký Match Log",
+        t_role_rules_modal: "📖 TÓM TẮT CHỨC NĂNG VAI TRÒ",
+        msg_wrong_password: "Mật khẩu phòng chơi không chính xác!",
+        msg_wolf_consensus: "🐺 Bầy Sói đã thống nhất mục tiêu cắn đêm nay:",
 
         // Tên 61 Vai Trò (VI)
         r_villager: 'Dân Làng', r_seer: 'Tiên Tri', r_guard: 'Bảo Vệ', r_witch: 'Phù Thủy', r_hunter: 'Thợ Săn', r_cupid: 'Cupid', r_halfWolf: 'Bán Sói', r_headlessKnight: 'Hiệp Sĩ Không Đầu', r_apprenticeSeer: 'Tiên Tri Tập Sự', r_ghost: 'Con Ma', r_doppelganger: 'Song Trùng', r_avenger: 'Kẻ Báo Thù', r_paradox: 'Kẻ Nghịch Hành', r_lostChild: 'Đứa Con Thất Lạc', r_carver: 'Kẻ Khắc Tên', r_guarantor: 'Người Bảo Lãnh', r_reflector: 'Kẻ Phản Chiếu', r_thief: 'Tên Trộm', r_fugitive: 'Kẻ Đào Tẩu', r_cryptoMiner: 'Kẻ Đào Coin', r_reverser: 'Người Đảo Ngược', r_glitch: 'Bản Sao Lỗi', r_police: 'Cảnh Sát Trưởng', r_spy: 'Gián Điệp', r_angel: 'Thiên Sứ', r_sovereign: 'Kẻ Độc Tôn', r_demonologist: 'Nhà Ngoại Cảm', r_parrot: 'Vẹt', r_ember: 'Kẻ Độc Hành', r_idiot: 'Kẻ Ngốc',
@@ -82,7 +100,7 @@ export const DICT = {
         desc_villager: "Thần dân bình thường không có kỹ năng ban đêm. Dùng lời nói và logic để tìm ra Ma Sói ban ngày.",
         desc_seer: "Mỗi đêm được chọn 1 người chơi để soi kiểm tra Phe Phái thực sự hoặc Vai Trò chính xác.",
         desc_guard: "Mỗi đêm chọn 1 người chơi để bảo vệ khỏi bị tấn công tử vong (Không được bảo vệ 1 người 2 đêm liên tiếp).",
-        desc_witch: "Sở hữu 1 bình Dược Thủy cứu sống nạn nhân bị cắn và 1 bình Độc Dược hạ sát mục tiêu. Dùng 1 lần duy nhất.",
+        desc_witch: "Sở hữu 1 bình Dược Thủy cứu sống nạn nhân bị cắn và 1 bình Độc Dược hạ sát mục tiêu. Dùng 1 lần duy nhất mỗi bình.",
         desc_hunter: "Khi bị cắn chết hoặc bị treo cổ ban ngày, được nổ súng bắn kéo theo 1 mục tiêu xuống mồ.",
         desc_cupid: "Đêm đầu tiên se duyên tơ hồng cho 2 người chơi. Nếu 1 trong 2 người chết, người còn lại sẽ tự sát chết theo.",
         desc_halfWolf: "Đầu game là Dân Làng. Nếu bị Ma Sói cắn hoặc Vampire cắn sẽ chuyển hóa thành Ma Sói chính thức.",
@@ -108,8 +126,8 @@ export const DICT = {
         desc_demonologist: "Cảm nhận được số lượng Ma Sói còn sống trong làng.",
         desc_parrot: "Ép buộc mục tiêu phải phát ngôn đúng câu lệnh được giao vào buổi sáng.",
         desc_ember: "Nhận khiên bảo vệ nếu là người duy nhất không dùng kỹ năng.",
-        desc_idiot: "Nếu bị làng bỏ phiếu treo cổ, sẽ lật thẻ chứng minh bị Khùng và không bị chết, nhưng mất quyền bỏ phiếu.",
-        desc_wolf: "Cùng bầy Sói thảo luận vào kênh chat riêng và chốt hạ 1 nạn nhân bị cắn chết mỗi đêm.",
+        desc_idiot: "Nếu bị làng bỏ phiếu treo cổ, sẽ lật thẻ chứng minh bị Ngốc và không bị chết, nhưng mất vĩnh viễn quyền bỏ phiếu.",
+        desc_wolf: "Cùng bầy Sói thảo luận vào kênh chat riêng và bỏ phiếu chốt 1 nạn nhân bị cắn chết mỗi đêm.",
         desc_wolfBoss: "Sói Trùm nắm quyền quyết định tối cao nếu bầy Sói không thống nhất được mục tiêu cắn.",
         desc_wolfSnow: "Đóng băng cứng 1 người chơi, khiến họ không thể kích hoạt kỹ năng đêm.",
         desc_wolfMage: "Dùng ma pháp soi tìm chính xác ai là Tiên Tri trong vương quốc.",
@@ -150,7 +168,7 @@ export const DICT = {
     en: {
         tab1: "Board", tab2: "Role Setup", tab3: "Controls", tab4: "Secrets", tab5: "Chat",
         btn_back: "⬅️ Back",
-        t_players: "👥 CONNECTED PLAYERS", t_add_ph: "Enter name...", t_add_btn: "Add",
+        t_players: "👥 CONNECTED PLAYERS", t_add_ph: "Enter name (2-10 chars)...", t_add_btn: "Add",
         t_role_config: "⚙️ ROLE CONFIGURATION", t_btn_dist: "🎲 Shuffle & Distribute", t_search_role: "Search roles...", t_active_roles: "Active roles: ",
         t_preset_title: "GAME MODE PRESETS:", t_mode_classic: "Classic Mode", t_mode_lonewolf: "A Waltz Among Wolves", t_mode_chaos: "Chaos Realm", t_mode_vampire: "Vampire Invasion",
         t_balance_meter: "BALANCE METER:", balance_wolf: "🐺 Wolf-Favored", balance_village: "🌾 Village-Favored", balance_third: "🧛 3rd Party Dominant", balance_neutral: "⚖️ Perfectly Balanced",
@@ -158,6 +176,15 @@ export const DICT = {
         t_secrets: "🕵️ SECRETS & FACTIONS", t_villagers: "🌾 VILLAGERS", t_wolves: "🐺 WEREWOLVES", t_thirds: "🧛 3RD PARTY", t_empty: "<i>Empty</i>",
         t_log: "📜 EVENT LOG", t_settings: "⚙️ SYSTEM SETTINGS", t_close: "Close", t_theme: "🎨 UI THEME", t_time: "⏱️ DAY DISCUSSION TIME", t_lang: "🌐 LANGUAGE",
         t_mailbox: "⚙️ MAILBOX",
+
+        // Nhãn mới Update7 (EN)
+        t_password: "Room Password (leave empty if public):",
+        t_avatar_select: "Select Token Avatar:",
+        t_gm_whisper_title: "💬 GM DIRECT WHISPER TO YOU",
+        t_export_log_btn: "📥 Export Match Log",
+        t_role_rules_modal: "📖 ROLE RULES SUMMARY",
+        msg_wrong_password: "Incorrect room password!",
+        msg_wolf_consensus: "🐺 The Werewolf pack unanimously targeted:",
 
         // Tên 61 Vai Trò (EN)
         r_villager: 'Villager', r_seer: 'Seer', r_guard: 'Guard', r_witch: 'Witch', r_hunter: 'Hunter', r_cupid: 'Cupid', r_halfWolf: 'Half Wolf', r_headlessKnight: 'Headless Knight', r_apprenticeSeer: 'Apprentice Seer', r_ghost: 'Ghost', r_doppelganger: 'Doppelganger', r_avenger: 'The Avenger', r_paradox: 'The Paradox', r_lostChild: 'The Lost Child', r_carver: 'The Carver', r_guarantor: 'The Guarantor', r_reflector: 'The Reflector', r_thief: 'Thief', r_fugitive: 'Fugitive', r_cryptoMiner: 'Crypto Miner', r_reverser: 'The Reverser', r_glitch: 'The Glitch', r_police: 'Sheriff', r_spy: 'Spy', r_angel: 'Angel', r_sovereign: 'The Sovereign', r_demonologist: 'Demonologist', r_parrot: 'Parrot', r_ember: 'The Soloist', r_idiot: 'Fool',
@@ -194,8 +221,8 @@ export const DICT = {
         desc_demonologist: "Senses the remaining count of living Werewolves in the village.",
         desc_parrot: "Forces the target to repeat a dictated message in public chat the next morning.",
         desc_ember: "Gains a protective shield if they are the only player who refrains from using skills.",
-        desc_idiot: "If voted to be lynched, reveals their identity card to avoid death, but loses voting rights.",
-        desc_wolf: "Discusses in secret pack chat and targets one victim to kill each night.",
+        desc_idiot: "If voted to be lynched, reveals their identity card to avoid death, but permanently loses voting rights.",
+        desc_wolf: "Discusses in secret pack chat and votes to target one victim to kill each night.",
         desc_wolfBoss: "Wolf Boss holds ultimate veto authority if the pack disagrees on a kill target.",
         desc_wolfSnow: "Freezes a player solid, preventing them from using night abilities.",
         desc_wolfMage: "Uses dark magic to pinpoint the exact player holding the Seer role.",
@@ -236,17 +263,17 @@ export const DICT = {
 };
 
 // ==========================================
-// 4. BẢNG MÃ PHE PHÁI BẢN QUYỀN (FACTIONS DATABASE)
+// 5. BẢNG MÃ PHE PHÁI BẢN QUYỀN (FACTIONS DATABASE)
 // ==========================================
 export const ROLE_DB = {
     // Phe Dân Làng (30)
     villager: { faction: 'villager', powerRating: 1 }, seer: { faction: 'villager', powerRating: 4 }, guard: { faction: 'villager', powerRating: 3 }, witch: { faction: 'villager', powerRating: 5 }, hunter: { faction: 'villager', powerRating: 3 }, cupid: { faction: 'villager', powerRating: 3 }, halfWolf: { faction: 'villager', powerRating: 2 }, headlessKnight: { faction: 'villager', powerRating: 2 }, apprenticeSeer: { faction: 'villager', powerRating: 2 }, ghost: { faction: 'villager', powerRating: 1 }, doppelganger: { faction: 'villager', powerRating: 3 }, avenger: { faction: 'villager', powerRating: 4 }, paradox: { faction: 'villager', powerRating: 2 }, lostChild: { faction: 'villager', powerRating: 1 }, carver: { faction: 'villager', powerRating: 3 }, guarantor: { faction: 'villager', powerRating: 3 }, reflector: { faction: 'villager', powerRating: 4 }, thief: { faction: 'villager', powerRating: 3 }, fugitive: { faction: 'villager', powerRating: 2 }, cryptoMiner: { faction: 'villager', powerRating: 1 }, reverser: { faction: 'villager', powerRating: 3 }, glitch: { faction: 'villager', powerRating: 2 }, police: { faction: 'villager', powerRating: 3 }, spy: { faction: 'villager', powerRating: 3 }, angel: { faction: 'villager', powerRating: 4 }, sovereign: { faction: 'villager', powerRating: 4 }, demonologist: { faction: 'villager', powerRating: 3 }, parrot: { faction: 'villager', powerRating: 2 }, ember: { faction: 'villager', powerRating: 2 }, idiot: { faction: 'villager', powerRating: 1 },
 
-    // Phe Ma Sói (15)
-    wolf: { faction: 'wolf', powerRating: 3 }, wolfBoss: { faction: 'wolf', powerRating: 5 }, wolfSnow: { faction: 'wolf', powerRating: 4 }, wolfMage: { faction: 'wolf', powerRating: 4 }, traitor: { faction: 'wolf', powerRating: 2 }, blackDeath: { faction: 'wolf', powerRating: 4 }, phantomWolf: { faction: 'wolf', powerRating: 4 }, clairvoyantWolf: { faction: 'wolf', powerRating: 4 }, mirrorWolf: { faction: 'wolf', powerRating: 3 }, resonanceWolf: { faction: 'wolf', powerRating: 3 }, silencerWolf: { faction: 'wolf', powerRating: 4 }, loneWolf: { faction: 'wolf', powerRating: 5 }, solitaireWolf: { faction: 'wolf', powerRating: 3 }, chaosWolf: { faction: 'wolf', powerRating: 4 }, bloodline: { faction: 'wolf', powerRating: 4 },
+    // Phe Ma Sói (15) - LƯU Ý: Lone Wolf thắng Đơn Lập (soloWin: true)
+    wolf: { faction: 'wolf', powerRating: 3 }, wolfBoss: { faction: 'wolf', powerRating: 5 }, wolfSnow: { faction: 'wolf', powerRating: 4 }, wolfMage: { faction: 'wolf', powerRating: 4 }, traitor: { faction: 'wolf', powerRating: 2 }, blackDeath: { faction: 'wolf', powerRating: 4 }, phantomWolf: { faction: 'wolf', powerRating: 4 }, clairvoyantWolf: { faction: 'wolf', powerRating: 4 }, mirrorWolf: { faction: 'wolf', powerRating: 3 }, resonanceWolf: { faction: 'wolf', powerRating: 3 }, silencerWolf: { faction: 'wolf', powerRating: 4 }, loneWolf: { faction: 'wolf', powerRating: 5, soloWin: true }, solitaireWolf: { faction: 'wolf', powerRating: 3 }, chaosWolf: { faction: 'wolf', powerRating: 4 }, bloodline: { faction: 'wolf', powerRating: 4 },
 
     // Phe Thứ Ba & Đơn Lập (16)
-    demonDetective: { faction: 'third', powerRating: 4 }, missionary: { faction: 'third', powerRating: 4 }, vampire: { faction: 'third', powerRating: 5 }, arsonist: { faction: 'third', powerRating: 5 }, eradicator: { faction: 'third', powerRating: 4 }, clown: { faction: 'third', powerRating: 3 }, manipulator: { faction: 'third', powerRating: 4 }, impostor: { faction: 'third', powerRating: 4 }, bountyHunter: { faction: 'third', powerRating: 3 }, shark: { faction: 'third', powerRating: 3 }, apprenticeReaper: { faction: 'third', powerRating: 3 }, serialKiller: { faction: 'third', powerRating: 5 }, prime: { faction: 'third', powerRating: 5 }, ashenKnight: { faction: 'third', powerRating: 4 }, cat: { faction: 'third', powerRating: 3 }, reaper: { faction: 'third', powerRating: 5 }
+    demonDetective: { faction: 'third', powerRating: 4 }, missionary: { faction: 'third', powerRating: 4 }, vampire: { faction: 'third', powerRating: 5 }, arsonist: { faction: 'third', powerRating: 5, soloWin: true }, eradicator: { faction: 'third', powerRating: 4 }, clown: { faction: 'third', powerRating: 3, soloWin: true }, manipulator: { faction: 'third', powerRating: 4 }, impostor: { faction: 'third', powerRating: 4 }, bountyHunter: { faction: 'third', powerRating: 3 }, shark: { faction: 'third', powerRating: 3 }, apprenticeReaper: { faction: 'third', powerRating: 3 }, serialKiller: { faction: 'third', powerRating: 5, soloWin: true }, prime: { faction: 'third', powerRating: 5 }, ashenKnight: { faction: 'third', powerRating: 4 }, cat: { faction: 'third', powerRating: 3 }, reaper: { faction: 'third', powerRating: 5, soloWin: true }
 };
 
 export const ROLE_ICONS = {
@@ -258,7 +285,7 @@ export const ROLE_ICONS = {
 export const FACTION_ICONS = { villager: '🌾', wolf: '🐺', third: '🧛' };
 
 // ==========================================
-// 5. CÁC HÀM TRUY XUẤT TÊN VÀ MÔ TẢ THEO NGÔN NGỮ
+// 6. CÁC HÀM TRUY XUẤT TÊN VÀ MÔ TẢ THEO NGÔN NGỮ
 // ==========================================
 export const getRoleName = (key) => DICT[window.G.lang || 'vi']['r_' + key] || key;
 export const getRoleDesc = (key) => DICT[window.G.lang || 'vi']['desc_' + key] || "Chưa có mô tả chi tiết cho vai trò này.";
@@ -278,7 +305,7 @@ window.getRoleIcon = getRoleIcon;
 window.t = t;
 
 // ==========================================
-// 6. BỘ ĐIỀU HÀNH THAO TÁC ENGINE (ENGINE MODULE)
+// 7. BỘ ĐIỀU HÀNH THAO TÁC ENGINE (ENGINE MODULE)
 // ==========================================
 export const Engine_Module = {
     distributeRoles: async () => {
@@ -323,6 +350,7 @@ export const Engine_Module = {
             [rolePool[i], rolePool[j]] = [rolePool[j], rolePool[i]];
         }
 
+        // Khởi tạo đầy đủ các thuộc tính trạng thái chống bug lặp kỹ năng
         const updates = {};
         activePlayers.forEach((p, idx) => {
             const assignedRole = rolePool[idx];
@@ -333,7 +361,17 @@ export const Engine_Module = {
             updates[`rooms/${Net.roomId}/players/${p.id}/turnEnded`] = isPassiveRole; 
             updates[`rooms/${Net.roomId}/players/${p.id}/hasSeenRole`] = false; 
             updates[`rooms/${Net.roomId}/players/${p.id}/alive`] = true;
+            
+            // THÊM MỚI UPDATE7: Khởi tạo biến theo dõi tiêu hao bình thuốc Phù thủy và trạng thái Kẻ Ngốc
+            updates[`rooms/${Net.roomId}/players/${p.id}/hasUsedHeal`] = false;
+            updates[`rooms/${Net.roomId}/players/${p.id}/hasUsedPoison`] = false;
+            updates[`rooms/${Net.roomId}/players/${p.id}/isIdiotRevealed`] = false;
+            updates[`rooms/${Net.roomId}/players/${p.id}/isPetroled`] = false;
+            updates[`rooms/${Net.roomId}/players/${p.id}/targetSelection`] = null;
         });
+
+        // Xóa sạch lịch sử bỏ phiếu đêm cũ
+        updates[`rooms/${Net.roomId}/wolf_votes`] = null;
 
         try {
             await update(ref(db), updates);
@@ -445,7 +483,7 @@ export async function checkMajorityNominationTrigger() {
 window.checkMajorityNominationTrigger = checkMajorityNominationTrigger;
 
 // ==========================================
-// 7. HIỂN THỊ GIAO DIỆN VÀ PHÂN TRANG (UI MODULE)
+// 8. HIỂN THỊ GIAO DIỆN VÀ PHÂN TRANG (UI MODULE)
 // ==========================================
 export const UI_Module = {
     switchTab: (idx) => {
@@ -606,6 +644,10 @@ export const UI_Module = {
             title.innerText = "🐺 MA SÓI CHIẾN THẮNG 🐺";
             title.style.color = "#ef4444";
             artContainer.innerHTML = `<div style="font-size:72px;">🐺🩸🌑</div>`;
+        } else if (winningFaction === "loneWolf") {
+            title.innerText = "🐺 SÓI CÔ ĐỘC THẮNG ĐƠN LẬP 🐺";
+            title.style.color = "#b91c1c";
+            artContainer.innerHTML = `<div style="font-size:72px;">🐺🌕👑</div>`;
         } else if (winningFaction === "couple") {
             title.innerText = "💘 UYÊN ƯƠNG CHIẾN THẮNG 💘";
             title.style.color = "#ec4899";
@@ -646,11 +688,52 @@ export const UI_Module = {
         }
 
         renderRelationsTab(relationLogs);
+    },
+
+    // TÍNH NĂNG MỚI UPDATE7: TẢI XUỐNG NHẬT KÝ MATCH LOGS
+    exportMatchLogs: async () => {
+        const Net = window.Net;
+        if (!Net || !Net.roomId) return;
+
+        try {
+            const logsSnap = await get(ref(db, `rooms/${Net.roomId}/logs`));
+            if (!logsSnap.exists()) {
+                window.alert("Chưa có nhật ký diễn biến cho ván đấu này!");
+                return;
+            }
+
+            const logsData = Object.values(logsSnap.val());
+            logsData.sort((a, b) => a.timestamp - b.timestamp);
+
+            let textContent = `====================================================\n`;
+            textContent += `WOLFPACK SOVEREIGN v47.0 - MATCH LOGS\n`;
+            textContent += `MÃ PHÒNG: ${Net.roomId}\n`;
+            textContent += `NGÀY XUẤT FILE: ${new Date().toLocaleString('vi-VN')}\n`;
+            textContent += `====================================================\n\n`;
+
+            logsData.forEach((l, idx) => {
+                const timeStr = new Date(l.timestamp).toLocaleTimeString('vi-VN');
+                textContent += `[${timeStr}] [Ngày ${l.day} - ${l.phase.toUpperCase()}] ${l.msg}\n`;
+            });
+
+            const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Wolfpack_Match_${Net.roomId}_Logs.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Lỗi khi xuất Match Logs:", err);
+            window.alert("Không thể tải xuống nhật ký ván đấu!");
+        }
     }
 };
 
 // ==========================================
-// 8. SỰ KIỆN GIAO DIỆN CẤU HÌNH & BẢNG VINH DANH
+// 9. SỰ KIỆN GIAO DIỆN CẤU HÌNH & BẢNG VINH DANH
 // ==========================================
 function initRoleSetupListeners() {
     document.getElementById("btn-role-prev")?.addEventListener("click", () => {
@@ -706,7 +789,7 @@ function applyPreset(preset) {
 }
 
 // ==========================================
-// 9. SƠ ĐỒ QUAN HỆ SỐ PHẬN SVG (RELATIONS CANVAS)
+// 10. SƠ ĐỒ QUAN HỆ SỐ PHẬN SVG (RELATIONS CANVAS)
 // ==========================================
 let cachedRelationLogs = [];
 
@@ -725,7 +808,7 @@ function renderRelationsTab(relationLogs) {
     });
 }
 
-function triggerSgDrawingRelations() {
+export function triggerSgDrawingRelations() {
     const canvas = document.getElementById("svg-relations-canvas");
     if (!canvas) return;
     canvas.innerHTML = "";
@@ -770,6 +853,11 @@ function triggerSgDrawingRelations() {
         }
     });
 }
+
+// Vẽ lại dây liên kết SVG khi người chơi co giãn hoặc xoay màn hình di động
+window.addEventListener("resize", () => {
+    triggerSgDrawingRelations();
+});
 
 function initVictoryTabsListeners() {
     const tabs = document.querySelectorAll(".stats-tab");

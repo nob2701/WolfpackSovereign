@@ -1,25 +1,25 @@
 /**
  * =========================================================================
- * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE
+ * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE (FULL)
  * =========================================================================
  * Tệp điều phối trung tâm ứng dụng. Quản lý kết nối Firebase Realtime,
- * Sảnh chờ Lobby, Chuyển giao Host tự động, Render Bàn Cờ Thần Dân DOM Diffing,
- * Hòm Mật Thư Giấy Da, Kênh Thảo Luận Multi-Channel và Bảng Quản Trò Tối Cao.
- * Tích hợp bộ kiểm tra readyState bảo vệ ứng dụng chống treo 100% trên Vercel.
+ * Sảnh chờ Lobby, Mật khẩu phòng, Chuyển giao Host tự động, Render Bàn Cờ,
+ * Kênh Thảo Luận Multi-Channel, GM Whispers, Export Logs và Anti-Memory Leak.
  */
 
 import { 
-    db, ref, set, get, onValue, update, push, onDisconnect 
+    db, ref, set, get, onValue, update, push, onDisconnect, 
+    verifyRoomPassword, getSynchronizedTimestamp 
 } from "./firebase-config.js";
 import { StateMachine } from "./state-machine.js";
 import { 
     openTargetSelection, ModalManager, initMobileTabSync, showPlayerBottomSheet, 
     setupSoundSettings, showToast, askConfirm, openMayorSuccessionModal,
-    NavigationStack 
+    NavigationStack, openHunterRevengeModal, debounceButton 
 } from "./ui-manager.js";
 import { 
     ROLE_DB, ROLE_ICONS, FACTION_ICONS, getRoleName, PASSIVE_ROLES, ACTIVE_NIGHT_ROLES,
-    checkMajorityNominationTrigger, Engine_Module 
+    checkMajorityNominationTrigger, Engine_Module, AVATARS_LIST 
 } from "./game-logic.js";
 
 // Trạng thái mạng và đồng bộ cục bộ của Client
@@ -38,6 +38,8 @@ window.Net = Net;
 // Quản lý dọn dẹp bộ nhớ các Listener Realtime Database
 let activeUnsubscribers = [];
 let activeChatUnsub = null; 
+let activeDefenseUnsub = null;
+let activeGMWhisperUnsub = null;
 let presenceConfigured = false; 
 let spectatorPollConfigured = false;
 let openedMailsList = [];
@@ -53,6 +55,7 @@ function initApp() {
         setupChatEngine();
         setupParchmentNavigation();
         setupGMConsoleListeners();
+        setupAvatarSelector();
     } catch (err) {
         console.warn("⚠️ [Khởi tạo App] Cảnh báo DOM:", err);
     } finally {
@@ -61,7 +64,7 @@ function initApp() {
     }
 }
 
-// Kiểm tra nếu DOM đã tải xong trước khi Module import hoàn tất (Khắc phục triệt để treo Vercel)
+// Kiểm tra nếu DOM đã tải xong trước khi Module import hoàn tất
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initApp);
 } else {
@@ -93,14 +96,53 @@ function clearActiveListeners() {
         activeChatUnsub();
         activeChatUnsub = null;
     }
+
+    if (activeDefenseUnsub) {
+        activeDefenseUnsub();
+        activeDefenseUnsub = null;
+    }
+
+    if (activeGMWhisperUnsub) {
+        activeGMWhisperUnsub();
+        activeGMWhisperUnsub = null;
+    }
     
     presenceConfigured = false;
     spectatorPollConfigured = false;
 }
 
 // ==========================================
-// 1. ĐĂNG NHẬP & TẠO/THAM GIA PHÒNG (LOBBY ENGINE)
+// 1. ĐĂNG NHẬP, CHỌN AVATAR & TẠO/THAM GIA PHÒNG
 // ==========================================
+function setupAvatarSelector() {
+    const container = document.getElementById("avatar-selector-container");
+    if (!container) return;
+    container.innerHTML = "";
+
+    AVATARS_LIST.forEach(av => {
+        const chip = document.createElement("span");
+        chip.className = `avatar-token-chip ${window.G.selectedAvatar === av ? "selected" : ""}`;
+        chip.style.cssText = "font-size:22px; cursor:pointer; padding:4px 8px; border-radius:6px; border:1px solid transparent; display:inline-block;";
+        if (window.G.selectedAvatar === av) {
+            chip.style.borderColor = "var(--accent)";
+            chip.style.background = "rgba(234, 179, 8, 0.2)";
+        }
+        chip.innerText = av;
+
+        chip.addEventListener("click", () => {
+            document.querySelectorAll("#avatar-selector-container .avatar-token-chip").forEach(c => {
+                c.style.borderColor = "transparent";
+                c.style.background = "transparent";
+            });
+            chip.style.borderColor = "var(--accent)";
+            chip.style.background = "rgba(234, 179, 8, 0.2)";
+            window.G.selectedAvatar = av;
+        });
+
+        container.appendChild(chip);
+    });
+}
+
 function initLobbyEngine() {
     const nameInput = document.getElementById("player-name-input");
     const btnInitialJoin = document.getElementById("btn-initial-join-trigger");
@@ -135,6 +177,7 @@ function initLobbyEngine() {
 
     if (btnInitialJoin) {
         btnInitialJoin.addEventListener("click", () => {
+            if (debounceButton(btnInitialJoin, 300)) return;
             localStorage.setItem("online_player_name", Net.playerName);
             document.getElementById("login-form-panel")?.classList.add("hidden");
             document.getElementById("join-code-panel")?.classList.remove("hidden");
@@ -150,20 +193,29 @@ function initLobbyEngine() {
         });
     }
 
-    if (btnCreate) btnCreate.addEventListener("click", createRoom);
+    if (btnCreate) btnCreate.addEventListener("click", () => {
+        if (debounceButton(btnCreate, 500)) return;
+        createRoom();
+    });
+
     if (btnJoinSubmit) btnJoinSubmit.addEventListener("click", () => {
+        if (debounceButton(btnJoinSubmit, 500)) return;
         let code = "";
         for (let i = 1; i <= 6; i++) {
             const el = document.getElementById(`code-${i}`);
             if (el) code += el.value;
         }
+        const pwdInput = document.getElementById("join-room-password");
+        const passwordVal = pwdInput ? pwdInput.value : "";
+
         if (code.length === 6) {
-            joinRoom(code.toUpperCase());
+            joinRoom(code.toUpperCase(), passwordVal);
         }
     });
 
     if (btnLeaveRoom) {
         btnLeaveRoom.addEventListener("click", () => {
+            if (debounceButton(btnLeaveRoom, 500)) return;
             const confirmMsg = Net.isHost 
                 ? "Bạn có chắc chắn muốn HỦY PHÒNG này? Quyền Quản trò sẽ chuyển giao hoặc phòng bị giải tán."
                 : "Bạn có chắc chắn muốn RỜI KHỎI PHÒNG này?";
@@ -211,10 +263,15 @@ function setupGMConsoleListeners() {
         const snap = await get(metaRef);
         if (snap.exists()) {
             const meta = snap.val();
-            const newEndTime = (meta.timerEndTime || Date.now()) + 15000;
+            const newEndTime = (meta.timerEndTime || getSynchronizedTimestamp()) + 15000;
             await update(metaRef, { timerEndTime: newEndTime });
             showToast("Đã cộng thêm 15 giây vào đồng hồ pha!", "success");
         }
+    });
+
+    // Nút Tải Xuất Match Logs cho GM
+    document.getElementById("btn-export-logs")?.addEventListener("click", () => {
+        window.UI_Module.exportMatchLogs();
     });
 }
 
@@ -248,7 +305,7 @@ function checkCodeComplete() {
 }
 
 // ==========================================
-// 2. KẾT NỐI TẠO PHÒNG VÀ ĐỒNG BỘ TRỰC TUYẾN
+// 2. KẾT NỐI TẠO PHÒNG VÀ XÁC THỰC MẬT KHẨU (UPDATE7)
 // ==========================================
 function generateRoomCode() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -269,10 +326,14 @@ async function createRoom() {
     localStorage.setItem("reconnect_room_id", roomId);
     localStorage.setItem("reconnect_player_id", Net.playerId);
 
+    const pwdInput = document.getElementById("cfg-room-password");
+    const roomPassword = pwdInput ? pwdInput.value.trim() : "";
+
     const roomRef = ref(db, `rooms/${roomId}`);
     const hostData = {
         id: Net.playerId,
         name: Net.playerName,
+        avatar: window.G.selectedAvatar || "🐺",
         isHost: true,
         isReady: true,
         isConnected: true,
@@ -281,17 +342,18 @@ async function createRoom() {
         realFaction: "villager",
         turnEnded: false,
         hasSeenRole: false,
-        joinedTime: Date.now()
+        joinedTime: getSynchronizedTimestamp()
     };
 
     const initialRoomState = {
         meta: {
             hostId: Net.playerId,
             roomId: roomId,
+            password: roomPassword,
             phase: "setup",
             day: 0,
             started: false,
-            createdTime: Date.now()
+            createdTime: getSynchronizedTimestamp()
         },
         players: {
             [Net.playerId]: hostData
@@ -305,12 +367,21 @@ async function createRoom() {
         await set(roomRef, initialRoomState);
         enterLobbyMode();
         listenToRoom();
+        showToast(`Tạo phòng ${roomId} thành công!`, "success");
     } catch (error) {
         showToast("Lỗi khi khởi tạo phòng trực tuyến!", "danger");
     }
 }
 
-async function joinRoom(roomId, name = Net.playerName) {
+// XÁC THỰC MẬT KHẨU PHÒNG CHUẨN XÁC KHI JOIN PHÒNG (SỬA LỖI UPDATE7)
+async function joinRoom(roomId, passwordInput = "", name = Net.playerName) {
+    // 1. Kiểm tra mật khẩu phòng thông qua Helper
+    const pwdCheck = await verifyRoomPassword(roomId, passwordInput);
+    if (!pwdCheck.valid) {
+        showToast(pwdCheck.reason || "Mật khẩu phòng chơi không chính xác!", "danger");
+        return;
+    }
+
     const roomRef = ref(db, `rooms/${roomId}`);
     try {
         const snapshot = await get(roomRef);
@@ -336,6 +407,7 @@ async function joinRoom(roomId, name = Net.playerName) {
         const playerData = {
             id: Net.playerId,
             name: name,
+            avatar: window.G.selectedAvatar || "🐺",
             isHost: false,
             isReady: false,
             isConnected: true,
@@ -344,12 +416,13 @@ async function joinRoom(roomId, name = Net.playerName) {
             realFaction: "villager",
             turnEnded: false,
             hasSeenRole: false,
-            joinedTime: Date.now()
+            joinedTime: getSynchronizedTimestamp()
         };
 
         await set(playerRef, playerData);
         enterLobbyMode();
         listenToRoom();
+        showToast(`Đã tham gia phòng ${roomId}!`, "success");
     } catch (error) {
         showToast("Gặp sự cố khi gia nhập phòng!", "danger");
     }
@@ -486,13 +559,13 @@ function handleLocalEvictionCleanup() {
 }
 
 // ==========================================
-// 3. ĐỒNG BỘ THỜI GIAN THỰC TỪ FIREBASE & HOST FAILOVER
+// 3. ĐỒNG BỘ THỜI GIAN THỰC TỪ FIREBASE & LISTENERS
 // ==========================================
 function listenToRoom() {
     clearActiveListeners();
     setupActivePlayersPresence();
-
     setupSpectatorWinPoll();
+    setupGMWhisperListener();
 
     const roomRef = ref(db, `rooms/${Net.roomId}`);
     const unsubRoom = onValue(roomRef, (snapshot) => {
@@ -543,7 +616,7 @@ function listenToRoom() {
             }
         }
 
-        renderPlayersGridSmartly();
+        renderPlayersGridSmartly(roomData);
 
         const connectedCount = window.G.players.filter(p => p.isConnected).length;
         const lobbyConnectedEl = document.getElementById("lobby-connected-count");
@@ -616,7 +689,7 @@ function renderLobbyPlayersList() {
         tag.className = "lobby-player-tag";
         
         const nameSpan = document.createElement("span");
-        nameSpan.innerText = p.name + (p.isHost ? " 👑" : "");
+        nameSpan.innerText = `${p.avatar || "👤"} ${p.name}` + (p.isHost ? " 👑" : "");
         nameSpan.style.fontWeight = "bold";
 
         const badge = document.createElement("span");
@@ -658,7 +731,7 @@ function transitionToGameScreen(roomData) {
 }
 
 // ==========================================
-// 4. QUẢN LÝ LAYOUT CHUYỂN PHA VÀ MỞ KÊNH CHAT
+// 4. BẢO VỆ KÊNH CHAT CHẾT & ĐỒNG BỘ LAYOUT (UPDATE7)
 // ==========================================
 function syncLayoutBasedOnRoleAndStatus(roomData) {
     const mySelf = Net.players[Net.playerId];
@@ -676,6 +749,18 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
     const chatInputField = document.getElementById("chat-input-field");
     const chatSendBtn = document.getElementById("btn-chat-send");
 
+    // SỬA LỖI UPDATE7: Khóa hoàn toàn Kênh Sói khi Ma Sói đã chết
+    const wolfTab = document.getElementById("chan-wolf");
+    if (mySelf && mySelf.alive && (mySelf.role === "wolf" || mySelf.realFaction === "wolf")) {
+        wolfTab?.classList.remove("hidden");
+    } else {
+        wolfTab?.classList.add("hidden");
+        if (Net.currentChannel === "wolf") {
+            Net.currentChannel = "public";
+            listenToChatChannel("public");
+        }
+    }
+
     if (phase === "night") {
         if (Net.currentChannel === "public") {
             if (chatInputField) {
@@ -692,9 +777,6 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
         }
 
         if (mySelf && mySelf.alive) {
-            if (mySelf.role === "wolf" || mySelf.realFaction === "wolf") {
-                document.getElementById("chan-wolf")?.classList.remove("hidden");
-            }
             if (mySelf.inCouple && mySelf.coupleId) {
                 document.getElementById("chan-couple")?.classList.remove("hidden");
             }
@@ -735,6 +817,8 @@ function syncLayoutBasedOnRoleAndStatus(roomData) {
                 if (chatSendBtn) chatSendBtn.disabled = false;
             }
         } else {
+            // Linh Hồn Chat
+            document.getElementById("chan-graveyard")?.classList.remove("hidden");
             if (Net.currentChannel === "graveyard") {
                 if (chatInputField) {
                     chatInputField.disabled = false;
@@ -772,7 +856,7 @@ function updatePlayerIdentityCard(mySelf) {
     idRoleVal.innerText = getRoleName(mySelf.role).toUpperCase();
     idFactionVal.innerText = mySelf.realFaction.toUpperCase();
 
-    const skills = ROLE_DB[mySelf.role]?.faction === "wolf" ? "Phe phái Ma Sói: Đồng tâm cắn phá vào ban đêm." : "Phe Làng/Khác: Thảo luận tìm kiếm phe Ma Sói ban ngày.";
+    const skills = ROLE_DB[mySelf.role]?.faction === "wolf" ? "Phe phái Ma Sói: Bỏ phiếu đồng thuận cắn nạn nhân ban đêm." : "Phe Làng/Khác: Thảo luận tìm kiếm phe Ma Sói ban ngày.";
     idSkillsSummary.innerText = skills;
 }
 
@@ -826,12 +910,17 @@ function renderDynamicActionControls(roomData, mySelf) {
 
         document.getElementById("btn-use-skill")?.addEventListener("click", () => {
             openTargetSelection(Object.values(Net.players), mySelf.role, (targetPlayerId, secondaryId, chosenModifier, phrase) => {
+                // Nếu là Ma Sói cắn -> Đồng thời đẩy vào node wolf_votes để cả bầy cùng thấy
+                if (mySelf.role === "wolf" || mySelf.role === "wolfBoss" || mySelf.realFaction === "wolf") {
+                    set(ref(db, `rooms/${Net.roomId}/wolf_votes/${Net.playerId}`), targetPlayerId);
+                }
+
                 set(ref(db, `rooms/${Net.roomId}/players/${Net.playerId}/targetSelection`), {
                     actionType: chosenModifier || (mySelf.role + "_action"), 
                     targetId: targetPlayerId,
                     secondaryId: secondaryId,
                     phrase: phrase,
-                    timestamp: Date.now()
+                    timestamp: getSynchronizedTimestamp()
                 });
                 showToast("Đã ghi nhận mục tiêu hành động đêm!", "success");
             });
@@ -863,7 +952,7 @@ function renderDynamicActionControls(roomData, mySelf) {
 }
 
 // ==========================================
-// 5. CÁC PHA XỬ ÁN & BẦU TRƯỞNG LÀNG (TRIAL PHASES)
+// 5. CÁC PHA XỬ ÁN & TÒA ÁN (SỬA LỖI HIỂN THỊ ĐIỂM TRƯỞNG LÀNG 2đ)
 // ==========================================
 function syncTrialPhases(roomData) {
     const trial = roomData.trial || { stage: "none", accusedId: null };
@@ -965,9 +1054,15 @@ function openMayorElectionModal(roomData) {
     }
 }
 
+// SỬA LỖI LISTENER DỒN TÍCH TRONG PANEL BIỆN HỘ REALTIME
 function renderDefenseTypingPanel(isAccused, accusedName = "") {
     const controlPanel = document.getElementById("controls");
     if (!controlPanel) return;
+
+    if (activeDefenseUnsub) {
+        activeDefenseUnsub();
+        activeDefenseUnsub = null;
+    }
 
     if (isAccused) {
         controlPanel.innerHTML = `
@@ -999,15 +1094,15 @@ function renderDefenseTypingPanel(isAccused, accusedName = "") {
         `;
         
         const textRef = ref(db, `rooms/${Net.roomId}/trial/accusedText`);
-        const unsubText = onValue(textRef, (snap) => {
+        activeDefenseUnsub = onValue(textRef, (snap) => {
             const txt = snap.val() || "...";
             const display = document.getElementById("defense-realtime-display");
             if (display) display.innerText = `"${txt}"`;
         });
-        activeUnsubscribers.push(unsubText);
     }
 }
 
+// SỬA LỖI UPDATE7: HIỂN THỊ TRỌNG SỐ TRƯỞNG LÀNG (👑 2đ) TRÊN MODAL BỎ PHIẾU
 function openSplitScreenVoteModal(accusedId, roomData) {
     const modal = document.getElementById("vote-modal");
     if (!modal) return;
@@ -1022,21 +1117,25 @@ function openSplitScreenVoteModal(accusedId, roomData) {
     if (listExecute) listExecute.innerHTML = "";
 
     const votes = roomData.votes || {};
-    let countAcquit = 0;
-    let countExecute = 0;
+    let weightedCountAcquit = 0;
+    let weightedCountExecute = 0;
 
     Object.entries(votes).forEach(([voterId, voteValue]) => {
         const voter = roomData.players[voterId];
-        if (voter && voter.alive) {
+        // Kẻ Ngốc đã lật thẻ sẽ mất vĩnh viễn quyền vote
+        if (voter && voter.alive && !voter.isIdiotRevealed) {
+            const isMayor = (voterId === roomData.meta?.mayorId);
+            const weight = isMayor ? 2 : 1;
+
             const chip = document.createElement("div");
             chip.className = "voter-avatar-chip";
-            chip.innerText = voter.name + (voterId === roomData.meta?.mayorId ? " 👑" : "");
+            chip.innerText = voter.name + (isMayor ? " 👑 (2đ)" : "");
 
             if (voteValue === "ACQUIT") {
-                countAcquit++;
+                weightedCountAcquit += weight;
                 if (listAcquit) listAcquit.appendChild(chip);
             } else if (voteValue === "EXECUTE") {
-                countExecute++;
+                weightedCountExecute += weight;
                 if (listExecute) listExecute.appendChild(chip);
             }
         }
@@ -1044,8 +1143,8 @@ function openSplitScreenVoteModal(accusedId, roomData) {
 
     const cntAcquit = document.getElementById("count-acquit");
     const cntExecute = document.getElementById("count-execute");
-    if (cntAcquit) cntAcquit.innerText = countAcquit;
-    if (cntExecute) cntExecute.innerText = countExecute;
+    if (cntAcquit) cntAcquit.innerText = weightedCountAcquit;
+    if (cntExecute) cntExecute.innerText = weightedCountExecute;
 
     const progressWrapper = document.getElementById("trial-vote-progress-wrapper");
     const progressFill = document.getElementById("trial-vote-progress-fill");
@@ -1053,11 +1152,11 @@ function openSplitScreenVoteModal(accusedId, roomData) {
 
     if (progressWrapper && progressFill && progressRatio) {
         progressWrapper.classList.remove("hidden");
-        const totalVotes = countAcquit + countExecute;
-        const totalAlive = window.G.players.filter(p => p.alive).length;
+        const totalVotesCount = Object.keys(votes).length;
+        const totalAlive = window.G.players.filter(p => p.alive && !p.isIdiotRevealed).length;
         
-        progressRatio.innerText = `${totalVotes}/${totalAlive}`;
-        const pct = totalAlive > 0 ? (totalVotes / totalAlive) * 100 : 0;
+        progressRatio.innerText = `${totalVotesCount}/${totalAlive}`;
+        const pct = totalAlive > 0 ? (totalVotesCount / totalAlive) * 100 : 0;
         progressFill.style.width = `${pct}%`;
     }
 
@@ -1065,7 +1164,7 @@ function openSplitScreenVoteModal(accusedId, roomData) {
     if (btnAcquit) {
         btnAcquit.onclick = () => {
             const mySelf = Net.players[Net.playerId];
-            if (mySelf && !mySelf.alive) return;
+            if (mySelf && (!mySelf.alive || mySelf.isIdiotRevealed)) return;
             set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "ACQUIT");
         };
     }
@@ -1074,7 +1173,7 @@ function openSplitScreenVoteModal(accusedId, roomData) {
     if (btnExecute) {
         btnExecute.onclick = () => {
             const mySelf = Net.players[Net.playerId];
-            if (mySelf && !mySelf.alive) return;
+            if (mySelf && (!mySelf.alive || mySelf.isIdiotRevealed)) return;
             set(ref(db, `rooms/${Net.roomId}/votes/${Net.playerId}`), "EXECUTE");
         };
     }
@@ -1224,7 +1323,7 @@ function setupMailboxCategoryFilters() {
 }
 
 // ==========================================
-// 7. KÊNH THẢO LUẬN & TRUYỀN TIN BẢO MẬT
+// 7. KÊNH THẢO LUẬN MULTI-CHANNEL & MẬT THƯ GM (UPDATE7)
 // ==========================================
 function setupChatEngine() {
     const btnSend = document.getElementById("btn-chat-send");
@@ -1287,8 +1386,9 @@ async function sendChatMessage() {
     const messagePayload = {
         senderName: Net.playerName,
         senderId: Net.playerId,
+        avatar: window.G.selectedAvatar || "👤",
         text: msg,
-        timestamp: Date.now()
+        timestamp: getSynchronizedTimestamp()
     };
 
     try {
@@ -1309,38 +1409,82 @@ function listenToChatChannel(channelPath) {
     activeChatUnsub = onValue(chatRef, (snap) => {
         const chatBox = document.getElementById("chat-box");
         if (!chatBox) return;
-        chatBox.innerHTML = "";
 
+        // BẢO VỆ SCROLL: Chỉ tự cuộn xuống đáy khi người chơi đang ở dưới đáy
+        const isNearBottom = chatBox.scrollHeight - chatBox.clientHeight - chatBox.scrollTop < 80;
+
+        chatBox.innerHTML = "";
         const messages = snap.val() || {};
         Object.values(messages).forEach(m => {
             const row = document.createElement("div");
             row.className = `chat-msg ${Net.currentChannel}`;
-            row.innerHTML = `<b style="color:var(--accent)">${m.senderName}:</b> ${m.text}`;
+            row.style.marginBottom = "6px";
+            row.style.lineHeight = "1.4";
+            row.innerHTML = `<span>${m.avatar || "👤"}</span> <b style="color:var(--accent)">${m.senderName}:</b> ${m.text}`;
             chatBox.appendChild(row);
         });
-        chatBox.scrollTop = chatBox.scrollHeight;
+
+        if (isNearBottom) {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
     });
 }
 
+// BỔ SUNG LẮNG NGHE MẬT THƯ TRỰC TIẾP TỪ QUẢN TRÒ (GM WHISPER)
+function setupGMWhisperListener() {
+    if (activeGMWhisperUnsub || !Net.roomId || !Net.playerId) return;
+
+    const whisperRef = ref(db, `rooms/${Net.roomId}/gm_whispers/${Net.playerId}`);
+    activeGMWhisperUnsub = onValue(whisperRef, (snap) => {
+        const whispers = snap.val() || {};
+        const latestKey = Object.keys(whispers).pop();
+        if (latestKey) {
+            const whisperMsg = whispers[latestKey];
+            showToast(`💬 [MẬT THƯ GM]: ${whisperMsg.text}`, "info");
+        }
+    });
+}
+
+// HÀM CHO QUẢN TRÒ GỬI MẬT THƯ RIÊNG
+export async function sendGMWhisper(targetPlayerId, messageText) {
+    if (!Net.isHost || !Net.roomId) return;
+    const whisperRef = ref(db, `rooms/${Net.roomId}/gm_whispers/${targetPlayerId}`);
+    try {
+        await push(whisperRef, {
+            text: messageText,
+            timestamp: getSynchronizedTimestamp()
+        });
+        showToast(`Đã gửi mật thư tới ${Net.players[targetPlayerId]?.name}!`, "success");
+    } catch (err) {
+        console.error("Lỗi gửi mật thư GM:", err);
+    }
+}
+
+// BỘ DỰ ĐOÁN TỈ LỆ THẮNG KHÁN GIẢ (CÓ DEBOUNCE CHỐNG SPAM)
 function setupSpectatorWinPoll() {
     if (spectatorPollConfigured || !Net.roomId) return;
     spectatorPollConfigured = true;
 
     const buttons = [
-        { id: "pred-bar-village", faction: "village" },
-        { id: "pred-bar-wolf", faction: "wolf" },
-        { id: "pred-bar-third", faction: "third" }
+        { id: "pred-row-village-trigger", faction: "village" },
+        { id: "pred-row-wolf-trigger", faction: "wolf" },
+        { id: "pred-row-third-trigger", faction: "third" }
     ];
 
     buttons.forEach(btn => {
-        document.getElementById(btn.id)?.addEventListener("click", async () => {
-            const mySelf = Net.players[Net.playerId];
-            if (mySelf && mySelf.alive) {
-                showToast("Bạn vẫn còn sống, hãy tập trung thảo luận!", "warning");
-                return;
-            }
-            await set(ref(db, `rooms/${Net.roomId}/prediction_poll/${Net.playerId}`), btn.faction);
-        });
+        const triggerEl = document.getElementById(btn.id);
+        if (triggerEl) {
+            triggerEl.addEventListener("click", async () => {
+                if (debounceButton(triggerEl, 1000)) return; // Khóa 1s
+
+                const mySelf = Net.players[Net.playerId];
+                if (mySelf && mySelf.alive) {
+                    showToast("Bạn vẫn còn sống, hãy tập trung thảo luận!", "warning");
+                    return;
+                }
+                await set(ref(db, `rooms/${Net.roomId}/prediction_poll/${Net.playerId}`), btn.faction);
+            });
+        }
     });
 
     const pollRef = ref(db, `rooms/${Net.roomId}/prediction_poll`);
@@ -1374,9 +1518,9 @@ function setupSpectatorWinPoll() {
 }
 
 // ==========================================
-// 8. RENDER BÀN CỜ NGƯỜI CHƠI (DOM DIFFING TRÁNH GIẬT/NHẤP NHÁY)
+// 8. RENDER BÀN CỜ NGƯỜI CHƠI (DOM DIFFING & THỐNG NHẤT TARGET BẦY SÓI)
 // ==========================================
-function renderPlayersGridSmartly() {
+function renderPlayersGridSmartly(roomData) {
     const grid = document.getElementById("game-players-grid");
     if (!grid) return;
 
@@ -1386,6 +1530,13 @@ function renderPlayersGridSmartly() {
     grid.querySelectorAll(".player-grid-card").forEach(card => {
         const id = card.getAttribute("data-id");
         if (id) existingCardsMap[id] = card;
+    });
+
+    // Thu thập danh sách mục tiêu cắn của Bầy Sói đêm nay (Realtime Wolf Pack Targets)
+    const wolfVotesNode = roomData?.wolf_votes || {};
+    const wolfVoteCounts = {};
+    Object.values(wolfVotesNode).forEach(tid => {
+        if (tid) wolfVoteCounts[tid] = (wolfVoteCounts[tid] || 0) + 1;
     });
 
     currentPlayers.forEach(p => {
@@ -1416,7 +1567,8 @@ function renderPlayersGridSmartly() {
         }
 
         const nameEl = card.querySelector(".name");
-        if (nameEl && nameEl.innerText !== p.name) nameEl.innerText = p.name;
+        const fullNameStr = `${p.avatar || "👤"} ${p.name}`;
+        if (nameEl && nameEl.innerText !== fullNameStr) nameEl.innerText = fullNameStr;
 
         const roleUnmaskedEl = card.querySelector(".role-unmasked");
         if (roleUnmaskedEl) {
@@ -1439,6 +1591,19 @@ function renderPlayersGridSmartly() {
             star.className = "mayor-star";
             star.innerText = "👑";
             card.appendChild(star);
+        }
+
+        // Hiển thị huy hiệu số phiếu Bầy Sói đang nhắm cắn (Chỉ hiện cho đồng đội Sói)
+        const mySelf = Net.players[Net.playerId];
+        if (mySelf && (mySelf.role === "wolf" || mySelf.realFaction === "wolf" || Net.isHost)) {
+            const votesForThisPlayer = wolfVoteCounts[p.id] || 0;
+            if (votesForThisPlayer > 0) {
+                const badge = document.createElement("span");
+                badge.className = "wolf-votes";
+                badge.style.cssText = "position:absolute; bottom:4px; right:4px; background:var(--danger); color:white; font-size:10px; padding:1px 4px; border-radius:8px; font-weight:bold;";
+                badge.innerText = `🐺 x${votesForThisPlayer}`;
+                card.appendChild(badge);
+            }
         }
 
         applyDecorativeClasses(p, card);
@@ -1481,13 +1646,6 @@ function applyDecorativeClasses(p, card) {
     if (p.isCatClawed) card.classList.add("cat-clawed");
     if (p.isCatSealed) card.classList.add("cat-sealed");
     if (p.isReaperCorpse) card.classList.add("reaper-corpse");
-
-    if (p.wolfVotesCount && p.wolfVotesCount > 0) {
-        const badge = document.createElement("span");
-        badge.className = "wolf-votes";
-        badge.innerText = `🐺 x${p.wolfVotesCount}`;
-        card.appendChild(badge);
-    }
 }
 
 function renderGMLogs(logs) {
@@ -1535,6 +1693,9 @@ function updateBalanceAndCountsUI() {
 }
 
 async function toggleReadyState() {
+    const btnReady = document.getElementById("btn-player-toggle-ready");
+    if (debounceButton(btnReady, 400)) return;
+
     const mySelf = Net.players[Net.playerId];
     if (!mySelf) return;
 
@@ -1548,6 +1709,9 @@ async function toggleReadyState() {
 }
 
 async function hostStartSetup() {
+    const btnStart = document.getElementById("btn-host-start-setup");
+    if (debounceButton(btnStart, 500)) return;
+
     if (!Net.isHost) return;
     
     try {
