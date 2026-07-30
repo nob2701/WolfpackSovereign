@@ -2,8 +2,10 @@
  * =========================================================================
  * WOLFPACK SOVEREIGN v47.0 - MAIN ORCHESTRATOR & NETWORK SYNC MODULE
  * =========================================================================
- * Tệp điều phối trung tâm ứng dụng. Tích hợp bộ bọc an toàn chống treo web,
- * giải phóng Splash Screen tự động, quản lý Sảnh Chờ, Host Failover & Chat.
+ * Tệp điều phối trung tâm ứng dụng. Quản lý kết nối Firebase Realtime,
+ * Sảnh chờ Lobby, Chuyển giao Host tự động, Render Bàn Cờ Thần Dân DOM Diffing,
+ * Hòm Mật Thư Giấy Da, Kênh Thảo Luận Multi-Channel và Bảng Quản Trò Tối Cao.
+ * Tích hợp bộ kiểm tra readyState bảo vệ ứng dụng chống treo 100% trên Vercel.
  */
 
 import { 
@@ -41,8 +43,8 @@ let spectatorPollConfigured = false;
 let openedMailsList = [];
 let currentMailIndex = -1;
 
-// KHỞI CHẠY KHÔNG GIAN TRÒ CHƠI CHUNG AN TOÀN
-document.addEventListener("DOMContentLoaded", () => {
+// KHỞI CHẠY ỨNG DỤNG AN TOÀN (BẢO VỆ CHỐNG BẪY DOMCONTENTLOADED CỦA ES6 MODULES)
+function initApp() {
     try {
         initLobbyEngine();
         setupCodeInputNavigation();
@@ -52,16 +54,21 @@ document.addEventListener("DOMContentLoaded", () => {
         setupParchmentNavigation();
         setupGMConsoleListeners();
     } catch (err) {
-        console.warn("⚠️ [Khởi tạo DOM] Có cảnh báo trong quá trình gán sự kiện:", err.message);
+        console.warn("⚠️ [Khởi tạo App] Cảnh báo DOM:", err);
     } finally {
-        // Đảm bảo Splash Screen LUÔN LUÔN được ẩn sau 1.2s không bao giờ bị treo
         dismissSplashScreen();
-        // Tự động khôi phục phiên chơi cũ nếu có
         attemptSessionReconnection();
     }
-});
+}
 
-// Gỡ bỏ màn hình chờ Splash Screen An Toàn
+// Kiểm tra nếu DOM đã tải xong trước khi Module import hoàn tất (Khắc phục triệt để treo Vercel)
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}
+
+// Gỡ bỏ màn hình chờ Splash Screen An Toàn tuyệt đối
 function dismissSplashScreen() {
     const splash = document.getElementById("splash-screen");
     if (!splash) return;
@@ -72,8 +79,7 @@ function dismissSplashScreen() {
     };
 
     splash.addEventListener("click", hideSplash);
-    // Tự động giải phóng sau 1.2 giây
-    setTimeout(hideSplash, 1200);
+    setTimeout(hideSplash, 1000);
 }
 
 // Giải phóng bộ nhớ của toàn bộ các Listener cũ
@@ -390,10 +396,9 @@ async function attemptSessionReconnection() {
         const overlay = document.getElementById("reconnect-overlay");
         if (overlay) overlay.style.display = "flex";
 
-        // Tự động tắt overlay sau 2.5s nếu mạng chậm để không kẹt UI
         const safeTimeout = setTimeout(() => {
             if (overlay) overlay.style.display = "none";
-        }, 2500);
+        }, 2000);
 
         try {
             const roomRef = ref(db, `rooms/${savedRoomId}`);
@@ -442,7 +447,6 @@ async function handleRoomExit() {
         if (Net.isHost) {
             const activePlayers = Object.values(Net.players).filter(p => p.id !== Net.playerId && p.isConnected);
             if (activePlayers.length > 0) {
-                // Tự động chuyển quyền Host cho người gia nhập sớm nhất còn kết nối
                 activePlayers.sort((a, b) => (a.joinedTime || 0) - (b.joinedTime || 0));
                 const newHost = activePlayers[0];
                 const updates = {};
@@ -500,7 +504,6 @@ function listenToRoom() {
         
         const roomData = snapshot.val();
         
-        // KIỂM TRA & TỰ ĐỘNG CẬP NHẬT QUYỀN HOST KHI HOST CŨ RỚT MẠNG (HOST FAILOVER)
         if (roomData.meta?.hostId === Net.playerId) {
             Net.isHost = true;
         } else if (roomData.players && roomData.players[Net.playerId]?.isHost) {
@@ -527,12 +530,10 @@ function listenToRoom() {
         window.G.roleCounts = roomData.roleCounts || {};
         Net.players = roomData.players || {};
 
-        // Đồng bộ hóa Bộ đếm thời gian đếm ngược
         if (roomData.meta.timerEndTime && roomData.meta.timerDuration) {
             StateMachine.syncPhaseTimer(roomData.meta.timerEndTime, roomData.meta.timerDuration);
         }
 
-        // Cập nhật tên Trưởng Làng lên UI
         const mayorNameEl = document.getElementById("mayor-name-display");
         if (mayorNameEl) {
             if (roomData.meta.mayorId && roomData.players[roomData.meta.mayorId]) {
@@ -1433,7 +1434,6 @@ function renderPlayersGridSmartly() {
         
         card.querySelectorAll(".wolf-votes, .mayor-star").forEach(el => el.remove());
         
-        // Gán ngôi sao Trưởng Làng nếu có
         if (p.id === window.G.mayorId) {
             const star = document.createElement("span");
             star.className = "mayor-star";
